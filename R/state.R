@@ -11,7 +11,7 @@ state$evil_eval <-
                                                       is.pairlist(envir)) parent.frame() else baseenv()) {
 
       evil:::set_base_eval()
-      serialized_expr <-deparse(substitute(expr))
+      serialized_expr <- paste(deparse(substitute(expr)), collapse = "\n")
       stack_frames <- sys.calls()
       stack_frames <- paste(unlist(Map(deparse, stack_frames)), sep=" ", collapse="\n")
       evil:::add_entry("base", "eval", serialized_expr, stack_frames)
