@@ -1,5 +1,5 @@
 Package: evil
-Title: EVal Interception Library
+Title: Eval Inspection Library
 Version: 0.0.0.9000
 Authors@R:
     person(given = "Aviral",
@@ -10,4 +10,8 @@ Description: The package is up to no good, it intercepts calls to eval.
 License: What license it uses
 Encoding: UTF-8
 LazyData: true
+Imports:
+    lightr
+Remotes:
+    PRL-PRG/injectr
 RoxygenNote: 7.1.0.9000

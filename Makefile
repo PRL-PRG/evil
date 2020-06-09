@@ -1,34 +1,23 @@
-R_EXECUTABLE := R
-R_CMD_CHECK_OUTPUT_DIRPATH := /tmp
+.PHONY: all build check document test
 
-all: install
+all: document build check
 
-build: clean
-	$(R_EXECUTABLE) CMD build .
-
-install: clean
-	$(R_EXECUTABLE) CMD INSTALL --with-keep.source .
-
-clean:
-	rm -rf evil*.tar.gz
-	rm -rf *.Rcheck
-	rm -rf src/*.so
-	rm -rf src/*.o
-
-document:
-	$(R_EXECUTABLE) --slave -e "devtools::document()"
-	$(R_EXECUTABLE) --slave -e "pkgdown::build_site()"
+build: document
+	R CMD build .
 
 check: build
-	$(R_EXECUTABLE) CMD check --output=$(R_CMD_CHECK_OUTPUT_DIRPATH) evil_*.tar.gz
+	R CMD check evil*tar.gz
+
+clean:
+	-rm -f evil*tar.gz
+	-rm -fr evil.Rcheck
+	-rm -rf src/*.o src/*.so
+
+document:
+	Rscript -e 'devtools::document()'
 
 test:
-	$(R_EXECUTABLE) --slave -e "devtools::test()"
+	Rscript -e 'devtools::test()'
 
-install-dependencies:
-	$(R_EXECUTABLE) --slave -e "install.packages(c('testthat', 'devtools', 'roxygen2', 'lintr', 'pkgdown'), repos='http://cran.us.r-project.org')"
-
-lint:
-	$(R_EXECUTABLE) --slave -e "lintr::lint_package()"
-
-.PHONY: all build install clean document check test install-dependencies lint
+lintr:
+	R --slave -e "lintr::lint_package()"
