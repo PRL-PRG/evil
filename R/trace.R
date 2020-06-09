@@ -3,21 +3,21 @@
 #' @importFrom lightr trace_code is_error get_error get_source get_message get_call
 #' @importFrom utils write.csv
 trace_eval <- function(code,
-                       datadir=file.path(getwd(), ".evil"),
-                       envir=parent.frame(),
-                       quote=TRUE) {
+                       datadir = file.path(getwd(), ".evil"),
+                       envir = parent.frame(),
+                       quote = TRUE) {
     if (quote) {
         code <- substitute(code)
     }
 
     context <- create_evil_context()
 
-    result <- trace_code(code, context, envir, quote=FALSE)
+    result <- trace_code(code, context, envir, quote = FALSE)
 
     eval_data <- get_data(context)
 
     ## create datadir
-    dir.create(datadir, showWarnings=FALSE)
+    dir.create(datadir, showWarnings = FALSE)
 
     ## write eval data
     data_file_path <- file.path(datadir, "eval-calls.csv")
@@ -29,8 +29,8 @@ trace_eval <- function(code,
         error <- get_error(result)
         error_data <- data.frame(source = get_source(error),
                                  message = get_message(error),
-                                 call = paste(deparse(get_call(error)), sep="\n"))
-        write.csv(error_data, status_file, row.names=FALSE)
+                                 call = paste(deparse(get_call(error)), sep = "\n"))
+        write.csv(error_data, status_file, row.names = FALSE)
     }
 
     result
