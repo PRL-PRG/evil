@@ -17,7 +17,8 @@ application_load_callback <- function(context, application) {
                        argument_position = integer(0),
                        argument_name = character(0),
                        argument_expr = character(0),
-                       is_evaluated = logical(0))
+                       is_evaluated = logical(0),
+                       stringsAsFactors = FALSE)
 
     set_data(context, data)
 }
