@@ -32,7 +32,7 @@ call_exit_callback <- function(context, application, package, func, call) {
     callee_package <- get_name(package)
     callee_name <- get_name(func)
 
-    for(parameter in get_parameters(call)) {
+    for (parameter in get_parameters(call)) {
         parameter_name <- get_name(parameter)
         parameter_position <- get_position(parameter)
         ## NOTE: eval parameters don't have more than one argument
@@ -41,7 +41,7 @@ call_exit_callback <- function(context, application, package, func, call) {
         argument_expr <- paste(deparse(get_expression(argument)), collapse = "\n")
         evaluated <- is_evaluated(argument)
 
-        data[nrow(data) + 1,] <- list(call_id,
+        data[nrow(data) + 1, ] <- list(call_id,
                                       callee_package,
                                       callee_name,
                                       parameter_position,
