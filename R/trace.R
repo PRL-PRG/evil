@@ -20,7 +20,7 @@ trace_eval <- function(code,
     dir.create(datadir, showWarnings = FALSE)
 
     ## write eval data
-    data_file_path <- file.path(datadir, "eval-calls.csv")
+    data_file_path <- file.path(datadir, "arguments.csv")
     write.csv(eval_data, data_file_path, row.names = FALSE)
 
     ## handle error
