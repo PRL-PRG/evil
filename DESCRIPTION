@@ -11,7 +11,7 @@ License: What license it uses
 Encoding: UTF-8
 LazyData: true
 Imports:
-    lightr
+    instrumentr
 Remotes:
-    PRL-PRG/injectr
+    PRL-PRG/instrumentr
 RoxygenNote: 7.1.0.9000

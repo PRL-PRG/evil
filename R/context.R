@@ -1,13 +1,13 @@
 
 #' @export
-#' @importFrom lightr create_context
+#' @importFrom instrumentr create_context
 create_evil_context <- function() {
     create_context(application_load_callback = application_load_callback,
                    call_exit_callback = call_exit_callback,
                    functions = c("base::eval", "base::evalq", "base::eval.parent", "base::local"))
 }
 
-#' @importFrom lightr set_data
+#' @importFrom instrumentr set_data
 application_load_callback <- function(context, application) {
     data <- data.frame(call_id = integer(0),
                        callee_package = character(0),
@@ -23,9 +23,9 @@ application_load_callback <- function(context, application) {
     set_data(context, data)
 }
 
-#' @importFrom lightr get_data set_data get_id get_name get_parameters
-#' @importFrom lightr get_arguments get_position get_expression
-#' @importFrom lightr is_evaluated to_string
+#' @importFrom instrumentr get_data set_data get_id get_name get_parameters
+#' @importFrom instrumentr get_arguments get_position get_expression
+#' @importFrom instrumentr is_evaluated to_string
 call_exit_callback <- function(context, application, package, func, call) {
     data <- get_data(context)
 

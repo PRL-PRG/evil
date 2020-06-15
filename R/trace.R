@@ -1,9 +1,8 @@
 
 #' @export
-#' @importFrom lightr trace_code is_error get_error get_source get_message get_call
+#' @importFrom instrumentr trace_code
 #' @importFrom utils write.csv
 trace_eval <- function(code,
-                       datadir = file.path(getwd(), ".evil"),
                        envir = parent.frame(),
                        quote = TRUE) {
     if (quote) {
@@ -14,24 +13,32 @@ trace_eval <- function(code,
 
     result <- trace_code(code, context, envir, quote = FALSE)
 
-    eval_data <- get_data(context)
+    data <- get_data(context)
 
+    list(result = result, data = data)
+}
+
+
+#' @export
+#' @importFrom instrumentr is_error get_error get_source get_message get_call
+#' @importFrom utils write.csv
+write_eval_traces <- function(trace, datadir = file.path(getwd(), ".evil")) {
     ## create datadir
     dir.create(datadir, showWarnings = FALSE)
 
     ## write eval data
     data_file_path <- file.path(datadir, "arguments.csv")
-    write.csv(eval_data, data_file_path, row.names = FALSE)
+    write.csv(trace$data, data_file_path, row.names = FALSE)
 
     ## handle error
-    if (is_error(result)) {
+    if (is_error(trace$result)) {
         status_file <- file.path(datadir, "ERROR")
-        error <- get_error(result)
+        error <- get_error(trace$result)
         error_data <- data.frame(source = get_source(error),
                                  message = get_message(error),
                                  call = paste(deparse(get_call(error)), sep = "\n"))
         write.csv(error_data, status_file, row.names = FALSE)
     }
 
-    result
+    trace
 }
