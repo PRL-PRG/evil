@@ -4,6 +4,7 @@
 create_evil_context <- function() {
     functions <- c("base::eval", "base::evalq", "base::eval.parent", "base::local")
     create_context(application_load_callback = application_load_callback,
+                   application_unload_callback = application_unload_callback,
                    call_exit_callback = call_exit_callback,
                    functions = functions)
 }
@@ -11,29 +12,111 @@ create_evil_context <- function() {
 #' @importFrom instrumentr set_data
 application_load_callback <- function(context, application) {
 
-    calls <- data.frame(call_id = integer(0),
-                        callee_package = character(0),
-                        callee_name = character(0),
-                        call_expression = character(0),
-                        caller_expression = character(0),
-                        caller_package = character(0),
-                        caller_name = character(0),
-                        environment_class = character(0),
-                        stringsAsFactors = FALSE)
+    calls <- new.env(parent = emptyenv())
 
-
-    arguments <- data.frame(call_id = integer(0),
-                            callee_package = character(0),
-                            callee_name = character(0),
-                            argument_position = integer(0),
-                            argument_name = character(0),
-                            argument_expr = character(0),
-                            is_evaluated = logical(0),
-                            stringsAsFactors = FALSE)
+    arguments <- new.env(parent = emptyenv())
 
     data <- list(calls = calls, arguments = arguments)
 
     set_data(context, data)
+}
+
+
+create_call_table <- function(calls) {
+
+    call_count <- length(calls)
+
+    call_id <- integer(call_count)
+    package_name <- character(call_count)
+    function_name <- character(call_count)
+    call_expression <- character(call_count)
+    caller_expression <- character(call_count)
+    caller_package <- character(call_count)
+    caller_name <- character(call_count)
+    environment_class <- character(call_count)
+
+    index <- 0
+
+    for(key in ls(calls)) {
+        index <- index + 1
+
+        call <- get(key, calls)
+
+        call_id[index] <- call$call_id
+        package_name[index] <- call$package_name
+        function_name[index] <- call$function_name
+        call_expression[index] <- call$call_expression
+        caller_expression[index] <- call$caller_expression
+        caller_package[index] <- call$caller_package
+        caller_name[index] <- call$caller_name
+        environment_class[index] <- call$environment_class
+    }
+
+    call_df <- data.frame(call_id = call_id,
+                          package_name = package_name,
+                          function_name = function_name,
+                          call_expression = call_expression,
+                          caller_expression = caller_expression,
+                          caller_package = caller_package,
+                          caller_name = caller_name,
+                          environment_class = environment_class,
+                          stringsAsFactors = FALSE)
+
+    call_df
+}
+
+
+create_argument_table <- function(arguments) {
+
+    argument_count <- length(arguments)
+
+    call_id <- integer(argument_count)
+    package_name <- character(argument_count)
+    function_name <- character(argument_count)
+    argument_position <- integer(argument_count)
+    argument_name <- character(argument_count)
+    argument_expr <- character(argument_count)
+    is_evaluated <- logical(argument_count)
+
+    index <- 0
+
+    for(key in ls(arguments)) {
+        index <- index + 1
+
+        argument <- get(key, arguments)
+
+        call_id[index] <- argument$call_id
+        package_name[index] <- argument$package_name
+        function_name[index] <- argument$function_name
+        argument_position[index] <- argument$argument_position
+        argument_name[index] <- argument$argument_name
+        argument_expr[index] <- argument$argument_expr
+        is_evaluated[index] <- argument$is_evaluated
+    }
+
+    argument_df <- data.frame(call_id = call_id,
+                              package_name = package_name,
+                              function_name = function_name,
+                              argument_position = argument_position,
+                              argument_name = argument_name,
+                              argument_expr = argument_expr,
+                              is_evaluated = is_evaluated,
+                              stringsAsFactors = FALSE)
+
+    argument_df
+}
+
+application_unload_callback <- function(context, application) {
+
+    data <- get_data(context)
+    calls <- data$calls
+    arguments <- data$arguments
+
+    new_data <- list(calls = create_call_table(calls),
+                     arguments = create_argument_table(arguments))
+
+    set_data(context, new_data)
+
 }
 
 #' @importFrom instrumentr get_data set_data get_id get_name get_parameters
@@ -72,14 +155,16 @@ call_exit_callback <- function(context, application, package, func, call) {
     caller_package <- caller$package_name
     caller_name <- caller$function_name
 
-    calls[nrow(calls) + 1, ] <- list(call_id,
-                                     call_package,
-                                     call_name,
-                                     call_expression,
-                                     caller_expression,
-                                     caller_package,
-                                     caller_name,
-                                     environment_class)
+    assign(as.character(call_id),
+           list(call_id = call_id,
+                package_name = call_package,
+                function_name = call_name,
+                call_expression = call_expression,
+                caller_expression = caller_expression,
+                caller_package = caller_package,
+                caller_name = caller_name,
+                environment_class = environment_class),
+           calls)
 
     for (parameter in get_parameters(call)) {
         parameter_name <- get_name(parameter)
@@ -90,14 +175,16 @@ call_exit_callback <- function(context, application, package, func, call) {
         argument_expr <- expr_to_string(get_expression(argument))
         evaluated <- is_evaluated(argument)
 
-        arguments[nrow(arguments) + 1, ] <- list(call_id,
-                                                 call_package,
-                                                 call_name,
-                                                 parameter_position,
-                                                 parameter_name,
-                                                 argument_expr,
-                                                 evaluated)
 
+        assign(as.character(get_id(argument)),
+               list(call_id = call_id,
+                    package_name = call_package,
+                    function_name = call_name,
+                    argument_position = parameter_position,
+                    argument_name = parameter_name,
+                    argument_expr = argument_expr,
+                    is_evaluated = evaluated),
+               arguments)
     }
 
     data <- list(calls = calls, arguments = arguments)
