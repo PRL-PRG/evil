@@ -26,9 +26,13 @@ write_eval_traces <- function(trace, datadir = file.path(getwd(), ".evil")) {
     ## create datadir
     dir.create(datadir, showWarnings = FALSE)
 
-    ## write eval data
-    data_file_path <- file.path(datadir, "arguments.csv")
-    write.csv(trace$data, data_file_path, row.names = FALSE)
+    ## store eval calls
+    calls_file_path <- file.path(datadir, "calls.csv")
+    write.csv(trace$data$calls, calls_file_path, row.names = FALSE)
+
+    ## store eval arguments
+    arguments_file_path <- file.path(datadir, "arguments.csv")
+    write.csv(trace$data$arguments, arguments_file_path, row.names = FALSE)
 
     ## handle error
     if (is_error(trace$result)) {
