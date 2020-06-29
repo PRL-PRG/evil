@@ -15,9 +15,9 @@ application_load_callback <- function(context, application) {
                         callee_package = character(0),
                         callee_name = character(0),
                         call_expression = character(0),
-                        ## TODO: caller_expression = character(0),
-                        ## TODO: caller_package = character(0),
-                        ## TODO: caller_name = character(0),
+                        caller_expression = character(0),
+                        caller_package = character(0),
+                        caller_name = character(0),
                         environment_class = character(0),
                         stringsAsFactors = FALSE)
 
@@ -25,8 +25,6 @@ application_load_callback <- function(context, application) {
     arguments <- data.frame(call_id = integer(0),
                             callee_package = character(0),
                             callee_name = character(0),
-                            ##TODO: caller_package = character(0),
-                            ##TODO: caller_name = character(0),
                             argument_position = integer(0),
                             argument_name = character(0),
                             argument_expr = character(0),
@@ -41,6 +39,7 @@ application_load_callback <- function(context, application) {
 #' @importFrom instrumentr get_data set_data get_id get_name get_parameters
 #' @importFrom instrumentr get_arguments get_position get_expression
 #' @importFrom instrumentr is_evaluated get_frame_position get_environment
+#' @importFrom instrumentr get_caller
 call_exit_callback <- function(context, application, package, func, call) {
 
     data <- get_data(context)
@@ -67,10 +66,19 @@ call_exit_callback <- function(context, application, package, func, call) {
                                               call_env,
                                               eval_envir)
 
+    caller <- get_caller(call)
+
+    caller_expression <- expr_to_string(caller$call_expression)
+    caller_package <- caller$package_name
+    caller_name <- caller$function_name
+
     calls[nrow(calls) + 1, ] <- list(call_id,
                                      call_package,
                                      call_name,
                                      call_expression,
+                                     caller_expression,
+                                     caller_package,
+                                     caller_name,
                                      environment_class)
 
     for (parameter in get_parameters(call)) {
