@@ -84,7 +84,7 @@ get_loaded_package_environments <- function() {
     while (!identical(env, emptyenv())) {
         env <- parent.env(env)
         envs <- c(envs, env)
-        env_name <- attr(env, "name")
+        env_name <- environmentName(env)
         env_names <- c(env_names, env_name)
     }
 
@@ -99,6 +99,11 @@ classify_environment <- function(application_frame_position,
                                  eval_env) {
 
     ## check bases cases
+
+    ## The environments of primitive functions of base package are NULL
+    if (is.null(eval_env)) {
+        return ("base")
+    }
 
     if (identical(eval_env, emptyenv())) {
         return("empty")
@@ -163,4 +168,6 @@ classify_environment <- function(application_frame_position,
     else {
         return(paste("caller", parent_count, sep = "-"))
     }
+
+    return("unhandled")
 }
