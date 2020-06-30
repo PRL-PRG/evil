@@ -27,7 +27,7 @@ create_call_table <- function(calls) {
 
     index <- 0
 
-    for(key in ls(calls)) {
+    for (key in ls(calls)) {
         index <- index + 1
 
         call <- get(key, calls)
@@ -69,7 +69,7 @@ create_argument_table <- function(arguments) {
 
     index <- 0
 
-    for(key in ls(arguments)) {
+    for (key in ls(arguments)) {
         index <- index + 1
 
         argument <- get(key, arguments)

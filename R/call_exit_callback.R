@@ -75,7 +75,7 @@ expr_to_string <- function(expr) {
     paste(deparse(expr), collapse = "\n")
 }
 
-get_loaded_package_environments <- function() {
+get_loaded_package_environments <- function() { ## nolint
     envs <- list()
     env_names <- c()
 
@@ -93,7 +93,7 @@ get_loaded_package_environments <- function() {
     envs
 }
 
-classify_environment <- function(application_frame_position,
+classify_environment <- function(application_frame_position, ##nolint
                                  call_frame_position,
                                  callee_env,
                                  eval_env) {
@@ -102,7 +102,7 @@ classify_environment <- function(application_frame_position,
 
     ## The environments of primitive functions of base package are NULL
     if (is.null(eval_env)) {
-        return ("base")
+        return("base")
     }
 
     if (identical(eval_env, emptyenv())) {
