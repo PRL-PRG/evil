@@ -22,5 +22,5 @@ test:
 lintr:
 	R --slave -e "lintr::lint_package()"
 
-install:
+install: clean
 	R CMD INSTALL .
