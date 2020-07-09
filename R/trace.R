@@ -23,18 +23,14 @@ trace_eval <- function(code,
 #' @importFrom instrumentr is_error get_error get_source get_message get_call
 #' @importFrom utils write.csv
 write_eval_traces <- function(trace, datadir = file.path(getwd(), ".evil")) {
-    ## create datadir
+  if (is_error(trace$result) || !is.null(trace$data)) {
     dir.create(datadir, showWarnings = FALSE)
 
-    ## store eval calls
-    calls_file_path <- file.path(datadir, "calls.csv")
-    write.csv(trace$data$calls, calls_file_path, row.names = FALSE)
+    if (!is.null(trace$data)) {
+      calls_file_path <- file.path(datadir, "calls.csv")
+      write.csv(trace$data, calls_file_path, row.names = FALSE)
+    }
 
-    ## store eval arguments
-    arguments_file_path <- file.path(datadir, "arguments.csv")
-    write.csv(trace$data$arguments, arguments_file_path, row.names = FALSE)
-
-    ## handle error
     if (is_error(trace$result)) {
         status_file <- file.path(datadir, "ERROR")
         error <- get_error(trace$result)
@@ -43,6 +39,6 @@ write_eval_traces <- function(trace, datadir = file.path(getwd(), ".evil")) {
                                  call = paste(deparse(get_call(error)), sep = "\n"))
         write.csv(error_data, status_file, row.names = FALSE)
     }
-
-    trace
+  }
+  trace
 }
