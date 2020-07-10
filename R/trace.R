@@ -11,7 +11,7 @@ trace_eval <- function(code,
 
     context <- create_evil_context()
 
-    result <- trace_code(code, context, envir, quote = FALSE)
+    result <- trace_code(context, code, envir, quote = FALSE)
 
     data <- get_data(context)
 
