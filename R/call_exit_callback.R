@@ -2,9 +2,8 @@
 #' @importFrom instrumentr get_data set_data get_id get_name get_parameters
 #' @importFrom instrumentr get_arguments get_position get_expression
 #' @importFrom instrumentr is_evaluated get_frame_position get_environment
-#' @importFrom instrumentr get_caller
+#' @importFrom instrumentr get_caller is_successful
 call_exit_callback <- function(context, application, package, func, call) {
-
   call_id <- get_id(call)
   call_package <- get_name(package)
   call_name <- get_name(func)
@@ -36,7 +35,6 @@ call_exit_callback <- function(context, application, package, func, call) {
   caller_package <- caller$package_name
   caller_name <- caller$function_name
   caller_srcref <- get_call_srcref(sys.call(call_frame_position))
-  browser()
 
   # eval: expr, envir, enclos
   # evalq: expr, envir, enclos
@@ -49,13 +47,15 @@ call_exit_callback <- function(context, application, package, func, call) {
   arg <- get_arguments(params$expr)[[1]]
   expr_expression <- get_expression(arg)
   expr_forced <- is_evaluated(arg)
-  expr_resolved <- .Empty
-
-  if (expr_forced) {
-    expr <- resolve_expr(call_env$expr, eval_env)
-    if (is.language(expr)) {
-      expr_resolved <- expr
-    }
+  expr_resolved <- if (expr_forced) {
+    expr_resolved <- resolve_expr(call_env$expr, eval_env)
+  } else {
+    .Empty
+  }
+  expr_resolved_type <- if (is_empty(expr_resolved)) {
+    NA
+  } else {
+    sexp_typeof(expr_resolved)
   }
 
   # FIXME: this is wrong we have to trace parse and str2...
@@ -109,9 +109,11 @@ call_exit_callback <- function(context, application, package, func, call) {
     caller_name,
     caller_srcref,
     environment_class,
+    successful=is_successful(call),
 
     expr_expression=expr_to_string(expr_expression),
     expr_resolved=expr_to_string(expr_resolved),
+    expr_resolved_type,
     expr_from_parse,
     expr_forced,
     expr_type,
@@ -131,7 +133,11 @@ call_exit_callback <- function(context, application, package, func, call) {
 resolve_expr <- function(x, env) {
   if (is.symbol(x)) {
     y <- get0(as.character(x), env, ifnotfound=.Empty)
-    if (is_empty(y)) x else resolve_expr(y, env)
+    if (is.symbol(y)) {
+      resolve_expr(y, env)
+    } else {
+      y
+    }
   } else if (is.language(x)) {
     x
   } else {
@@ -150,12 +156,12 @@ env_type_to_string <- function(env) {
 expr_to_string <- function(expr) {
   if (is_empty(expr)) {
     NA
-  } else {
-    if (is.expression(expr)) {
-      expr <- expr[[1]]
-    }
-
+  } else if (is.expression(expr)) {
+    expr_to_string(expr[[1]])
+  } else if (is.language(expr)) {
     paste(deparse(expr), collapse = "\n")
+  } else {
+    NA
   }
 }
 
