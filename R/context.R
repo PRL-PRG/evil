@@ -6,7 +6,11 @@ create_evil_context <- function() {
     "base::eval",
     "base::evalq",
     "base::eval.parent",
-    "base::local"
+    "base::local",
+
+    "base::parse",
+    "base::str2expression",
+    "base::str2lang"
   )
 
   create_context(

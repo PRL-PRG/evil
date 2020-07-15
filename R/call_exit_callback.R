@@ -4,15 +4,23 @@
 #' @importFrom instrumentr is_evaluated get_frame_position get_environment
 #' @importFrom instrumentr get_caller is_successful
 call_exit_callback <- function(context, application, package, func, call) {
+  call_name <- get_name(func)
+  if (call_name %in% c("parse", "str2expression", "str2lang")) {
+    retval <- returnValue()
+    mark_parsed_expression(retval, call_name)
+    return()
+  }
+
   call_id <- get_id(call)
   call_package <- get_name(package)
   call_name <- get_name(func)
   call_env <- get_environment(call)
   call_expression <- get_expression(call)
+  call_srcref <- get_call_srcref(call_expression)
+  call_frame_position <- get_frame_position(call)
 
   application_frame_position <- get_frame_position(application)
 
-  call_frame_position <- get_frame_position(call)
 
   ## eval, evalq and local use `envir` parameter name to denote environment
   ## eval.parent uses `p` to denote evaluation environment
@@ -20,6 +28,7 @@ call_exit_callback <- function(context, application, package, func, call) {
 
   eval_env <- get(envir_name, envir = call_env)
   environment_class <- NA
+  # TODO resolve environments if it is an integer (sys.call)
   if (is.environment(eval_env)) {
     environment_class <- classify_environment(
       application_frame_position,
@@ -28,13 +37,13 @@ call_exit_callback <- function(context, application, package, func, call) {
       eval_env
     )
   }
-  # TODO resolve environments if it is an integer (sys.call)
+  enclos_env <- call_env$enclos
 
   caller <- get_caller(call)
   caller_expression <- caller$call_expression
   caller_package <- caller$package_name
-  caller_name <- caller$function_name
-  caller_srcref <- get_call_srcref(sys.call(call_frame_position))
+  caller_function <- caller$function_name
+  caller_srcref <- get_call_srcref(caller_expression)
 
   # eval: expr, envir, enclos
   # evalq: expr, envir, enclos
@@ -58,10 +67,10 @@ call_exit_callback <- function(context, application, package, func, call) {
     sexp_typeof(expr_resolved)
   }
 
-  # FIXME: this is wrong we have to trace parse and str2...
-  expr_from_parse <- is.expression(expr_resolved) &&
-    !is.null(attr(expr_resolved, "srcref"))
-  expr_type <- typeof(expr_resolved)
+  expr_parsed <- attr(expr_resolved, "._evil_parsed_expression")
+  if (is.null(expr_parsed)) {
+    expr_parsed <- NA
+  }
 
   envir_expression <- .Empty
   envir_forced <- NA
@@ -101,36 +110,38 @@ call_exit_callback <- function(context, application, package, func, call) {
 
   trace <- data.frame(
     call_id,
-    package_name=call_package,
-    function_name=call_name,
+    call_package_name=call_package,
+    call_function=call_name,
     call_expression=expr_to_string(call_expression),
-    caller_expression=expr_to_string(caller_expression),
     caller_package,
-    caller_name,
+    caller_function,
+    caller_expression=expr_to_string(caller_expression),
     caller_srcref,
     environment_class,
     successful=is_successful(call),
 
     expr_expression=expr_to_string(expr_expression),
+    expr_expression_type=sexp_typeof(expr_expression),
     expr_resolved=expr_to_string(expr_resolved),
     expr_resolved_type,
-    expr_from_parse,
+    expr_parsed,
     expr_forced,
-    expr_type,
 
     envir_expression=expr_to_string(envir_expression),
     envir_forced,
-    envir_type=env_type_to_string(eval_env),
+    envir_type=sexp_typeof(eval_env),
 
     enclos_expression=expr_to_string(enclos_expression),
     enclos_forced,
-    enclos_type=env_type_to_string(call_env$enclos)
+    enclos_type=sexp_typeof(enclos_env)
   )
 
   assign(as.character(get_id(arg)), trace, envir=get_data(context))
 }
 
 resolve_expr <- function(x, env) {
+  if (!is.environment(env)) return(x)
+
   if (is.symbol(x)) {
     y <- get0(as.character(x), env, ifnotfound=.Empty)
     if (is.symbol(y)) {

@@ -1,4 +1,3 @@
-
 application_unload_callback <- function(context, application) {
     data <- get_data(context)
 
