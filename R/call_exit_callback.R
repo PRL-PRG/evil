@@ -11,33 +11,32 @@ call_exit_callback <- function(context, application, package, func, call) {
     return()
   }
 
-  call_id <- get_id(call)
-  call_package <- get_name(package)
-  call_name <- get_name(func)
-  call_env <- get_environment(call)
-  call_expression <- get_expression(call)
-  call_srcref <- get_call_srcref(call_expression)
-  call_frame_position <- get_frame_position(call)
+  eval_call_id <- get_id(call)
+  eval_function <- get_name(func)
+  eval_call_env <- get_environment(call)
+  eval_call_expression <- get_expression(call)
+  eval_call_srcref <- get_call_srcref(eval_call_expression)
+  eval_call_frame_position <- get_frame_position(call)
 
   application_frame_position <- get_frame_position(application)
 
 
   ## eval, evalq and local use `envir` parameter name to denote environment
   ## eval.parent uses `p` to denote evaluation environment
-  envir_name <- if (call_name == "eval.parent") "p" else "envir"
+  envir_name <- if (eval_function == "eval.parent") "p" else "envir"
 
-  eval_env <- get(envir_name, envir = call_env)
+  eval_env <- get(envir_name, envir = eval_call_env)
   environment_class <- NA
   # TODO resolve environments if it is an integer (sys.call)
   if (is.environment(eval_env)) {
     environment_class <- classify_environment(
       application_frame_position,
-      call_frame_position,
-      call_env,
+      eval_call_frame_position,
+      eval_call_env,
       eval_env
     )
   }
-  enclos_env <- call_env$enclos
+  enclos_env <- eval_call_env$enclos
 
   caller <- get_caller(call)
   caller_expression <- caller$call_expression
@@ -57,7 +56,7 @@ call_exit_callback <- function(context, application, package, func, call) {
   expr_expression <- get_expression(arg)
   expr_forced <- is_evaluated(arg)
   expr_resolved <- if (expr_forced) {
-    expr_resolved <- resolve_expr(call_env$expr, eval_env)
+    expr_resolved <- resolve_expr(eval_call_env$expr, eval_env)
   } else {
     .Empty
   }
@@ -77,27 +76,27 @@ call_exit_callback <- function(context, application, package, func, call) {
   enclos_expression <- .Empty
   enclos_forced <- NA
 
-  if (call_name == "eval.parent") {
+  if (eval_function == "eval.parent") {
     arg <- get_arguments(params$n)[[1]]
     expr <- get_expression(arg)
 
     envir_forced <- is_evaluated(arg)
-    if(!identical(expr, .DefaultArgs[[call_name]]$n)) {
+    if(!identical(expr, .DefaultArgs[[eval_function]]$n)) {
       envir_expression <- substitute(parent.frame(1 + N), list(N=expr))
     }
-    envir_default <- call_env$n == 1
+    envir_default <- eval_call_env$n == 1
   } else {
     arg <- get_arguments(params$envir)[[1]]
     expr <- get_expression(arg)
 
     envir_forced <- is_evaluated(arg)
-    if (!identical(expr, .DefaultArgs[[call_name]]$envir)) {
+    if (!identical(expr, .DefaultArgs[[eval_function]]$envir)) {
       envir_expression <- expr
     }
     # TODO: check if the given environment is the same as the default one
   }
 
-  if (call_name %in% c("eval", "evalq")) {
+  if (eval_function %in% c("eval", "evalq")) {
     arg <- get_arguments(params$enclos)[[1]]
     expr <- get_expression(arg)
 
@@ -109,10 +108,10 @@ call_exit_callback <- function(context, application, package, func, call) {
   }
 
   trace <- data.frame(
-    call_id,
-    call_package_name=call_package,
-    call_function=call_name,
-    call_expression=expr_to_string(call_expression),
+    eval_call_id,
+    eval_function=call_name,
+    eval_call_expression=expr_to_string(eval_call_expression),
+    eval_call_srcref,
     caller_package,
     caller_function,
     caller_expression=expr_to_string(caller_expression),
@@ -179,7 +178,7 @@ expr_to_string <- function(expr) {
 get_call_srcref <- function(call) {
   srcref <- attr(call, "srcref")
 
-  call_srcref <- if (!is.null(srcref)) {
+  eval_call_srcref <- if (!is.null(srcref)) {
     filename <- getSrcFilename(srcref)
     filename <- if (is.null(filename)) "<unknown>" else filename
 
@@ -196,7 +195,7 @@ get_call_srcref <- function(call) {
     NA
   }
 
-  call_srcref
+  eval_call_srcref
 }
 
 get_loaded_package_environments <- function() { ## nolint
@@ -218,7 +217,7 @@ get_loaded_package_environments <- function() { ## nolint
 }
 
 classify_environment <- function(application_frame_position, ##nolint
-                                 call_frame_position,
+                                 eval_call_frame_position,
                                  callee_env,
                                  eval_env) {
 
@@ -265,7 +264,7 @@ classify_environment <- function(application_frame_position, ##nolint
 
     parents <- sys.parents()
 
-    index <- parents[call_frame_position]
+    index <- parents[eval_call_frame_position]
 
     parent_count <- 0
 
@@ -283,7 +282,7 @@ classify_environment <- function(application_frame_position, ##nolint
     ## it has to be a new.env and we need to recursively classify its parent env
     if (index == 0) {
         parent_class <- classify_environment(application_frame_position,
-                                             call_frame_position,
+                                             eval_call_frame_position,
                                              callee_env,
                                              parent.env(eval_env))
         return(paste("new", parent_class, sep = "+"))

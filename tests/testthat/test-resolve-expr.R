@@ -4,10 +4,8 @@ test_that("a smoke test for a base function calling eval", {
   }
 
   d <- do_trace_eval(f())
-  expect_equal(d$call_package, "base")
-  expect_equal(d$call_function, "eval")
-  expect_equal(d$call_expression, "eval(formal.args[[as.character(substitute(arg))]], envir = sys.frame(sysP))")
-
+  expect_equal(d$eval_function, "eval")
+  expect_equal(d$eval_call_expression, "eval(formal.args[[as.character(substitute(arg))]], envir = sys.frame(sysP))")
   expect_equal(d$caller_expression, "match.arg(x)")
   expect_equal(d$caller_function, "match.arg")
   expect_equal(d$caller_package, "base")
