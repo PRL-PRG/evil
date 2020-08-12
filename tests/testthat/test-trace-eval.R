@@ -33,6 +33,12 @@ test_that("expr_resolve captures only language expression", {
   expect_true(is.na(d$expr_resolved))
   expect_equal(d$expr_resolved_type, 14)
 
+  d1 <- do_trace_eval(f(x))
+  d2 <- do_trace_eval(f(1))
+  expect_equal(d1$expr_expression_hash, d2$expr_expression_hash)
+  expect_equal(d1$expr_resolved_hash, d2$expr_expression_hash)
+
+  browser()
   d <- do_trace_eval(f(y))
   expect_true(is.na(d$expr_resolved))
   expect_equal(d$expr_resolved_type, 14)
