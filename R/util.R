@@ -41,8 +41,13 @@ get_call_srcref <- function(call) {
   srcref <- attr(call, "srcref")
 
   eval_call_srcref <- if (!is.null(srcref)) {
-    filename <- getSrcFilename(srcref)
-    filename <- if (is.null(filename)) "<unknown>" else filename
+    file <- getSrcFilename(srcref)
+    file <- if (is.null(file)) {
+      "<unknown>"
+    } else {
+      dir <- getSrcDirectory(srcref)
+      file.path(dir, file)
+    }
 
     first_line <- srcref[1]
     last_line <- srcref[3]
@@ -50,7 +55,7 @@ get_call_srcref <- function(call) {
     last_col <- srcref[6]
 
     paste0(
-      c(filename, first_line, first_col, last_line, last_col),
+      c(file, first_line, first_col, last_line, last_col),
       collapse=":"
     )
   } else {
