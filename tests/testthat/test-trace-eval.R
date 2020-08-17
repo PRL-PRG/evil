@@ -22,6 +22,23 @@ test_that("a smoke test for a base function calling eval", {
   expect_equal(d$enclos_type, 4)
 })
 
+test_that("example", {
+  r <- trace_eval({
+    txt <-
+      "R6::R6Class(
+       public = list(
+         field1 = NULL,
+         meth1 = function(Z) { },
+         meth2 = function(Z = 10, ...) { },
+         field2 = \"foobar\",
+         meth3 = function() { }
+       )
+     )"
+    C <- eval(parse(text = txt, keep.source = FALSE))
+    expect_error(extract_r6_data(C), "without source references")
+  })
+})
+
 test_that("expr_resolve captures only language expression", {
   withr::local_options(list(keep.source=TRUE, keep.parse.data=TRUE))
 
@@ -29,16 +46,14 @@ test_that("expr_resolve captures only language expression", {
     eval(substitute(a))
   }
 
-  d <- do_trace_eval(f(x))
-  expect_true(is.na(d$expr_resolved))
-  expect_equal(d$expr_resolved_type, 14)
+  ## d <- do_trace_eval(f(x))
+  ## expect_true(is.na(d$expr_resolved))
+  ## expect_equal(d$expr_resolved_type, 14)
 
   d1 <- do_trace_eval(f(x))
   d2 <- do_trace_eval(f(1))
-  expect_equal(d1$expr_expression_hash, d2$expr_expression_hash)
-  expect_equal(d1$expr_resolved_hash, d2$expr_expression_hash)
+  expect_equal(d1$expr_resolved_hash, d2$expr_resolved_hash)
 
-  browser()
   d <- do_trace_eval(f(y))
   expect_true(is.na(d$expr_resolved))
   expect_equal(d$expr_resolved_type, 14)
@@ -76,15 +91,15 @@ test_that("resolve parse", {
 
   d <- do_trace_eval(f(g1, 1))
   expect_equal(d$expr_resolved, "identity(1)")
-  expect_equal(d$expr_parsed, "parse")
+  expect_true(startsWith(d$expr_parsed_expression, "parse(text"))
 
   d <- do_trace_eval(f(g2, 2))
   expect_equal(d$expr_resolved, "identity(2)")
-  expect_equal(d$expr_parsed, "str2expression")
+  expect_true(startsWith(d$expr_parsed_expression, "str2expression("))
 
   d <- do_trace_eval(f(g3, 3))
   expect_equal(d$expr_resolved, "identity(3)")
-  expect_equal(d$expr_parsed, "str2lang")
+  expect_true(startsWith(d$expr_parsed_expression, "str2lang("))
 
   1
 })
@@ -125,7 +140,7 @@ test_that("capture eval.parent", {
   }
  
   g <- function(y) {
-    parse(text=paste0("print(", y, ")"))
+    parse(text=paste0(y, "+", y))
   }
 
   d <- trace_eval(f("var"))

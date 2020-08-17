@@ -34,6 +34,14 @@ trace_file <- function(context, file) {
   trace_code(context, code, quote=FALSE)
 }
 
+# TODO: clean up the next two functions
+
+#' @export
+trace_to_file <- function(path, context, quote, code) {
+  traces <- trace_code(code, context=context, quote=quote)
+  write_eval_traces(traces, path)
+}
+
 #' @export
 write_eval_traces <- function(traces, datadir) {
   save_traces(traces, file.path(datadir, "calls.fst"))
@@ -63,7 +71,7 @@ save_traces <- function(traces, file) {
       message = get_message(e),
       call = paste(deparse(get_call(e)), sep = "\n")
     )
-  } else if (!is.data.frame()) {
+  } else if (!is.data.frame(traces$data)) {
     data.frame(
       source=NA,
       message=paste("exprected traces data to be data.frame, found ", sexp_typeof(traces$data)),

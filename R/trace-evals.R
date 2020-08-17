@@ -66,21 +66,41 @@ trace_eval_callback <- function(context, application, package, func, call) {
   caller_function <- caller$function_name
   caller_srcref <- get_call_srcref(caller_expression)
 
-  caller_expression_2 <- .Empty
-  caller_srcref_2 <- NA
+  #browser(expr=eval_function==caller_function)
 
-  if (identical(eval_call_expression, caller_expression)) {
-    for (idx in seq(sys.nframe()-2, 1, -1)) {
-      tmp <- sys.call(idx)
-      if (is.call(tmp) &&
-            !(as.character(tmp[[1]]) %in% c("tryCatchList", "tryCatchOne", "doTryCatch"))) {
-        caller_expression_2 <- tmp
-        break
-      }
-    }
-    if (!is_empty(caller_expression_2)) {
-      caller_srcref_2 <- get_call_srcref(caller_expression_2)
-    }
+  # drop the first one - the call to this function
+  caller_stack_expression <- NA
+  caller_stack_expression_raw <- NA
+  caller_stack_expression_srcref <- NA
+
+  if (eval_function == caller_function) {
+    caller_stack <- rev(sys.calls())[-1]
+    caller_stack <- Filter(function(x) {
+      is.call(x) && (!is.symbol(x[[1]]) || !(as.character(x[[1]]) %in% c(
+        "tryCatch",
+        "tryCatchList",
+        "tryCatchOne",
+        "doTryCatch",
+        "doWithOneRestart",
+        "withRestarts",
+        "withOneRestart",
+        "withCallingHandlers",
+        "force"
+      )))
+    }, caller_stack)
+
+    caller_stack_expression <- paste(
+      sapply(caller_stack, expr_to_string, max_length=80),
+      collapse="\n"
+    )
+    caller_stack_expression_raw <- paste(
+      sapply(caller_stack, expr_to_string, max_length=80, raw=TRUE),
+      collapse="\n"
+    )
+    caller_stack_expression_srcref <- paste(
+      sapply(caller_stack, get_call_srcref),
+      collaps="\n"
+    )
   }
 
   # eval: expr, envir, enclos
@@ -100,9 +120,9 @@ trace_eval_callback <- function(context, application, package, func, call) {
     .Empty
   }
 
-  expr_parsed <- attr(expr_resolved, "._evil_parsed_expression")
-  if (is.null(expr_parsed)) {
-    expr_parsed <- NA
+  expr_parsed_expression <- attr(expr_resolved, "._evil_parsed_expression")
+  if (is.null(expr_parsed_expression)) {
+    expr_parsed_expression <- .Empty
   }
 
   envir_expression <- .Empty
@@ -169,13 +189,9 @@ trace_eval_callback <- function(context, application, package, func, call) {
     caller_function,
     caller_expression=expr_to_string(caller_expression),
     caller_srcref,
-    caller_expression_2=expr_to_string(caller_expression_2),
-    caller_expression_2_raw=if (!is_empty(caller_expression_2)) {
-      capture.output(print(caller_expression_2))
-    } else {
-      NA
-    },
-    caller_srcref_2,
+    caller_stack_expression,
+    caller_stack_expression_raw,
+    caller_stack_expression_srcref,
     environment_class,
     successful=is_successful(call),
 
@@ -189,7 +205,7 @@ trace_eval_callback <- function(context, application, package, func, call) {
     expr_resolved_length = expr_resolved_repr$length,
     expr_resolved_type   = expr_resolved_repr$type,
 
-    expr_parsed,
+    expr_parsed_expression = expr_to_string(expr_parsed_expression),
     expr_forced,
 
     envir_expression=expr_to_string(envir_expression),

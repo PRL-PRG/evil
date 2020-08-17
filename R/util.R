@@ -14,10 +14,8 @@ resolve_expr <- function(x, env) {
     } else {
       y
     }
-  } else if (is.language(x)) {
-    x
   } else {
-    .Empty
+    x
   }
 }
 
