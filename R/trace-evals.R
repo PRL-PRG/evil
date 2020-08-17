@@ -26,8 +26,9 @@ eval_tracer <- function() {
 trace_eval_callback <- function(context, application, package, func, call) {
   call_name <- get_name(func)
   if (call_name %in% c("parse", "str2expression", "str2lang")) {
+    expression <- get_expression(call)
     retval <- returnValue()
-    mark_parsed_expression(retval, call_name)
+    mark_parsed_expression(retval, expression)
     return()
   }
 
