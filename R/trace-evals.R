@@ -66,14 +66,13 @@ trace_eval_callback <- function(context, application, package, func, call) {
   caller_function <- caller$function_name
   caller_srcref <- get_call_srcref(caller_expression)
 
-  #browser(expr=eval_function==caller_function)
 
   # drop the first one - the call to this function
   caller_stack_expression <- NA
   caller_stack_expression_raw <- NA
   caller_stack_expression_srcref <- NA
 
-  if (eval_function == caller_function) {
+  ## if (eval_function == caller_function) {
     caller_stack <- rev(sys.calls())[-1]
     caller_stack <- Filter(function(x) {
       is.call(x) && (!is.symbol(x[[1]]) || !(as.character(x[[1]]) %in% c(
@@ -99,9 +98,9 @@ trace_eval_callback <- function(context, application, package, func, call) {
     )
     caller_stack_expression_srcref <- paste(
       sapply(caller_stack, get_call_srcref),
-      collaps="\n"
+      collapse="\n"
     )
-  }
+  ## }
 
   # eval: expr, envir, enclos
   # evalq: expr, envir, enclos
@@ -121,6 +120,9 @@ trace_eval_callback <- function(context, application, package, func, call) {
   }
 
   expr_parsed_expression <- attr(expr_resolved, "._evil_parsed_expression")
+
+  ##browser(expr=eval_function==caller_function && !is.null(expr_parsed_expression))
+
   if (is.null(expr_parsed_expression)) {
     expr_parsed_expression <- .Empty
   }
