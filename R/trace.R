@@ -1,48 +1,93 @@
-
 #' @export
-#' @importFrom instrumentr trace_code
-#' @importFrom utils write.csv
-trace_eval <- function(code,
-                       envir = parent.frame(),
-                       quote = TRUE) {
-    if (quote) {
-        code <- substitute(code)
-    }
+#' @importFrom instrumentr set_application_load_callback set_application_unload_callback
+#' @importFrom instrumentr set_data get_data trace_code
+trace_code <- function(context, code, envir=parent.frame(), quote=TRUE) {
+  if (!is(context, "instrumentr_context")) {
+    stop("context is not a valid instrumentr context")
+  }
 
-    context <- create_evil_context()
+  message("*** keep.source: ", getOption("keep.source"))
 
-    result <- trace_code(context, code, envir, quote = FALSE)
+  if (quote) {
+    code <- substitute(code)
+  }
 
+  set_application_load_callback(context, function(context, application) {
+    data <- new.env(parent = emptyenv())
+    set_data(context, data)
+  })
+
+  set_application_unload_callback(context, function(context, application) {
     data <- get_data(context)
+    new_data <- do.call(rbind, as.list(data))
+    set_data(context, new_data)
+  })
 
-    list(result = result, data = data)
+  result <- instrumentr::trace_code(context, code, envir, quote = FALSE)
+
+  list(result = result, data = instrumentr::get_data(context))
 }
 
+#' @export
+trace_file <- function(context, file) {
+  # TODO - one has to create a new file, wrap and run
+  # in an external process
+  code <- parse(file, keep.source=TRUE)
+  trace_code(context, code, quote=FALSE)
+}
+
+# TODO: clean up the next two functions
+
+#' @export
+trace_to_file <- function(path, context, quote, code) {
+  traces <- trace_code(code, context=context, quote=quote)
+  write_eval_traces(traces, path)
+}
+
+#' @export
+write_eval_traces <- function(traces, datadir) {
+  save_traces(traces, file.path(datadir, "calls.fst"))
+}
 
 #' @export
 #' @importFrom instrumentr is_error get_error get_source get_message get_call
-#' @importFrom utils write.csv
-write_eval_traces <- function(trace, datadir = file.path(getwd(), ".evil")) {
-    ## create datadir
-    dir.create(datadir, showWarnings = FALSE)
+#' @importFrom streamr write_table
+#' @importFrom fst write_fst
+save_traces <- function(traces, file) {
+  if (is.null(traces$data) && !is_error(traces$result) ) {
+    return(traces)
+  }
 
-    ## store eval calls
-    calls_file_path <- file.path(datadir, "calls.csv")
-    write.csv(trace$data$calls, calls_file_path, row.names = FALSE)
+  dir <- dirname(file)
+  dir.create(dir, showWarnings = FALSE)
 
-    ## store eval arguments
-    arguments_file_path <- file.path(datadir, "arguments.csv")
-    write.csv(trace$data$arguments, arguments_file_path, row.names = FALSE)
+  if (is.data.frame(traces$data)) {
+    fst::write_fst(traces$data, file, compress=100)
+    #write_table(traces$data, file)
+  }
 
-    ## handle error
-    if (is_error(trace$result)) {
-        status_file <- file.path(datadir, "ERROR")
-        error <- get_error(trace$result)
-        error_data <- data.frame(source = get_source(error),
-                                 message = get_message(error),
-                                 call = paste(deparse(get_call(error)), sep = "\n"))
-        write.csv(error_data, status_file, row.names = FALSE)
-    }
+  error_df <- if (is_error(traces$result)) {
+    e <- get_error(traces$result)
+    data.frame(
+      source = get_source(e),
+      message = get_message(e),
+      call = paste(deparse(get_call(e)), sep = "\n")
+    )
+  } else if (!is.data.frame(traces$data)) {
+    data.frame(
+      source=NA,
+      message=paste("exprected traces data to be data.frame, found ", sexp_typeof(traces$data)),
+      call=NA
+    )
+  } else {
+    NULL
+  }
 
-    trace
+  if (!is.null(error_df)) {
+    error_file_name <- paste0(tools::file_path_sans_ext(file), "-ERROR")
+    fst::write_fst(error_df, error_file_name, compress=100)
+    #write_table(error_df, error_file_name)
+  }
+
+  traces
 }
