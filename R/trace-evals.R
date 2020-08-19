@@ -194,6 +194,28 @@ trace_eval_callback <- function(context, application, package, func, call) {
   expr_expression_repr <- expr_repr(expr_expression)
   expr_resolved_repr <- expr_repr(expr_resolved)
 
+  expr_expression_function <- NA
+  expr_expression_args_num <- NA
+
+  if (is.call(expr_expression)) {
+    tmp <- expr_expression[[1]]
+    if (is.symbol(tmp)) {
+      expr_expression_function <- as.character(tmp)
+      expr_expression_args_num <- length(expr_expression) - 1
+    }
+  }
+
+  expr_resolved_function <- NA
+  expr_resolved_args_num <- NA
+
+  if (is.call(expr_resolved)) {
+    tmp <- expr_resolved[[1]]
+    if (is.symbol(tmp)) {
+      expr_resolved_function <- as.character(tmp)
+      expr_resolved_args_num <- length(expr_resolved) - 1
+    }
+  }
+
   trace <- data.frame(
     eval_call_id,
     eval_function=call_name,
@@ -213,11 +235,15 @@ trace_eval_callback <- function(context, application, package, func, call) {
     expr_expression_hash   = expr_expression_repr$hash,
     expr_expression_length = expr_expression_repr$length,
     expr_expression_type   = expr_expression_repr$type,
+    expr_expression_function,
+    expr_expression_args_num,
 
     expr_resolved        = expr_resolved_repr$text,
     expr_resolved_hash   = expr_resolved_repr$hash,
     expr_resolved_length = expr_resolved_repr$length,
     expr_resolved_type   = expr_resolved_repr$type,
+    expr_resolved_function,
+    expr_resolved_args_num,
 
     expr_parsed_expression = expr_to_string(expr_parsed_expression),
     expr_forced,

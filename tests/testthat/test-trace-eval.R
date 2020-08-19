@@ -47,9 +47,6 @@ test_that("eval from a thunk", {
 
   expect_equal(d$caller_stack_expression, "eval(1 + 1)\nforce(thunk)\nf(eval(1 + 1))")
   expect_equal(d$caller_stack_expression_raw, "function(x) x\nfunction(thunk) force(thunk)\nf(eval(1+1))")
-
-  browser()
-  1
 })
 
 test_that("a smoke test for a base function calling eval", {
@@ -66,8 +63,13 @@ test_that("a smoke test for a base function calling eval", {
 
   expect_equal(d$expr_expression, "formal.args[[as.character(substitute(arg))]]")
   expect_equal(d$expr_expression_type, 6)
+  expect_equal(d$expr_expression_function, "[[")
+  expect_equal(d$expr_expression_args_num, 2)
+
   expect_equal(d$expr_resolved, "c(\"A\")")
   expect_equal(d$expr_resolved_type, 6)
+  expect_equal(d$expr_resolved_function, "c")
+  expect_equal(d$expr_resolved_args_num, 1)
 
   expect_equal(d$envir_expression, "sys.frame(sysP)")
   expect_equal(d$envir_type, 4)
