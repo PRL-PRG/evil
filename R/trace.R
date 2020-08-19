@@ -51,7 +51,6 @@ write_eval_traces <- function(traces, datadir) {
 
 #' @export
 #' @importFrom instrumentr is_error get_error get_source get_message get_call
-#' @importFrom streamr write_table
 #' @importFrom fst write_fst
 save_traces <- function(traces, file) {
   if (is.null(traces$data) && !is_error(traces$result) ) {
