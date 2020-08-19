@@ -6,6 +6,8 @@ trace_code <- function(context, code, envir=parent.frame(), quote=TRUE) {
     stop("context is not a valid instrumentr context")
   }
 
+  message("*** keep.source: ", getOption("keep.source"))
+
   if (quote) {
     code <- substitute(code)
   }
@@ -30,7 +32,7 @@ trace_code <- function(context, code, envir=parent.frame(), quote=TRUE) {
 trace_file <- function(context, file) {
   # TODO - one has to create a new file, wrap and run
   # in an external process
-  code <- parse(file)
+  code <- parse(file, keep.source=TRUE)
   trace_code(context, code, quote=FALSE)
 }
 
