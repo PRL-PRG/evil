@@ -23,6 +23,7 @@ eval_tracer <- function() {
 #' @importFrom instrumentr is_evaluated get_frame_position get_environment
 #' @importFrom instrumentr get_caller is_successful
 #' @importFrom digest sha1
+#' @importFrom purrr detect_index discard map_chr
 trace_eval_callback <- function(context, application, package, func, call) {
   call_name <- get_name(func)
   if (call_name %in% c("parse", "str2expression", "str2lang")) {
@@ -73,9 +74,19 @@ trace_eval_callback <- function(context, application, package, func, call) {
   caller_stack_expression_srcref <- NA
 
   ## if (eval_function == caller_function) {
-    caller_stack <- rev(sys.calls())[-1]
-    caller_stack <- Filter(function(x) {
-      is.call(x) && (!is.symbol(x[[1]]) || !(as.character(x[[1]]) %in% c(
+  caller_stack <- rev(sys.calls())[-1]
+  caller_stack_instrumentr_idx <- purrr::detect_index(
+    caller_stack,
+    ~is.symbol(.[[1]]) && .[[1]] == "trace_code.instrumentr_context"
+  )
+
+  if (caller_stack_instrumentr_idx > 1) {
+    caller_stack <- caller_stack[1:caller_stack_instrumentr_idx-1]
+  }
+
+  caller_stack <- purrr::discard(
+    caller_stack,
+    ~ is.symbol(.[[1]]) && as.character(.[[1]]) %in% c(
         "tryCatch",
         "tryCatchList",
         "tryCatchOne",
@@ -83,31 +94,32 @@ trace_eval_callback <- function(context, application, package, func, call) {
         "doWithOneRestart",
         "withRestarts",
         "withOneRestart",
-        "withCallingHandlers",
-        "force"
-      )))
-    }, caller_stack)
+        "withCallingHandlers"
+    )
+  )
 
     caller_stack_expression <- paste(
-      sapply(caller_stack, expr_to_string, max_length=80),
+      map_chr(caller_stack, ~expr_to_string(., max_length=80, one_line=TRUE)),
       collapse="\n"
     )
     caller_stack_expression_raw <- paste(
-      sapply(caller_stack, expr_to_string, max_length=80, raw=TRUE),
+      map_chr(caller_stack, ~expr_to_string(., max_length=80, raw=TRUE, one_line=TRUE)),
       collapse="\n"
     )
     caller_stack_expression_srcref <- paste(
-      sapply(caller_stack, get_call_srcref),
+      map_chr(caller_stack, get_call_srcref),
       collapse="\n"
     )
   ## }
+
+  #browser()
 
   # eval: expr, envir, enclos
   # evalq: expr, envir, enclos
   # eval.parent: expr, n
   # local: expr, envir
   params <- get_parameters(call)
-  names(params) <- sapply(params, get_name)
+  names(params) <- map_chr(params, get_name)
 
   # all evals define expr
   arg <- get_arguments(params$expr)[[1]]

@@ -27,7 +27,7 @@ env_type_to_string <- function(env) {
   }
 }
 
-expr_to_string <- function(e, max_length=Inf, raw=FALSE) {
+expr_to_string <- function(e, max_length=Inf, raw=FALSE, one_line=FALSE) {
   if (is_empty(e)) {
     NA
   } else if (is.expression(e) && length(e) == 1) {
@@ -36,11 +36,14 @@ expr_to_string <- function(e, max_length=Inf, raw=FALSE) {
     s <- if (raw) {
       capture.output(print(e))
     } else {
-      deparse1(e)
+      deparse(e, width.cutoff=120L)
     }
 
     s <- paste(s, collapse = "\n")
-    s <- gsub("\n", "⏎", s)
+    
+    if (one_line) {
+      s <- gsub("\n", "⏎", s)
+    }
 
     if (!is.infinite(max_length)) {
       sn <- nchar(s)
