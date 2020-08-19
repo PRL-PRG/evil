@@ -1,3 +1,57 @@
+## test_that("example", {
+##    r <- trace_eval({
+##            ### R code from vignette source 'coverage.Rnw'
+
+## ###################################################
+## ### code chunk number 1: coverage.Rnw:52-53
+## ###################################################
+## library(actuar)
+
+## ###################################################
+## ### code chunk number 2: coverage.Rnw:98-100
+## ###################################################
+## deductible <- 5
+## limit <- 13
+## pgammaP <- coverage(cdf = pgamma, deductible = deductible, limit = limit)
+## d <- deductible
+## u <- limit - d
+## e <- 0.001
+
+
+## ###################################################
+## ### code chunk number 4: coverage.Rnw:141-147
+## ###################################################
+##  curve(pgammaP(x, 5, 0.6), from = 0, to = u - e,
+##        xlim = c(0, limit), ylim = c(0, 1),
+##        xlab = "", ylab = "", xaxt = "n", lwd = 2)
+##    })
+##    library(dplyr)
+##    d <- tibble::as_tibble(r$data)
+##    browser()
+##    1
+## })
+
+test_that("eval from a thunk", {
+  d <- do_trace_eval({
+    f <- function(thunk) force(thunk)
+    f(eval(1+1))
+  })
+
+  expect_equal(d$eval_call_expression, "eval(1 + 1)")
+  expect_equal(d$caller_expression, "eval(code, test_env)")
+
+  # the following is wrong
+  expect_equal(d$caller_package, "base")
+  expect_equal(d$caller_function, "eval")
+  expect_equal(d$caller_expression, "eval(code, test_env)")
+
+  expect_equal(d$caller_stack_expression, "eval(1 + 1)\nforce(thunk)\nf(eval(1 + 1))")
+  expect_equal(d$caller_stack_expression_raw, "function(x) x\nfunction(thunk) force(thunk)\nf(eval(1+1))")
+
+  browser()
+  1
+})
+
 test_that("a smoke test for a base function calling eval", {
   f <- function(x=c("A")) {
     match.arg(x)
@@ -22,21 +76,26 @@ test_that("a smoke test for a base function calling eval", {
   expect_equal(d$enclos_type, 4)
 })
 
-test_that("example", {
-  r <- trace_eval({
-    txt <-
-      "R6::R6Class(
-       public = list(
-         field1 = NULL,
-         meth1 = function(Z) { },
-         meth2 = function(Z = 10, ...) { },
-         field2 = \"foobar\",
-         meth3 = function() { }
-       )
-     )"
-    C <- eval(parse(text = txt, keep.source = FALSE))
-    expect_error(extract_r6_data(C), "without source references")
+test_that("long expression is cut off", {
+  f <- function(x) g(x)
+  g <- function(x) eval(x)
+
+  d <- do_trace_eval({
+    f(quote({
+      x <- 1
+      y <- 2
+      z <- 3
+      (function(expr, width.cutoff = 60L,
+                backtick = mode(expr) %in% c("call", "expression", "(", "function"),
+                control = c("keepNA", "keepInteger", "niceNames", "showAttributes"),
+                nlines = -1L)
+        .Internal(deparse(expr, width.cutoff, backtick,
+                          .deparseOpts(control), nlines)))(quote(x+y+z))
+    }))
   })
+  expect_equal(d$caller_stack_expression, "eval(x)\ng(x)\nf(quote({⏎    x <- 1⏎    y <- 2⏎    z <- 3⏎    (function(expr, width.cutoff = 60⋯")
+  expect_true(startsWith(d$expr_resolved, "{\n    x <- 1\n    y <- 2\n    z <- 3\n"))
+  expect_equal(d$expr_resolved_length, 345)
 })
 
 test_that("expr_resolve captures only language expression", {
