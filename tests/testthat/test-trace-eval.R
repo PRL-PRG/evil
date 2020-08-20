@@ -49,6 +49,24 @@ test_that("eval from a thunk", {
   expect_equal(d$caller_stack_expression_raw, "function(x) x\nfunction(thunk) force(thunk)\nf(eval(1+1))")
 })
 
+test_that("function and function arity", {
+  d <- do_trace_eval(eval(base::eval(1)))
+  expect_equal(d$expr_expression_function, c(NA, "base::eval"))
+  expect_equal(d$expr_expression_args_num, c(NA, 1))
+
+  d <- do_trace_eval(eval(.Primitive("sin")(1)))
+  expect_equal(d$expr_expression_function, ".Primitive(\"sin\")")
+  expect_equal(d$expr_expression_args_num, 1)
+
+  d <- do_trace_eval(eval(base:::.Primitive("sin")(1)))
+  expect_equal(d$expr_expression_function, "base:::.Primitive(\"sin\")")
+  expect_equal(d$expr_expression_args_num, 1)
+
+  d <- do_trace_eval(eval({sin(1) + 1; sin(1) + 2}))
+  expect_equal(d$expr_expression_function, "{")
+  expect_equal(d$expr_expression_args_num, 2)
+})
+
 test_that("a smoke test for a base function calling eval", {
   f <- function(x=c("A")) {
     match.arg(x)

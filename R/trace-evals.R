@@ -198,22 +198,16 @@ trace_eval_callback <- function(context, application, package, func, call) {
   expr_expression_args_num <- NA
 
   if (is.call(expr_expression)) {
-    tmp <- expr_expression[[1]]
-    if (is.symbol(tmp)) {
-      expr_expression_function <- as.character(tmp)
-      expr_expression_args_num <- length(expr_expression) - 1
-    }
+    expr_expression_function <- expr_to_string(expr_expression[[1]])
+    expr_expression_args_num <- length(expr_expression) - 1
   }
 
   expr_resolved_function <- NA
   expr_resolved_args_num <- NA
 
   if (is.call(expr_resolved)) {
-    tmp <- expr_resolved[[1]]
-    if (is.symbol(tmp)) {
-      expr_resolved_function <- as.character(tmp)
-      expr_resolved_args_num <- length(expr_resolved) - 1
-    }
+    expr_resolved_function <- expr_to_string(expr_resolved[[1]])
+    expr_resolved_args_num <- length(expr_resolved) - 1
   }
 
   trace <- data.frame(
