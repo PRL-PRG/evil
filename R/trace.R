@@ -88,5 +88,5 @@ save_traces <- function(traces, file) {
     #write_table(error_df, error_file_name)
   }
 
-  traces
+  invisible(traces)
 }
