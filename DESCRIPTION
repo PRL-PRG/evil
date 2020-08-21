@@ -15,5 +15,6 @@ Imports:
 Remotes:
     PRL-PRG/instrumentr
 RoxygenNote: 7.1.1
+LinkingTo: instrumentr
 Suggests: 
     testthat
