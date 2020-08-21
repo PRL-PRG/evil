@@ -1,29 +1,7 @@
 ## test_that("example", {
 ##    r <- trace_eval({
-##            ### R code from vignette source 'coverage.Rnw'
-
-## ###################################################
-## ### code chunk number 1: coverage.Rnw:52-53
-## ###################################################
-## library(actuar)
-
-## ###################################################
-## ### code chunk number 2: coverage.Rnw:98-100
-## ###################################################
-## deductible <- 5
-## limit <- 13
-## pgammaP <- coverage(cdf = pgamma, deductible = deductible, limit = limit)
-## d <- deductible
-## u <- limit - d
-## e <- 0.001
-
-
-## ###################################################
-## ### code chunk number 4: coverage.Rnw:141-147
-## ###################################################
-##  curve(pgammaP(x, 5, 0.6), from = 0, to = u - e,
-##        xlim = c(0, limit), ylim = c(0, 1),
-##        xlab = "", ylab = "", xaxt = "n", lwd = 2)
+##       library(ggplot2)
+##       benchplot(ggplot(mtcars, aes(mpg, wt)) + geom_point())
 ##    })
 ##    library(dplyr)
 ##    d <- tibble::as_tibble(r$data)
@@ -50,9 +28,9 @@ test_that("eval from a thunk", {
 })
 
 test_that("function and function arity", {
-  d <- do_trace_eval(eval(base::eval(1)))
-  expect_equal(d$expr_expression_function, c(NA, "base::eval"))
-  expect_equal(d$expr_expression_args_num, c(NA, 1))
+  d <- do_trace_eval(eval(base::quote(TRUE)))
+  expect_equal(d$expr_expression_function, "base::quote")
+  expect_equal(d$expr_expression_args_num, 1)
 
   d <- do_trace_eval(eval(.Primitive("sin")(1)))
   expect_equal(d$expr_expression_function, ".Primitive(\"sin\")")
