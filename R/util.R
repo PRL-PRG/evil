@@ -1,88 +1,88 @@
 sexp_typeof <- function(x)
-  .Call(C_sexp_typeof, x)
+    .Call(C_sexp_typeof, x)
 
 mark_parsed_expression <- function(x, parse_fun_name)
-  .Call(C_mark_parsed_expression, x, parse_fun_name)
+    .Call(C_mark_parsed_expression, x, parse_fun_name)
 
 resolve_expr <- function(x, env) {
-  if (!is.environment(env)) return(x)
+    if (!is.environment(env)) return(x)
 
-  if (is.symbol(x)) {
-    y <- get0(as.character(x), env, ifnotfound=.Empty)
-    if (is.symbol(y)) {
-      resolve_expr(y, env)
+    if (is.symbol(x)) {
+        y <- get0(as.character(x), env, ifnotfound=.Empty)
+        if (is.symbol(y)) {
+            resolve_expr(y, env)
+        } else {
+            y
+        }
     } else {
-      y
+        x
     }
-  } else {
-    x
-  }
 }
 
 env_type_to_string <- function(env) {
-  if (is.environment(env)) {
-    NA
-  } else {
-    typeof(env)
-  }
+    if (is.environment(env)) {
+        NA
+    } else {
+        typeof(env)
+    }
 }
 
 expr_to_string <- function(e, max_length=Inf, raw=FALSE, one_line=FALSE) {
-  if (is_empty(e)) {
-    NA
-  } else if (is.expression(e) && length(e) == 1) {
-    expr_to_string(e[[1]])
-  } else {
-    s <- if (raw) {
-      capture.output(print(e))
+    if (is_empty(e)) {
+        NA
+    } else if (is.expression(e) && length(e) == 1) {
+        expr_to_string(e[[1]])
     } else {
-      deparse(e, width.cutoff=120L)
-    }
+        s <- if (raw) {
+                 capture.output(print(e))
+             } else {
+                 deparse(e, width.cutoff=120L)
+             }
 
-    s <- paste(s, collapse = "\n")
-    
-    if (one_line) {
-      s <- gsub("\n", "⏎", s)
-    }
+        s <- paste(s, collapse = "\n")
+        
+        if (one_line) {
+            s <- gsub("\n", "⏎", s)
+        }
 
-    if (!is.infinite(max_length)) {
-      sn <- nchar(s)
-      s <- substr(s, 1, min(max_length, sn))
-      if (sn > max_length) {
-        s <- paste0(s, "⋯")
-      }
-    }
+        if (!is.infinite(max_length)) {
+            sn <- nchar(s)
+            s <- substr(s, 1, min(max_length, sn))
+            if (sn > max_length) {
+                s <- paste0(s, "⋯")
+            }
+        }
 
-    s
-  }
+        s
+    }
 }
 
 get_call_srcref <- function(call) {
-  srcref <- attr(call, "srcref")
+    srcref <- attr(call, "srcref")
 
-  eval_call_srcref <- if (!is.null(srcref)) {
-    file <- getSrcFilename(srcref)
-    file <- if (is.null(file)) {
-      "<unknown>"
-    } else {
-      dir <- getSrcDirectory(srcref)
-      file.path(dir, file)
-    }
+    eval_call_srcref <- if (!is.null(srcref)) {
+                            file <- getSrcFilename(srcref)
+                            file <- if (is.null(file)) {
+                                        "<unknown>"
+                                    } else {
+                                        dir <- getSrcDirectory(srcref)
+                                        file.path(dir, file)
+                                    }
 
-    first_line <- srcref[1]
-    last_line <- srcref[3]
-    first_col <- srcref[5]
-    last_col <- srcref[6]
+                            first_line <- srcref[1]
+                            last_line <- srcref[3]
+                            first_col <- srcref[5]
+                            last_col <- srcref[6]
 
-    paste0(
-      c(file, first_line, first_col, last_line, last_col),
-      collapse=":"
-    )
-  } else {
-    NA
-  }
+                            paste0(
+                                c(file, first_line, first_col, last_line, last_col),
+                                collapse=":"
+                            )
+                        } else {
+                            NA
+                        }
 
-  eval_call_srcref
+    eval_call_srcref
 }
 
 get_loaded_package_environments <- function() { ## nolint
@@ -168,6 +168,7 @@ classify_environment <- function(application_frame_position, ##nolint
         }
 
         seen_parents <- c(index, seen_parents)
+
         index <- parents[index]
     }
 
