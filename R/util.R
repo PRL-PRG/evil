@@ -162,6 +162,9 @@ classify_environment <- function(application_frame_position, ##nolint
             break
         }
 
+        # FIXME: this can get stack
+        # parent[index] == index
+        # for example in ggplot::benchplot
         index <- parents[index]
     }
 
