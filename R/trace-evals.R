@@ -40,8 +40,6 @@ trace_eval_callback <- function(context, application, package, func, call) {
   eval_call_srcref <- get_call_srcref(eval_call_expression)
   eval_call_frame_position <- get_frame_position(call)
 
-  ## browser(expr=startsWith(expr_to_string(eval_call_expression), "evalq(as.list(NULL)"))
-
   application_frame_position <- get_frame_position(application)
 
   ## eval, evalq and local use `envir` parameter name to denote environment
@@ -51,16 +49,14 @@ trace_eval_callback <- function(context, application, package, func, call) {
   eval_env <- get(envir_name, envir = eval_call_env)
   environment_class <- NA
   # TODO resolve environments if it is an integer (sys.call)
-  # FIXME there is infinite loop
-  environment_class <- NA
-  ## if (is.environment(eval_env)) {
-  ##   environment_class <- classify_environment(
-  ##     application_frame_position,
-  ##     eval_call_frame_position,
-  ##     eval_call_env,
-  ##     eval_env
-  ##   )
-  ## }
+  if (is.environment(eval_env)) {
+    environment_class <- classify_environment(
+      application_frame_position,
+      eval_call_frame_position,
+      eval_call_env,
+      eval_env
+    )
+  }
   enclos_env <- eval_call_env$enclos
 
   caller <- get_caller(call)

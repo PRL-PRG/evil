@@ -1,13 +1,12 @@
-## test_that("example", {
-##    r <- trace_eval({
-##       library(ggplot2)
-##       benchplot(ggplot(mtcars, aes(mpg, wt)) + geom_point())
-##    })
-##    library(dplyr)
-##    d <- tibble::as_tibble(r$data)
-##    browser()
-##    1
-## })
+test_that("example", {
+   r <- trace_eval({
+      library(ggplot2)
+      benchplot(ggplot(mtcars, aes(mpg, wt)) + geom_point())
+   })
+   library(dplyr)
+   d <- tibble::as_tibble(r$data)
+   expect_true("loop" %in% d$environment_class)
+})
 
 test_that("eval from a thunk", {
   d <- do_trace_eval({

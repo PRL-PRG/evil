@@ -155,16 +155,19 @@ classify_environment <- function(application_frame_position, ##nolint
 
     parent_count <- 0
 
+    seen_parents <- integer(0)
     while (index != 0) {
         parent_count <- parent_count + 1
 
+        if (index %in% seen_parents) {
+          index <- -1
+          break
+        }
         if (identical(frames[[index]], eval_env)) {
             break
         }
 
-        # FIXME: this can get stack
-        # parent[index] == index
-        # for example in ggplot::benchplot
+        seen_parents <- c(index, seen_parents)
         index <- parents[index]
     }
 
@@ -176,9 +179,11 @@ classify_environment <- function(application_frame_position, ##nolint
                                              callee_env,
                                              parent.env(eval_env))
         return(paste("new", parent_class, sep = "+"))
-    }
-    ## this means the eval_env is one of the parent caller's environments
-    else {
+    } else if (index == -1) {
+      ## this means that there was a loop in the frames
+      return("loop")
+    } else {
+        ## this means the eval_env is one of the parent caller's environments
         return(paste("caller", parent_count, sep = "-"))
     }
 
