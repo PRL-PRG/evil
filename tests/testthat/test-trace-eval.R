@@ -22,8 +22,8 @@ test_that("eval from a thunk", {
   expect_equal(d$caller_function, "eval")
   expect_equal(d$caller_expression, "eval(code, test_env)")
 
-  expect_equal(d$caller_stack_expression, "eval(1 + 1)\nforce(thunk)\nf(eval(1 + 1))")
-  expect_equal(d$caller_stack_expression_raw, "function(x) x\nfunction(thunk) force(thunk)\nf(eval(1+1))")
+  expect_starts_with(d$caller_stack_expression, "eval(1 + 1)\nforce(thunk)\nf(eval(1 + 1))")
+  expect_starts_with(d$caller_stack_expression_raw, "function(x) x\nfunction(thunk) force(thunk)\nf(eval(1+1))")
 })
 
 test_that("function and function arity", {
@@ -90,8 +90,8 @@ test_that("long expression is cut off", {
                           .deparseOpts(control), nlines)))(quote(x+y+z))
     }))
   })
-  expect_equal(d$caller_stack_expression, "eval(x)\ng(x)\nf(quote({⏎    x <- 1⏎    y <- 2⏎    z <- 3⏎    (function(expr, width.cutoff = 60⋯")
-  expect_true(startsWith(d$expr_resolved, "{\n    x <- 1\n    y <- 2\n    z <- 3\n"))
+  expect_starts_with(d$caller_stack_expression, "eval(x)\ng(x)\nf(quote({⏎    x <- 1⏎    y <- 2⏎    z <- 3⏎    (function(expr, width.cutoff = 60⋯")
+  expect_starts_with(d$expr_resolved, "{\n    x <- 1\n    y <- 2\n    z <- 3\n")
   expect_equal(d$expr_resolved_length, 345)
 })
 
@@ -147,15 +147,15 @@ test_that("resolve parse", {
 
   d <- do_trace_eval(f(g1, 1))
   expect_equal(d$expr_resolved, "identity(1)")
-  expect_true(startsWith(d$expr_parsed_expression, "parse(text"))
+  expect_starts_with(d$expr_parsed_expression, "parse(text")
 
   d <- do_trace_eval(f(g2, 2))
   expect_equal(d$expr_resolved, "identity(2)")
-  expect_true(startsWith(d$expr_parsed_expression, "str2expression("))
+  expect_starts_with(d$expr_parsed_expression, "str2expression(")
 
   d <- do_trace_eval(f(g3, 3))
   expect_equal(d$expr_resolved, "identity(3)")
-  expect_true(startsWith(d$expr_parsed_expression, "str2lang("))
+  expect_starts_with(d$expr_parsed_expression, "str2lang(")
 
   1
 })

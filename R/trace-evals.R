@@ -71,16 +71,17 @@ trace_eval_callback <- function(context, application, package, func, call) {
   caller_stack_expression_raw <- NA
   caller_stack_expression_srcref <- NA
 
-  ## if (eval_function == caller_function) {
   caller_stack <- rev(sys.calls())[-1]
-  caller_stack_instrumentr_idx <- purrr::detect_index(
-    caller_stack,
-    ~is.symbol(.[[1]]) && .[[1]] == "trace_code.instrumentr_context"
-  )
 
-  if (caller_stack_instrumentr_idx > 1) {
-    caller_stack <- caller_stack[1:caller_stack_instrumentr_idx-1]
-  }
+  ## FIXME: this is wrong, cuts too much
+  ## caller_stack_instrumentr_idx <- purrr::detect_index(
+  ##   caller_stack,
+  ##   ~is.symbol(.[[1]]) && .[[1]] == "trace_code.instrumentr_context"
+  ## )
+
+  ## if (caller_stack_instrumentr_idx > 1) {
+  ##   caller_stack <- caller_stack[1:caller_stack_instrumentr_idx-1]
+  ## }
 
   caller_stack <- purrr::discard(
     caller_stack,

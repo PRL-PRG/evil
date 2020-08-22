@@ -5,3 +5,7 @@ do_trace_eval <- function(expr) {
 
   r$data
 }
+
+expect_starts_with <- function(s1, s2) {
+  expect_true(startsWith(s1, s2))
+}
