@@ -4,6 +4,9 @@ sexp_typeof <- function(x)
 mark_parsed_expression <- function(x, parse_fun_name)
     .Call(C_mark_parsed_expression, x, parse_fun_name)
 
+get_ast_size <- function(expr)
+    .Call(C_get_ast_size, expr)
+
 resolve_expr <- function(x, env) {
     if (!is.environment(env)) return(x)
 
