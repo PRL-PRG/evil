@@ -1,11 +1,41 @@
 #ifndef EVIL_CALLBACKS_H
 #define EVIL_CALLBACKS_H
 
-#    include "Context.hpp"
-#    include "Application.hpp"
+#include "Context.hpp"
+#include "Application.hpp"
 
 using instrumentr::ApplicationSPtr;
 using instrumentr::ContextSPtr;
+
+void builtin_call_entry_callback(ContextSPtr context,
+                                 ApplicationSPtr application,
+                                 SEXP r_call,
+                                 SEXP r_op,
+                                 SEXP r_args,
+                                 SEXP r_rho);
+
+void special_call_entry_callback(ContextSPtr context,
+                                 ApplicationSPtr application,
+                                 SEXP r_call,
+                                 SEXP r_op,
+                                 SEXP r_args,
+                                 SEXP r_rho);
+
+void closure_call_entry_callback(ContextSPtr context,
+                                 ApplicationSPtr application,
+                                 SEXP r_call,
+                                 SEXP r_op,
+                                 SEXP r_args,
+                                 SEXP r_rho);
+
+void eval_entry_callback(ContextSPtr context,
+                         ApplicationSPtr application,
+                         SEXP r_expression,
+                         SEXP r_rho);
+
+void gc_allocation_callback(ContextSPtr context,
+                            ApplicationSPtr application,
+                            SEXP r_object);
 
 void variable_definition_callback(ContextSPtr context,
                                   ApplicationSPtr application,

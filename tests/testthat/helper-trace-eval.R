@@ -3,7 +3,7 @@ do_trace_eval <- function(expr) {
 
   if(is_error(r$result)) stop(r$result$error$message)
 
-  r$data
+  r$data$calls
 }
 
 expect_starts_with <- function(s1, s2) {

@@ -14,6 +14,7 @@ test_that("eval from a thunk", {
     f(eval(1+1))
   })
 
+  print(d)
   expect_equal(d$eval_call_expression, "eval(1 + 1)")
   expect_equal(d$caller_expression, "eval(code, test_env)")
 
@@ -123,9 +124,9 @@ test_that("expr_resolve captures only language expression", {
   expect_equal(d$expr_resolved_type, 6)
 
   r <- trace_eval(f(non_existing))
-  expect_false(r$data$successful)
-  expect_true(is.na(r$data$expr_resolved))
-  expect_true(is.na(r$data$expr_resolved_type))
+  expect_false(r$data$calls$successful)
+  expect_true(is.na(r$data$calls$expr_resolved))
+  expect_true(is.na(r$data$calls$expr_resolved_type))
 })
 
 test_that("resolve parse", {

@@ -13,9 +13,39 @@ eval_tracer <- function() {
     )
 
     create_context(
+        call_entry_callback = trace_eval_entry_callback,
         call_exit_callback = trace_eval_callback,
+        builtin_call_entry_callback = .Call(evil:::C_get_builtin_call_entry_callback),
+        special_call_entry_callback = .Call(evil:::C_get_special_call_entry_callback),
+        closure_call_entry_callback = .Call(evil:::C_get_closure_call_entry_callback),
+        eval_entry_callback = .Call(evil:::C_get_eval_entry_callback),
+        gc_allocation_callback = .Call(evil:::C_get_gc_allocation_callback),
+        variable_definition_callback = .Call(evil:::C_get_variable_definition_callback),
+        variable_assignment_callback = .Call(evil:::C_get_variable_assignment_callback),
+        variable_removal_callback = .Call(evil:::C_get_variable_removal_callback),
+        variable_lookup_callback = .Call(evil:::C_get_variable_lookup_callback),
         functions = functions
     )
+}
+
+push_counters <- function(context_data) {
+    context_data$counters[[length(context_data$counters) + 1]] <- list(
+        builtin = 0,
+        special = 0,
+        closure = 0,
+        interpreter_eval = 0,
+        c_call = 0,
+        allocation = 0)
+}
+
+pop_counters <- function(context_data) {
+    counters <- context_data$counters[[length(context_data$counters)]]
+    context_data$counters[[length(context_data$counters)]] <- NULL
+    counters
+}
+
+trace_eval_entry_callback <- function(context, application, package, func, call) {
+    push_counters(get_data(context))
 }
 
 #' @importFrom instrumentr get_data set_data get_id get_name get_parameters
@@ -178,7 +208,7 @@ trace_eval_callback <- function(context, application, package, func, call) {
     expr_repr <- function(e) {
         if (!is_empty(e)) {
             s <- expr_to_string(e)
-            
+
             list(
                 text=if (is.language(e)) s else NA,
                 hash=sha1(s),
@@ -208,6 +238,8 @@ trace_eval_callback <- function(context, application, package, func, call) {
         expr_resolved_function <- expr_to_string(expr_resolved[[1]])
         expr_resolved_args_num <- length(expr_resolved) - 1
     }
+
+    counters <- pop_counters(get_data(context))
 
     trace <- data.frame(
         eval_call_id,
@@ -247,10 +279,16 @@ trace_eval_callback <- function(context, application, package, func, call) {
 
         enclos_expression=expr_to_string(enclos_expression),
         enclos_forced,
-        enclos_type=sexp_typeof(enclos_env)
+        enclos_type=sexp_typeof(enclos_env),
+        builtin = counters$builtin,
+        special = counters$special,
+        closure = counters$closure,
+        interpreter_eval = counters$interpreter_eval,
+        c_call = counters$c_call,
+        allocation = counters$allocation
     )
 
-    assign(as.character(get_id(arg)), trace, envir=get_data(context))
+    assign(as.character(get_id(arg)), trace, envir=get_data(context)$calls)
 }
 
 #' @export
