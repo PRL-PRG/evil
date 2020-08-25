@@ -14,7 +14,6 @@ test_that("eval from a thunk", {
     f(eval(1+1))
   })
 
-  print(d)
   expect_equal(d$eval_call_expression, "eval(1 + 1)")
   expect_equal(d$caller_expression, "eval(code, test_env)")
 
