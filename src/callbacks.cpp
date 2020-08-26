@@ -18,46 +18,79 @@ void counter_increment_field(SEXP r_counter, int index) {
     SET_VECTOR_ELT(r_counter, index, ScalarInteger(counter_value + 1));
 }
 
-void counter_increment_builtin(SEXP r_counter) {
+void counter_increment_direct_builtin(SEXP r_counter) {
     counter_increment_field(r_counter, 2);
 }
 
-void counter_increment_special(SEXP r_counter) {
+void counter_increment_indirect_builtin(SEXP r_counter) {
     counter_increment_field(r_counter, 3);
 }
 
-void counter_increment_closure(SEXP r_counter) {
+void counter_increment_direct_special(SEXP r_counter) {
     counter_increment_field(r_counter, 4);
 }
 
-void counter_increment_interpreter_eval(SEXP r_counter) {
+void counter_increment_indirect_special(SEXP r_counter) {
     counter_increment_field(r_counter, 5);
 }
 
-void counter_increment_c_call(SEXP r_counter) {
+void counter_increment_direct_closure(SEXP r_counter) {
     counter_increment_field(r_counter, 6);
 }
 
-void counter_increment_allocation(SEXP r_counter) {
+void counter_increment_indirect_closure(SEXP r_counter) {
     counter_increment_field(r_counter, 7);
 }
 
-void counter_increment_direct_writes(SEXP r_counter) {
+void counter_increment_direct_interpreter_eval(SEXP r_counter) {
     counter_increment_field(r_counter, 8);
 }
 
-void counter_increment_indirect_writes(SEXP r_counter) {
+void counter_increment_indirect_interpreter_eval(SEXP r_counter) {
     counter_increment_field(r_counter, 9);
 }
 
+void counter_increment_direct_c_call(SEXP r_counter) {
+    counter_increment_field(r_counter, 10);
+}
+
+void counter_increment_indirect_c_call(SEXP r_counter) {
+    counter_increment_field(r_counter, 11);
+}
+
+void counter_increment_direct_allocation(SEXP r_counter) {
+    counter_increment_field(r_counter, 12);
+}
+
+void counter_increment_indirect_allocation(SEXP r_counter) {
+    counter_increment_field(r_counter, 13);
+}
+
+void counter_increment_direct_writes(SEXP r_counter) {
+    counter_increment_field(r_counter, 14);
+}
+
+void counter_increment_indirect_writes(SEXP r_counter) {
+    counter_increment_field(r_counter, 15);
+}
+
 template <typename T>
-void increment_counters(ContextSPtr context, T fun) {
+void increment_counters(ContextSPtr context, T direct_fun, T indirect_fun) {
     SEXP r_data = context->get_data();
     SEXP r_counters = Rf_findVarInFrame(r_data, CountersSymbol);
+    int stack_size = Rf_length(r_counters);
 
-    for (int i = 0; i < Rf_length(r_counters); ++i) {
+    bool direct = true;
+
+    for (int i = stack_size - 1; i >= 0; --i) {
         SEXP r_counter = VECTOR_ELT(r_counters, i);
-        fun(r_counter);
+
+        if (direct) {
+            direct = false;
+            direct_fun(r_counter);
+        } else {
+            indirect_fun(r_counter);
+        }
     }
 }
 
@@ -135,11 +168,15 @@ void builtin_call_entry_callback(ContextSPtr context,
                                  SEXP r_op,
                                  SEXP r_args,
                                  SEXP r_rho) {
-    increment_counters(context, counter_increment_builtin);
+    increment_counters(context,
+                       counter_increment_direct_builtin,
+                       counter_increment_indirect_builtin);
     /* check if builtin is .Call and separately count that */
     const char* name = dyntrace_get_c_function_name(r_op);
     if (!strcmp(name, ".Call")) {
-        increment_counters(context, counter_increment_c_call);
+        increment_counters(context,
+                           counter_increment_direct_c_call,
+                           counter_increment_indirect_c_call);
     }
 }
 
@@ -149,7 +186,9 @@ void special_call_entry_callback(ContextSPtr context,
                                  SEXP r_op,
                                  SEXP r_args,
                                  SEXP r_rho) {
-    increment_counters(context, counter_increment_special);
+    increment_counters(context,
+                       counter_increment_direct_special,
+                       counter_increment_indirect_special);
 }
 
 void closure_call_entry_callback(ContextSPtr context,
@@ -158,20 +197,26 @@ void closure_call_entry_callback(ContextSPtr context,
                                  SEXP r_op,
                                  SEXP r_args,
                                  SEXP r_rho) {
-    increment_counters(context, counter_increment_closure);
+    increment_counters(context,
+                       counter_increment_direct_closure,
+                       counter_increment_indirect_closure);
 }
 
 void eval_entry_callback(ContextSPtr context,
                          ApplicationSPtr application,
                          SEXP r_expression,
                          SEXP r_rho) {
-    increment_counters(context, counter_increment_interpreter_eval);
+    increment_counters(context,
+                       counter_increment_direct_interpreter_eval,
+                       counter_increment_indirect_interpreter_eval);
 }
 
 void gc_allocation_callback(ContextSPtr context,
                             ApplicationSPtr application,
                             SEXP r_object) {
-    increment_counters(context, counter_increment_allocation);
+    increment_counters(context,
+                       counter_increment_direct_allocation,
+                       counter_increment_indirect_allocation);
 
     if (TYPEOF(r_object) == ENVSXP) {
         add_environment(context, r_object);

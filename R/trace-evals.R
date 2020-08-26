@@ -30,13 +30,27 @@ eval_tracer <- function() {
 
 create_counters <- function(call_id, eval_env) {
     list(call_id = call_id,
+
          eval_env = eval_env,
-         builtin = 0,
-         special = 0,
-         closure = 0,
-         interpreter_eval = 0,
-         c_call = 0,
-         allocation = 0,
+
+         direct_builtin = 0,
+         indirect_builtin = 0,
+
+         direct_special = 0,
+         indirect_special = 0,
+
+         direct_closure = 0,
+         indirect_closure = 0,
+
+         direct_interpreter_eval = 0,
+         indirect_interpreter_eval = 0,
+
+         direct_c_call = 0,
+         indirect_c_call = 0,
+
+         direct_allocation = 0,
+         indirect_allocation = 0,
+
          direct_writes = 0,
          indirect_writes = 0)
 }
@@ -320,12 +334,25 @@ trace_eval_callback <- function(context, application, package, func, call) {
         enclos_expression=expr_to_string(enclos_expression),
         enclos_forced,
         enclos_type=sexp_typeof(enclos_env),
-        builtin = counters$builtin,
-        special = counters$special,
-        closure = counters$closure,
-        interpreter_eval = counters$interpreter_eval,
-        c_call = counters$c_call,
-        allocation = counters$allocation,
+
+        direct_builtin = counters$direct_builtin,
+        indirect_builtin = counters$indirect_builtin,
+
+        direct_special = counters$direct_special,
+        indirect_special = counters$indirect_special,
+
+        direct_closure = counters$direct_closure,
+        indirect_closure = counters$indirect_closure,
+
+        direct_interpreter_eval = counters$direct_interpreter_eval,
+        indirect_interpreter_eval = counters$indirect_interpreter_eval,
+
+        direct_c_call = counters$direct_c_call,
+        indirect_c_call = counters$indirect_c_call,
+
+        direct_allocation = counters$direct_allocation,
+        indirect_allocation = counters$indirect_allocation,
+
         direct_writes = counters$direct_writes,
         indirect_writes = counters$indirect_writes
     )
