@@ -28,14 +28,21 @@ eval_tracer <- function() {
     )
 }
 
-push_counters <- function(context_data) {
-    context_data$counters[[length(context_data$counters) + 1]] <- list(
-        builtin = 0,
-        special = 0,
-        closure = 0,
-        interpreter_eval = 0,
-        c_call = 0,
-        allocation = 0)
+create_counters <- function(call_id, eval_env) {
+    list(call_id = call_id,
+         eval_env = eval_env,
+         builtin = 0,
+         special = 0,
+         closure = 0,
+         interpreter_eval = 0,
+         c_call = 0,
+         allocation = 0,
+         direct_writes = 0,
+         indirect_writes = 0)
+}
+
+push_counters <- function(context_data, call_id, eval_env) {
+    context_data$counters[[length(context_data$counters) + 1]] <- create_counters(call_id, eval_env)
 }
 
 pop_counters <- function(context_data) {
@@ -45,7 +52,33 @@ pop_counters <- function(context_data) {
 }
 
 trace_eval_entry_callback <- function(context, application, package, func, call) {
-    push_counters(get_data(context))
+
+    call_name <- get_name(func)
+
+    if(!(call_name %in% c("eval", "evalq"))) {
+        return()
+    }
+
+    eval_call_env <- get_environment(call)
+
+    eval_env <- get("envir", envir = eval_call_env)
+
+    push_counters(get_data(context), get_id(call), eval_env)
+
+
+## NOTE: logic for computing eval.parent environments
+###n <- get("n", envir = eval_call_env)
+###parents <- sys.parents()
+###parent_index <- eval_call_frame_position
+###while(n > 0 && parent_index != 0) {
+###    parent_index <- parents[parent_index]
+###    n <- n - 1
+###}
+###if (parent_index == 0) {
+###    globalenv()
+###} else {
+###    sys.frames()[[parent_index]]
+###}
 }
 
 #' @importFrom instrumentr get_data set_data get_id get_name get_parameters
@@ -240,7 +273,11 @@ trace_eval_callback <- function(context, application, package, func, call) {
         expr_resolved_args_num <- length(expr_resolved) - 1
     }
 
-    counters <- pop_counters(get_data(context))
+    counters <- if (call_name == "eval" || call_name == "evalq") {
+                    pop_counters(get_data(context))
+                } else {
+                    create_counters(eval_call_id, NULL)
+                }
 
     trace <- data.frame(
         eval_call_id,
@@ -288,7 +325,9 @@ trace_eval_callback <- function(context, application, package, func, call) {
         closure = counters$closure,
         interpreter_eval = counters$interpreter_eval,
         c_call = counters$c_call,
-        allocation = counters$allocation
+        allocation = counters$allocation,
+        direct_writes = counters$direct_writes,
+        indirect_writes = counters$indirect_writes
     )
 
     assign(as.character(get_id(arg)), trace, envir=get_data(context)$calls)

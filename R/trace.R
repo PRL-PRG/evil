@@ -18,7 +18,7 @@ trace_code <- function(context, code, envir=parent.frame(), quote=TRUE) {
         data$calls <- new.env(parent = emptyenv())
         ## NOTE: this set of counters is the global count of all operations.
         ##       new entries on top of this will be specific to eval calls.
-        push_counters(data)
+        push_counters(data, get_id(application), get_environment(application))
         set_data(context, data)
     })
 
@@ -29,6 +29,8 @@ trace_code <- function(context, code, envir=parent.frame(), quote=TRUE) {
         ## because other frames are popped out as evals exit.
         counters <- data$counters[[1]]
         data$counters <- NULL
+        counters$call_id <- NULL
+        counters$eval_env <- NULL
         data$program <- as.data.frame(counters)
     })
 

@@ -1,12 +1,53 @@
-test_that("example", {
-   r <- trace_eval({
-      library(ggplot2)
-      benchplot(ggplot(mtcars, aes(mpg, wt)) + geom_point())
-   })
-   library(dplyr)
-   d <- tibble::as_tibble(r$data)
-   expect_true("loop" %in% d$environment_class)
+##test_that("example", {
+##   r <- trace_eval({
+##      library(ggplot2)
+##      benchplot(ggplot(mtcars, aes(mpg, wt)) + geom_point())
+##   })
+##   library(dplyr)
+##   d <- tibble::as_tibble(r$data)
+##   expect_true("loop" %in% d$environment_class)
+##})
+
+
+test_that("side-effecting evals are captured", {
+    calls <- do_trace_eval({
+        x <- 32
+        evalq(x <<- 332)
+    })
+
+    expect_equal(calls$direct_writes, 1)
+
+
+    calls <- do_trace_eval({
+        evalq(x <- 34)
+    })
+
+    expect_equal(calls$direct_writes, 0)
+
+
+    calls <- do_trace_eval({
+        me <- 34;
+        f <- function(x) {
+            me <<- x
+        }
+        evalq(f(32))
+    })
+
+    expect_equal(calls$direct_writes, 0)
+
+
+    calls <- do_trace_eval({
+        me <- 34;
+        f <- function(x) {
+            me <<- x
+        }
+        evalq(evalq(f(32)), new.env())
+    })
+
+    expect_equal(calls$direct_writes, c(1, 0))
+    expect_equal(calls$indirect_writes, c(0, 1))
 })
+
 
 test_that("eval from a thunk", {
   d <- do_trace_eval({
