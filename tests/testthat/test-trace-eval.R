@@ -8,6 +8,32 @@
 ##   expect_true("loop" %in% d$environment_class)
 ##})
 
+test_that("Environment passed to the caller function  and to envir are well detected", {
+  calls <- do_trace_eval({
+    f <- function(en) {
+      eval(as.name("x"), envir=en)
+    }
+    
+    e <- new.env()
+    e$x <- 3
+    f(e)
+  })
+  
+  expect_false(is.na(calls$envir_from_arg))
+  
+  calls <- do_trace_eval({
+    f <- function() {
+      eval(as.name("x"), envir=parent.frame())
+    }
+    
+    x <- 3
+    f()
+  })
+  
+  expect_true(is.na(calls$envir_from_arg))
+  
+})
+
 
 test_that("side-effecting evals are captured", {
     calls <- do_trace_eval({
