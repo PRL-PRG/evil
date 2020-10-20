@@ -260,11 +260,10 @@ trace_eval_callback <- function(context, application, package, func, call) {
                 text=if (is.language(e)) s else NA,
                 hash=sha1(s),
                 length=nchar(s),
-                type=sexp_typeof(e),
-                nodes=get_ast_size(substitute(quote(e)))
+                type=sexp_typeof(e)
             )
         } else {
-            list(text=NA, hash=NA, length=NA, type=NA, nodes=NA)
+            list(text=NA, hash=NA, length=NA, type=NA)
         }
     }
 
@@ -308,19 +307,19 @@ trace_eval_callback <- function(context, application, package, func, call) {
         environment_class,
         successful=is_successful(call),
 
-        expr_expression        = expr_expression_repr$text,
-        expr_expression_hash   = expr_expression_repr$hash,
-        expr_expression_length = expr_expression_repr$length,
-        expr_expression_type   = expr_expression_repr$type,
-        expr_expression_nodes   = expr_expression_repr$nodes,
+        expr_expression         = expr_expression_repr$text,
+        expr_expression_hash    = expr_expression_repr$hash,
+        expr_expression_length  = expr_expression_repr$length,
+        expr_expression_type    = expr_expression_repr$type,
+        expr_expression_nodes   = get_ast_size(substitute(expr_expression)),
         expr_expression_function,
         expr_expression_args_num,
 
-        expr_resolved        = expr_resolved_repr$text,
-        expr_resolved_hash   = expr_resolved_repr$hash,
-        expr_resolved_length = expr_resolved_repr$length,
-        expr_resolved_type   = expr_resolved_repr$type,
-        expr_resolved_nodes   = expr_resolved_repr$nodes,
+        expr_resolved         = expr_resolved_repr$text,
+        expr_resolved_hash    = expr_resolved_repr$hash,
+        expr_resolved_length  = expr_resolved_repr$length,
+        expr_resolved_type    = expr_resolved_repr$type,
+        expr_resolved_nodes   = get_ast_size(substitute(expr_resolved)),
         expr_resolved_function,
         expr_resolved_args_num,
 

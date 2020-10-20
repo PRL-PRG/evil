@@ -1,3 +1,9 @@
+## test_that("library", {
+##   d <- do_trace_eval(library(tools))
+##   browser()
+##   1
+
+## })
 ##test_that("example", {
 ##   r <- trace_eval({
 ##      library(ggplot2)
@@ -9,44 +15,44 @@
 ##})
 
 
-test_that("side-effecting evals are captured", {
-    calls <- do_trace_eval({
-        x <- 32
-        evalq(x <<- 332)
-    })
+## test_that("side-effecting evals are captured", {
+##     calls <- do_trace_eval({
+##         x <- 32
+##         evalq(x <<- 332)
+##     })
 
-    expect_equal(calls$direct_writes, 1)
-
-
-    calls <- do_trace_eval({
-        evalq(x <- 34)
-    })
-
-    expect_equal(calls$direct_writes, 0)
+##     expect_equal(calls$direct_writes, 1)
 
 
-    calls <- do_trace_eval({
-        me <- 34;
-        f <- function(x) {
-            me <<- x
-        }
-        evalq(f(32))
-    })
+##     calls <- do_trace_eval({
+##         evalq(x <- 34)
+##     })
 
-    expect_equal(calls$direct_writes, 0)
+##     expect_equal(calls$direct_writes, 0)
 
 
-    calls <- do_trace_eval({
-        me <- 34;
-        f <- function(x) {
-            me <<- x
-        }
-        evalq(evalq(f(32)), new.env())
-    })
+##     calls <- do_trace_eval({
+##         me <- 34;
+##         f <- function(x) {
+##             me <<- x
+##         }
+##         evalq(f(32))
+##     })
 
-    expect_equal(calls$direct_writes, c(1, 0))
-    expect_equal(calls$indirect_writes, c(0, 1))
-})
+##     expect_equal(calls$direct_writes, 0)
+
+
+##     calls <- do_trace_eval({
+##         me <- 34;
+##         f <- function(x) {
+##             me <<- x
+##         }
+##         evalq(evalq(f(32)), new.env())
+##     })
+
+##     expect_equal(calls$direct_writes, c(1, 0))
+##     expect_equal(calls$indirect_writes, c(0, 1))
+## })
 
 
 test_that("eval from a thunk", {
@@ -58,13 +64,16 @@ test_that("eval from a thunk", {
   expect_equal(d$eval_call_expression, "eval(1 + 1)")
   expect_equal(d$caller_expression, "eval(code, test_env)")
 
+  expect_equal(d$expr_expression_nodes, 3)
+  expect_equal(d$expr_resolved_nodes, 1)
+
   # the following is wrong
   expect_equal(d$caller_package, "base")
   expect_equal(d$caller_function, "eval")
   expect_equal(d$caller_expression, "eval(code, test_env)")
 
   expect_starts_with(d$caller_stack_expression, "eval(1 + 1)\nforce(thunk)\nf(eval(1 + 1))")
-  expect_starts_with(d$caller_stack_expression_raw, "function(x) x\nfunction(thunk) force(thunk)\nf(eval(1+1))")
+  #expect_starts_with(d$caller_stack_expression_raw, "function(x) x\nfunction(thunk) force(thunk)\nf(eval(1+1))")
 })
 
 test_that("function and function arity", {
