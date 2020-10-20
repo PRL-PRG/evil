@@ -144,18 +144,25 @@ trace_eval_callback <- function(context, application, package, func, call) {
     caller_srcref <- get_call_srcref(caller_expression)
     
     envir_from_arg <- NA
-    args_caller <- names(formals(caller$definition))
-    for(arg in args_caller)
+    if(is.environment(eval_env))
     {
-        # if a caller arg is a parent  of envir 
-        # (which would mean it was built with new.env probably )
-        # or is equal to envir
-        # We could check if it's a parent of a parent but I don;t think it's probable... (TODO though)
-        if(identical(caller$environment[[arg]], eval_env) || identical(caller$environment[[arg]], parent.env(eval_env)))
+        args_caller <- names(formals(caller$definition))
+        for(arg_caller in args_caller)
         {
-            envir_from_arg <- arg
+            arg_val <- NULL
+            arg_val <- try(get0(arg_caller, envir = caller$environment), silent = TRUE)
+            # if a caller arg is a parent  of envir
+            # (which would mean it was built with new.env probably )
+            # or is equal to envir
+            # We could check if it's a parent of a parent but I don;t think it's probable... (TODO though)
+            if(!is.null(arg_val) && is.environment(arg_val) &&
+               (identical(arg_val, eval_env) || identical(arg_val, parent.env(eval_env))))
+            {
+                envir_from_arg <- arg_caller
+            }
         }
     }
+    
 
 
                                         # drop the first one - the call to this function
