@@ -95,6 +95,7 @@ trace_eval_entry_callback <- function(context, application, package, func, call)
 ###}
 }
 
+
 #' @importFrom instrumentr get_data set_data get_id get_name get_parameters
 #' @importFrom instrumentr get_arguments get_position get_expression
 #' @importFrom instrumentr is_evaluated get_frame_position get_environment
@@ -141,6 +142,20 @@ trace_eval_callback <- function(context, application, package, func, call) {
     caller_package <- caller$package_name
     caller_function <- caller$function_name
     caller_srcref <- get_call_srcref(caller_expression)
+    
+    envir_from_arg <- NA
+    args_caller <- names(formals(caller$definition))
+    for(arg in args_caller)
+    {
+        # if a caller arg is a parent  of envir 
+        # (which would mean it was built with new.env probably )
+        # or is equal to envir
+        # We could check if it's a parent of a parent but I don;t think it's probable... (TODO though)
+        if(identical(caller$environment[[arg]], eval_env) || identical(caller$environment[[arg]], parent.env(eval_env)))
+        {
+            envir_from_arg <- arg
+        }
+    }
 
 
                                         # drop the first one - the call to this function
@@ -329,6 +344,7 @@ trace_eval_callback <- function(context, application, package, func, call) {
         envir_expression=expr_to_string(envir_expression),
         envir_forced,
         envir_type=sexp_typeof(eval_env),
+        envir_from_arg,
 
         enclos_expression=expr_to_string(enclos_expression),
         enclos_forced,
