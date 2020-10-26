@@ -25,7 +25,7 @@ test_that("Environment passed to the caller function  and to envir are well dete
     f(e)
   })
   
-  expect_false(is.na(calls$envir_from_arg))
+  expect_equal(calls$envir_from_arg, 0)
   
   calls <- do_trace_eval({
     f <- function() {
