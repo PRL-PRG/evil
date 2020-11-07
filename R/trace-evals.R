@@ -80,7 +80,7 @@ trace_eval_entry_callback <- function(context, application, package, func, call)
     push_counters(get_data(context), get_id(call), eval_env)
 
 
-## NOTE: logic for computing eval.parent environments
+    ## NOTE: logic for computing eval.parent environments
 ###n <- get("n", envir = eval_call_env)
 ###parents <- sys.parents()
 ###parent_index <- eval_call_frame_position
@@ -142,26 +142,21 @@ trace_eval_callback <- function(context, application, package, func, call) {
     caller_package <- caller$package_name
     caller_function <- caller$function_name
     caller_srcref <- get_call_srcref(caller_expression)
-    
+
     envir_from_arg <- NA
-    if(is.environment(eval_env))
-    {
+    if (is.environment(eval_env)) {
         args_caller <- names(formals(caller$definition))
-        for(arg_caller in args_caller)
-        {
+        for (arg_caller in args_caller) {
             arg_val <- NULL
             arg_val <- try(get0(arg_caller, envir = caller$environment), silent = TRUE)
-            # if a caller arg is a parent  of envir
-            # (which would mean it was built with new.env probably )
-            # or is equal to envir
-            if(!is.null(arg_val) && is.environment(arg_val))
-            {
+                                        # if a caller arg is a parent  of envir
+                                        # (which would mean it was built with new.env probably )
+                                        # or is equal to envir
+            if (!is.null(arg_val) && is.environment(arg_val)) {
                 envir_from_arg <- 0
                 cur_env <- eval_env
-                while(!identical(arg_val, cur_env))
-                {
-                    if(identical(cur_env, emptyenv()))
-                    {
+                while (!identical(arg_val, cur_env)) {
+                    if (identical(cur_env, emptyenv())) {
                         envir_from_arg <- NA
                         break
                     }
@@ -171,10 +166,8 @@ trace_eval_callback <- function(context, application, package, func, call) {
             }
         }
     }
-    
 
-
-                                        # drop the first one - the call to this function
+    ## drop the first one - the call to this function
     caller_stack_expression <- NA
     caller_stack_expression_raw <- NA
     caller_stack_expression_srcref <- NA
