@@ -1,10 +1,11 @@
-sexp_typeof <- function(x)
-    if(typeof(x) == "expression") {
+sexp_typeof <- function(x) {
+    if (typeof(x) == "expression") {
         paste(unlist(Map(sexp_typeof, x)), collapse = ";", sep = ";")
     }
     else {
         .Call(C_sexp_typeof, x)
     }
+}
 
 mark_parsed_expression <- function(x, parse_fun_name)
     .Call(C_mark_parsed_expression, x, parse_fun_name)
