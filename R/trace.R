@@ -69,6 +69,7 @@ save_traces <- function(traces, calls_file, program_file) {
     }
 
     calls_dir <- dirname(calls_file)
+
     dir.create(calls_dir, showWarnings = FALSE, recursive=TRUE)
 
     program_dir <- dirname(program_file)
