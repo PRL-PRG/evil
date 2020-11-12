@@ -69,10 +69,10 @@ save_traces <- function(traces, calls_file, program_file) {
     }
 
     calls_dir <- dirname(calls_file)
-    dir.create(calls_dir, showWarnings = FALSE)
+    dir.create(calls_dir, recursive = TRUE, showWarnings = FALSE)
 
     program_dir <- dirname(program_file)
-    dir.create(program_dir, showWarnings = FALSE)
+    dir.create(program_dir, recursive = TRUE, showWarnings = FALSE)
 
     ## if trace$data$calls is a data frame, then we assume
     ## that traces$data$program is also a valid data frame
