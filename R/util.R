@@ -112,47 +112,50 @@ get_loaded_package_environments <- function() { ## nolint
     envs
 }
 
+is_package_environment <- function(eval_env) { ##nolint
+  package_envs <- get_loaded_package_environments()
+  package_env_names <- names(package_envs)
+  
+  index <- length(package_envs)
+  
+  while (index != 0) {
+    env <- package_envs[[index]]
+    env_name <- package_env_names[index]
+    
+    if (identical(eval_env, env)) {
+      return(env_name)
+    }
+    
+    index <- index - 1
+  }
+  
+  return(NULL)
+}
+
+is_base_case_env <- function(callee_env, eval_env) { ##nolint
+  ## The environments of primitive functions of base package are NULL
+  if (is.null(eval_env)) {
+    return("base")
+  }
+  
+  if (identical(eval_env, emptyenv())) {
+    return("empty")
+  }
+  
+  if (identical(eval_env, callee_env)) {
+    return("callee")
+  }
+  
+  if (identical(eval_env, .GlobalEnv)) {
+    return("global")
+  }
+  return(NULL)
+}
+
 classify_environment <- function(application_frame_position, ##nolint
                                  eval_call_frame_position,
                                  callee_env,
                                  eval_env) {
-
-    ## check bases cases
-
-    ## The environments of primitive functions of base package are NULL
-    if (is.null(eval_env)) {
-        return("base")
-    }
-
-    if (identical(eval_env, emptyenv())) {
-        return("empty")
-    }
-
-    if (identical(eval_env, callee_env)) {
-        return("callee")
-    }
-
-    if (identical(eval_env, .GlobalEnv)) {
-        return("global")
-    }
-
-    ## check if environment is a package environment
-
-    package_envs <- get_loaded_package_environments()
-    package_env_names <- names(package_envs)
-
-    index <- length(package_envs)
-
-    while (index != 0) {
-        env <- package_envs[[index]]
-        env_name <- package_env_names[index]
-
-        if (identical(eval_env, env)) {
-            return(env_name)
-        }
-
-        index <- index - 1
-    }
 
     ## check if environment is a caller environment
 
@@ -180,21 +183,45 @@ classify_environment <- function(application_frame_position, ##nolint
 
         index <- parents[index]
     }
+    
+    # env can be both a caller-n and global so we compute both
+    base_case_env <- is_base_case_env(callee_env, eval_env)
+    package_env_name <- is_package_environment(eval_env)
 
     ## this means the eval_env did not belong to any of the parent callers
+    ## if it is not a base case or a package environment
     ## it has to be a new.env and we need to recursively classify its parent env
     if (index == 0) {
+        ## check bases cases or package environment
+        if(!is.null(base_case_env) || !is.null(package_env_name))
+        {
+          specific_class <- paste0(base_case_env, package_env_name)
+          return(paste("caller", parent_count, specific_class,  sep="-"))
+        }
+      
         parent_class <- classify_environment(application_frame_position,
                                              eval_call_frame_position,
                                              callee_env,
                                              parent.env(eval_env))
         return(paste("new", parent_class, sep = "+"))
     } else if (index == -1) {
+      ## check bases cases
+      if(!is.null(base_case_env))
+      {
+        return(base_case_env)
+      }
+      
+      ## check if environment is a package environment
+      if(!is.null(package_env_name))
+      {
+        return(package_env_name)
+      }
       ## this means that there was a loop in the frames
       return("loop")
     } else {
+        specific_class <- paste0(base_case_env, package_env_name)
         ## this means the eval_env is one of the parent caller's environments
-        return(paste("caller", parent_count, sep = "-"))
+        return(paste("caller", parent_count, specific_class, sep = "-"))
     }
 
     return("unhandled")
