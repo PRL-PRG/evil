@@ -2,7 +2,7 @@
 #include "r_init.h"
 
 SEXP sexp_typeof(SEXP x) {
-    return Rf_ScalarInteger(TYPEOF(x));
+    return ScalarString(Rf_type2str(TYPEOF(x)));
 }
 
 SEXP mark_parsed_expression(SEXP x, SEXP parse_fun_name) {
