@@ -1,5 +1,5 @@
-sexp_typeof <- function(x) {
-  if (typeof(x) == "expression") {
+sexp_typeof <- function(x, tag=FALSE) {
+  if (!tag & typeof(x) == "expression") {
     paste(unlist(Map(sexp_typeof, x)), collapse = ";", sep = ";")
   }
   else {
