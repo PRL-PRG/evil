@@ -214,8 +214,9 @@ void special_call_entry_callback(ContextSPtr context,
 
 bool is_call_to(const char* function_name, SEXP r_call) {
     SEXP r_function_name = CAR(r_call);
-    bool library = TYPEOF(r_function_name) == SYMSXP &&
-                   (strcmp(function_name, CHAR(PRINTNAME(r_function_name))) == 0);
+    bool library =
+        TYPEOF(r_function_name) == SYMSXP &&
+        (strcmp(function_name, CHAR(PRINTNAME(r_function_name))) == 0);
     return library;
 }
 
@@ -257,12 +258,13 @@ void closure_call_entry_callback(ContextSPtr context,
                                  SEXP r_op,
                                  SEXP r_args,
                                  SEXP r_rho) {
+    SEXP r_data = context->get_data();
+    SEXP r_counters = Rf_findVarInFrame(r_data, CountersSymbol);
+
     if (is_call_to("library", r_call)) {
         const char* package_name = get_package_name(r_call, r_rho);
 
         if (package_name != nullptr) {
-            SEXP r_data = context->get_data();
-            SEXP r_counters = Rf_findVarInFrame(r_data, CountersSymbol);
             counter_add_package(r_counters, 16, package_name);
         }
     }
@@ -271,10 +273,23 @@ void closure_call_entry_callback(ContextSPtr context,
         const char* package_name = get_package_name(r_call, r_rho);
 
         if (package_name != nullptr) {
-            SEXP r_data = context->get_data();
-            SEXP r_counters = Rf_findVarInFrame(r_data, CountersSymbol);
             counter_add_package(r_counters, 17, package_name);
         }
+    }
+
+    if (is_call_to("sys.calls", r_call)) {
+        SEXP r_counter = VECTOR_ELT(r_counters, Rf_length(r_counters) - 1);
+        counter_increment_field(r_counter, 18);
+    }
+
+    if (is_call_to("sys.frames", r_call)) {
+        SEXP r_counter = VECTOR_ELT(r_counters, Rf_length(r_counters) - 1);
+        counter_increment_field(r_counter, 19);
+    }
+
+    if (is_call_to("sys.parents", r_call)) {
+        SEXP r_counter = VECTOR_ELT(r_counters, Rf_length(r_counters) - 1);
+        counter_increment_field(r_counter, 20);
     }
 
     increment_counters(context,
