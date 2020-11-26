@@ -52,7 +52,9 @@ create_counters <- function(call_id, eval_env) {
          indirect_allocation = 0,
 
          direct_writes = 0,
-         indirect_writes = 0)
+         indirect_writes = 0,
+
+         library_packages = "")
 }
 
 push_counters <- function(context_data, call_id, eval_env) {
@@ -381,7 +383,9 @@ trace_eval_callback <- function(context, application, package, func, call) {
         indirect_allocation = counters$indirect_allocation,
 
         direct_writes = counters$direct_writes,
-        indirect_writes = counters$indirect_writes
+        indirect_writes = counters$indirect_writes,
+
+        library_packages = counters$library_packages
     )
 
     assign(as.character(get_id(arg)), trace, envir=get_data(context)$calls)

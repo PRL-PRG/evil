@@ -5,5 +5,7 @@
 
 extern SEXP R_ParsedExpressionAttrib;
 extern SEXP CountersSymbol;
+extern SEXP PackageSymbol;
+extern SEXP CharacterDotOnlySymbol;
 
 #endif /* EVIL_R_INIT_H */

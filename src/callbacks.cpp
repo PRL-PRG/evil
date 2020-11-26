@@ -74,6 +74,27 @@ void counter_increment_indirect_writes(SEXP r_counter) {
     counter_increment_field(r_counter, 15);
 }
 
+void counter_add_package(SEXP r_counters, const char* new_package) {
+    int stack_size = Rf_length(r_counters);
+    SEXP r_counter = VECTOR_ELT(r_counters, stack_size - 1);
+
+    SEXP r_old_packages = VECTOR_ELT(r_counter, 16);
+    const char* old_package = CHAR(STRING_ELT(r_old_packages, 0));
+    SEXP r_all_packages = R_NilValue;
+    /* NOTE: this is always a string of size 1, either "" or
+     * "package_1;package_2;...;package_N"  */
+
+    if (strcmp(old_package, "") == 0) {
+        r_all_packages = mkString(new_package);
+    } else {
+        std::string all_packages =
+            std::string(old_package) + std::string(";") + new_package;
+        r_all_packages = mkString(all_packages.c_str());
+    }
+
+    SET_VECTOR_ELT(r_counter, 16, r_all_packages);
+}
+
 template <typename T>
 void increment_counters(ContextSPtr context, T direct_fun, T indirect_fun) {
     SEXP r_data = context->get_data();
@@ -191,12 +212,61 @@ void special_call_entry_callback(ContextSPtr context,
                        counter_increment_indirect_special);
 }
 
+bool is_library_call(SEXP r_call) {
+    SEXP r_function_name = CAR(r_call);
+    bool library = TYPEOF(r_function_name) == SYMSXP &&
+                   (strcmp("library", CHAR(PRINTNAME(r_function_name))) == 0);
+    return library;
+}
+
+const char* get_package_name(SEXP r_call, SEXP r_rho) {
+    /* if package is not provided, then we return null  */
+    if (CADR(r_call) == R_MissingArg) {
+        return nullptr;
+    }
+
+    bool character_only = asLogical(
+        Rf_eval(Rf_findVarInFrame(r_rho, CharacterDotOnlySymbol), r_rho));
+
+    SEXP r_package_name_promise = Rf_findVarInFrame(r_rho, PackageSymbol);
+
+    /*  if character.only is true, then package is a symbol bound to a string */
+    if (character_only) {
+        SEXP r_package_name = Rf_eval(r_package_name_promise, r_rho);
+        if (TYPEOF(r_package_name) == STRSXP &&
+            STRING_ELT(r_package_name, 0) != NA_STRING) {
+            return CHAR(STRING_ELT(r_package_name, 0));
+        }
+    } else {
+        SEXP r_package_name =
+            dyntrace_get_promise_expression(r_package_name_promise);
+        if (TYPEOF(r_package_name) == SYMSXP) {
+            return CHAR(PRINTNAME(r_package_name));
+        } else if (TYPEOF(r_package_name) == STRSXP &&
+                   STRING_ELT(r_package_name, 0) != NA_STRING) {
+            return CHAR(STRING_ELT(r_package_name, 0));
+        }
+    }
+
+    return "???";
+}
+
 void closure_call_entry_callback(ContextSPtr context,
                                  ApplicationSPtr application,
                                  SEXP r_call,
                                  SEXP r_op,
                                  SEXP r_args,
                                  SEXP r_rho) {
+    if (is_library_call(r_call)) {
+        const char* package_name = get_package_name(r_call, r_rho);
+
+        if (package_name != nullptr) {
+            SEXP r_data = context->get_data();
+            SEXP r_counters = Rf_findVarInFrame(r_data, CountersSymbol);
+            counter_add_package(r_counters, package_name);
+        }
+    }
+
     increment_counters(context,
                        counter_increment_direct_closure,
                        counter_increment_indirect_closure);
