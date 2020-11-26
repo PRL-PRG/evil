@@ -74,11 +74,11 @@ void counter_increment_indirect_writes(SEXP r_counter) {
     counter_increment_field(r_counter, 15);
 }
 
-void counter_add_package(SEXP r_counters, const char* new_package) {
+void counter_add_package(SEXP r_counters, int index, const char* new_package) {
     int stack_size = Rf_length(r_counters);
     SEXP r_counter = VECTOR_ELT(r_counters, stack_size - 1);
 
-    SEXP r_old_packages = VECTOR_ELT(r_counter, 16);
+    SEXP r_old_packages = VECTOR_ELT(r_counter, index);
     const char* old_package = CHAR(STRING_ELT(r_old_packages, 0));
     SEXP r_all_packages = R_NilValue;
     /* NOTE: this is always a string of size 1, either "" or
@@ -92,7 +92,7 @@ void counter_add_package(SEXP r_counters, const char* new_package) {
         r_all_packages = mkString(all_packages.c_str());
     }
 
-    SET_VECTOR_ELT(r_counter, 16, r_all_packages);
+    SET_VECTOR_ELT(r_counter, index, r_all_packages);
 }
 
 template <typename T>
@@ -212,10 +212,10 @@ void special_call_entry_callback(ContextSPtr context,
                        counter_increment_indirect_special);
 }
 
-bool is_library_call(SEXP r_call) {
+bool is_call_to(const char* function_name, SEXP r_call) {
     SEXP r_function_name = CAR(r_call);
     bool library = TYPEOF(r_function_name) == SYMSXP &&
-                   (strcmp("library", CHAR(PRINTNAME(r_function_name))) == 0);
+                   (strcmp(function_name, CHAR(PRINTNAME(r_function_name))) == 0);
     return library;
 }
 
@@ -257,13 +257,23 @@ void closure_call_entry_callback(ContextSPtr context,
                                  SEXP r_op,
                                  SEXP r_args,
                                  SEXP r_rho) {
-    if (is_library_call(r_call)) {
+    if (is_call_to("library", r_call)) {
         const char* package_name = get_package_name(r_call, r_rho);
 
         if (package_name != nullptr) {
             SEXP r_data = context->get_data();
             SEXP r_counters = Rf_findVarInFrame(r_data, CountersSymbol);
-            counter_add_package(r_counters, package_name);
+            counter_add_package(r_counters, 16, package_name);
+        }
+    }
+
+    if (is_call_to("require", r_call)) {
+        const char* package_name = get_package_name(r_call, r_rho);
+
+        if (package_name != nullptr) {
+            SEXP r_data = context->get_data();
+            SEXP r_counters = Rf_findVarInFrame(r_data, CountersSymbol);
+            counter_add_package(r_counters, 17, package_name);
         }
     }
 
