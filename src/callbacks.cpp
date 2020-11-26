@@ -95,6 +95,25 @@ void counter_add_package(SEXP r_counters, int index, const char* new_package) {
     SET_VECTOR_ELT(r_counter, index, r_all_packages);
 }
 
+void counter_add_which(SEXP r_counter, int index, int new_which) {
+    std::string new_which_str = std::to_string(new_which);
+    SEXP r_old_whiches = VECTOR_ELT(r_counter, index);
+    const char* old_which = CHAR(STRING_ELT(r_old_whiches, 0));
+    SEXP r_all_whiches = R_NilValue;
+    /* NOTE: this is always a string of size 1, either "" or
+     * "which_1;which_2;...;which_N"  */
+
+    if (strcmp(old_which, "") == 0) {
+        r_all_whiches = mkString(new_which_str.c_str());
+    } else {
+        std::string all_whiches =
+            std::string(old_which) + std::string(";") + new_which_str;
+        r_all_whiches = mkString(all_whiches.c_str());
+    }
+
+    SET_VECTOR_ELT(r_counter, index, r_all_whiches);
+}
+
 template <typename T>
 void increment_counters(ContextSPtr context, T direct_fun, T indirect_fun) {
     SEXP r_data = context->get_data();
@@ -252,6 +271,25 @@ const char* get_package_name(SEXP r_call, SEXP r_rho) {
     return "???";
 }
 
+int get_which(SEXP r_call, SEXP r_rho) {
+    /* if package is not provided, then we return null  */
+    if (CADR(r_call) == R_MissingArg) {
+        return -1;
+    }
+
+    SEXP r_which_promise = Rf_findVarInFrame(r_rho, WhichSymbol);
+
+    SEXP r_which = Rf_eval(r_which_promise, r_rho);
+
+    if (TYPEOF(r_which) == INTSXP) {
+        return INTEGER(r_which)[0];
+    } else if (TYPEOF(r_which) == REALSXP) {
+        return (int) (REAL(r_which)[0]);
+    } else {
+        return -1;
+    }
+}
+
 void closure_call_entry_callback(ContextSPtr context,
                                  ApplicationSPtr application,
                                  SEXP r_call,
@@ -260,6 +298,7 @@ void closure_call_entry_callback(ContextSPtr context,
                                  SEXP r_rho) {
     SEXP r_data = context->get_data();
     SEXP r_counters = Rf_findVarInFrame(r_data, CountersSymbol);
+    SEXP r_counter = VECTOR_ELT(r_counters, Rf_length(r_counters) - 1);
 
     if (is_call_to("library", r_call)) {
         const char* package_name = get_package_name(r_call, r_rho);
@@ -278,18 +317,39 @@ void closure_call_entry_callback(ContextSPtr context,
     }
 
     if (is_call_to("sys.calls", r_call)) {
-        SEXP r_counter = VECTOR_ELT(r_counters, Rf_length(r_counters) - 1);
         counter_increment_field(r_counter, 18);
     }
 
     if (is_call_to("sys.frames", r_call)) {
-        SEXP r_counter = VECTOR_ELT(r_counters, Rf_length(r_counters) - 1);
         counter_increment_field(r_counter, 19);
     }
 
     if (is_call_to("sys.parents", r_call)) {
-        SEXP r_counter = VECTOR_ELT(r_counters, Rf_length(r_counters) - 1);
         counter_increment_field(r_counter, 20);
+    }
+
+    if (is_call_to("sys.frame", r_call)) {
+        int which_value = get_which(r_call, r_rho);
+
+        if (which_value != 0) {
+            counter_add_which(r_counter, 21, which_value);
+        }
+    }
+
+    if (is_call_to("sys.call", r_call)) {
+        int which_value = get_which(r_call, r_rho);
+
+        if (which_value != 0) {
+            counter_add_which(r_counter, 22, which_value);
+        }
+    }
+
+    if (is_call_to("sys.function", r_call)) {
+        int which_value = get_which(r_call, r_rho);
+
+        if (which_value != 0) {
+            counter_add_which(r_counter, 23, which_value);
+        }
     }
 
     increment_counters(context,

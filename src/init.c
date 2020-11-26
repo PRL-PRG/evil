@@ -12,6 +12,7 @@ SEXP R_ParsedExpressionAttrib = NULL;
 SEXP CountersSymbol = NULL;
 SEXP PackageSymbol = NULL;
 SEXP CharacterDotOnlySymbol = NULL;
+SEXP WhichSymbol = NULL;
 
 static const R_CallMethodDef callMethods[] = {
     {"sexp_typeof", (DL_FUNC) &sexp_typeof, 1},
@@ -41,4 +42,6 @@ void R_init_evil(DllInfo* dll) {
     PackageSymbol = Rf_install("package");
 
     CharacterDotOnlySymbol = Rf_install("character.only");
+
+    WhichSymbol = Rf_install("which");
 }

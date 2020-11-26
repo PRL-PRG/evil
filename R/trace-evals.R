@@ -59,10 +59,12 @@ create_counters <- function(call_id, eval_env) {
          require_packages = "",
 
          sys.calls = 0L,
-
          sys.frames = 0L,
+         sys.parents = 0L,
 
-         sys.parents = 0L)
+         sys.frame = "",
+         sys.call = "",
+         sys.function = "")
 }
 
 push_counters <- function(context_data, call_id, eval_env) {
@@ -401,7 +403,13 @@ trace_eval_callback <- function(context, application, package, func, call) {
 
         sys.frames = counters$sys.frames,
 
-        sys.parents = counters$sys.parents
+        sys.parents = counters$sys.parents,
+
+        sys.call = counters$sys.call,
+
+        sys.frame = counters$sys.frame,
+
+        sys.function = counters$sys.function
     )
 
     assign(as.character(get_id(arg)), trace, envir=get_data(context)$calls)
