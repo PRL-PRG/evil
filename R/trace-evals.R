@@ -307,8 +307,8 @@ trace_eval_callback <- function(context, application, package, func, call) {
     expr_expression_repr <- expr_repr(expr_expression)
     expr_resolved_repr <- expr_repr(expr_resolved)
 
-    expr_expression_function <- NA
-    expr_expression_args_num <- NA
+    expr_expression_function <- NA_character_
+    expr_expression_args_num <- NA_integer_
 
     if (is.call(expr_expression)) {
         expr_expression_function <- expr_to_string(expr_expression[[1]])
