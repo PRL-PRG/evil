@@ -33,36 +33,36 @@ create_counters <- function(call_id, eval_env) {
 
          eval_env = eval_env,
 
-         direct_builtin = 0,
-         indirect_builtin = 0,
+         direct_builtin = 0L,
+         indirect_builtin = 0L,
 
-         direct_special = 0,
-         indirect_special = 0,
+         direct_special = 0L,
+         indirect_special = 0L,
 
-         direct_closure = 0,
-         indirect_closure = 0,
+         direct_closure = 0L,
+         indirect_closure = 0L,
 
-         direct_interpreter_eval = 0,
-         indirect_interpreter_eval = 0,
+         direct_interpreter_eval = 0L,
+         indirect_interpreter_eval = 0L,
 
-         direct_c_call = 0,
-         indirect_c_call = 0,
+         direct_c_call = 0L,
+         indirect_c_call = 0L,
 
-         direct_allocation = 0,
-         indirect_allocation = 0,
+         direct_allocation = 0L,
+         indirect_allocation = 0L,
 
-         direct_writes = 0,
-         indirect_writes = 0,
+         direct_writes = 0L,
+         indirect_writes = 0L,
 
          library_packages = "",
 
          require_packages = "",
 
-         sys.calls = 0,
+         sys.calls = 0L,
 
-         sys.frames = 0,
+         sys.frames = 0L,
 
-         sys.parents = 0)
+         sys.parents = 0L)
 }
 
 push_counters <- function(context_data, call_id, eval_env) {
