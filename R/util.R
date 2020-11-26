@@ -43,7 +43,7 @@ expr_to_string <-
            raw = FALSE,
            one_line = FALSE) {
     if (is_empty(e)) {
-      NA
+      NA_character_
     } else if (is.expression(e) && length(e) == 1) {
       expr_to_string(e[[1]])
     } else {
