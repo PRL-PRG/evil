@@ -1,7 +1,8 @@
 #include "callbacks.h"
 #include "r_init.h"
-#include "reflection.h"
+#include "data.h"
 #include "r_utilities.h"
+
 
 std::unordered_map<SEXP, int> environments_;
 
@@ -235,44 +236,6 @@ void special_call_entry_callback(ContextSPtr context,
                        counter_increment_indirect_special);
 }
 
-const char* get_package_name(SEXP r_call, SEXP r_rho) {
-    /* if package is not provided, then we return null  */
-    if (CADR(r_call) == R_MissingArg) {
-        return nullptr;
-    }
-
-    bool character_only = asLogical(
-        Rf_eval(Rf_findVarInFrame(r_rho, CharacterDotOnlySymbol), r_rho));
-
-    SEXP r_package_name_promise = Rf_findVarInFrame(r_rho, PackageSymbol);
-
-    /*  if character.only is true, then package is a symbol bound to a string */
-    if (character_only) {
-        SEXP r_package_name = Rf_eval(r_package_name_promise, r_rho);
-        if (TYPEOF(r_package_name) == STRSXP &&
-            STRING_ELT(r_package_name, 0) != NA_STRING) {
-            return CHAR(STRING_ELT(r_package_name, 0));
-        }
-    } else {
-        SEXP r_package_name =
-            dyntrace_get_promise_expression(r_package_name_promise);
-        if (TYPEOF(r_package_name) == SYMSXP) {
-            return CHAR(PRINTNAME(r_package_name));
-        } else if (TYPEOF(r_package_name) == STRSXP &&
-                   STRING_ELT(r_package_name, 0) != NA_STRING) {
-            return CHAR(STRING_ELT(r_package_name, 0));
-        }
-    }
-
-    return "???";
-}
-
-ReflectionTable* get_reflection_table(SEXP r_data) {
-    SEXP r_reflection_table = Rf_findVarInFrame(r_data, ReflectionTableSymbol);
-    ReflectionTable* reflection_table = (ReflectionTable*)(R_ExternalPtrAddr(r_reflection_table));
-    return reflection_table;
-}
-
 void closure_call_entry_callback(ContextSPtr context,
                                  ApplicationSPtr application,
                                  SEXP r_call,
@@ -280,34 +243,25 @@ void closure_call_entry_callback(ContextSPtr context,
                                  SEXP r_args,
                                  SEXP r_rho) {
     SEXP r_data = context->get_data();
-    ReflectionTable* reflection_table = get_reflection_table(r_data);
+    ReflectionTable* reflection_table = get_table<ReflectionTable>(r_data);
+    CodeTable* code_table = get_table<CodeTable>(r_data);
     SEXP r_counters = Rf_findVarInFrame(r_data, CountersSymbol);
     SEXP r_counter = VECTOR_ELT(r_counters, Rf_length(r_counters) - 1);
     int call_id = counter_get_call_id(r_counter);
     int eval_frame_depth = counter_get_eval_frame_depth(r_counter);
 
-    if (is_call_to("library", r_call)) {
-        const char* package_name = get_package_name(r_call, r_rho);
 
-        if (package_name != nullptr) {
-            counter_add_package(r_counters, 16, package_name);
-        }
-    }
+    CodeTable::inspect_and_record(code_table,
+                                      r_call,
+                                      r_rho,
+                                      call_id);
 
-    if (is_call_to("require", r_call)) {
-        const char* package_name = get_package_name(r_call, r_rho);
-
-        if (package_name != nullptr) {
-            counter_add_package(r_counters, 17, package_name);
-        }
-    }
-
-    inspect_for_reflective_call(reflection_table,
-                                r_call,
-                                r_rho,
-                                call_id,
-                                eval_frame_depth,
-                                dyntrace_get_frame_depth());
+    ReflectionTable::inspect_and_record(reflection_table,
+                                            r_call,
+                                            r_rho,
+                                            call_id,
+                                            eval_frame_depth,
+                                            dyntrace_get_frame_depth());
 
     increment_counters(context,
                        counter_increment_direct_closure,
