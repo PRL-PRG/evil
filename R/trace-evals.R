@@ -234,7 +234,7 @@ trace_eval_callback <- function(context, application, package, func, call) {
     expr_expression <- get_expression(arg)
     expr_forced <- is_evaluated(arg)
     expr_resolved <- if (expr_forced) {
-                         expr_resolved <- eval_call_env$expr #resolve_expr(eval_call_env$expr, eval_env)
+                         expr_resolved <- eval_call_env$expr
                      } else {
                          .Empty
                      }
