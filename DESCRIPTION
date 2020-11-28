@@ -7,14 +7,16 @@ Authors@R:
            role = c("aut", "cre"),
            email = "goel.aviral@gmail.com")
 Description: The package is up to no good, it intercepts calls to eval.
-License: What license it uses
+License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
 Imports:
     instrumentr,
     digest,
     fst,
-    purrr
+    purrr,
+    methods,
+    utils
 Remotes:
     PRL-PRG/instrumentr
 RoxygenNote: 7.1.1

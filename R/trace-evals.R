@@ -15,15 +15,15 @@ eval_tracer <- function() {
     create_context(
         call_entry_callback = trace_eval_entry_callback,
         call_exit_callback = trace_eval_callback,
-        builtin_call_entry_callback = .Call(evil:::C_get_builtin_call_entry_callback),
-        special_call_entry_callback = .Call(evil:::C_get_special_call_entry_callback),
-        closure_call_entry_callback = .Call(evil:::C_get_closure_call_entry_callback),
-        eval_entry_callback = .Call(evil:::C_get_eval_entry_callback),
-        gc_allocation_callback = .Call(evil:::C_get_gc_allocation_callback),
-        variable_definition_callback = .Call(evil:::C_get_variable_definition_callback),
-        variable_assignment_callback = .Call(evil:::C_get_variable_assignment_callback),
-        variable_removal_callback = .Call(evil:::C_get_variable_removal_callback),
-        variable_lookup_callback = .Call(evil:::C_get_variable_lookup_callback),
+        builtin_call_entry_callback = .Call(C_get_builtin_call_entry_callback),
+        special_call_entry_callback = .Call(C_get_special_call_entry_callback),
+        closure_call_entry_callback = .Call(C_get_closure_call_entry_callback),
+        eval_entry_callback = .Call(C_get_eval_entry_callback),
+        gc_allocation_callback = .Call(C_get_gc_allocation_callback),
+        variable_definition_callback = .Call(C_get_variable_definition_callback),
+        variable_assignment_callback = .Call(C_get_variable_assignment_callback),
+        variable_removal_callback = .Call(C_get_variable_removal_callback),
+        variable_lookup_callback = .Call(C_get_variable_lookup_callback),
         functions = functions
     )
 }
@@ -397,9 +397,4 @@ trace_eval_callback <- function(context, application, package, func, call) {
     )
 
     assign(as.character(get_id(arg)), trace, envir=get_data(context)$calls)
-}
-
-#' @export
-trace_eval <- function(code, ...) {
-    trace_code(context=eval_tracer(), code=code, ...)
 }

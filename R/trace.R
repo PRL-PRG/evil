@@ -1,4 +1,10 @@
 #' @export
+trace_eval <- function(code, ...) {
+    trace_code(context=eval_tracer(), code=code, ...)
+}
+
+#' @export
+#' @importFrom methods is
 #' @importFrom instrumentr set_application_load_callback set_application_unload_callback
 #' @importFrom instrumentr set_data get_data trace_code get_frame_position
 trace_code <- function(context, code, envir=parent.frame(), quote=TRUE) {
