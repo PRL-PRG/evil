@@ -8,5 +8,7 @@ extern SEXP CountersSymbol;
 extern SEXP PackageSymbol;
 extern SEXP CharacterDotOnlySymbol;
 extern SEXP WhichSymbol;
+extern SEXP NSymbol;
+extern SEXP ReflectionTableSymbol;
 
 #endif /* EVIL_R_INIT_H */

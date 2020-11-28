@@ -1,7 +1,7 @@
 #include "callbacks.h"
-#undef length
-#include <iostream>
 #include "r_init.h"
+#include "reflection.h"
+#include "r_utilities.h"
 
 std::unordered_map<SEXP, int> environments_;
 
@@ -11,6 +11,10 @@ int counter_get_call_id(SEXP r_counter) {
 
 SEXP counter_get_eval_env(SEXP r_counter) {
     return VECTOR_ELT(r_counter, 1);
+}
+
+int counter_get_eval_frame_depth(SEXP r_counter) {
+    return asInteger(VECTOR_ELT(r_counter, 18));
 }
 
 void counter_increment_field(SEXP r_counter, int index) {
@@ -231,14 +235,6 @@ void special_call_entry_callback(ContextSPtr context,
                        counter_increment_indirect_special);
 }
 
-bool is_call_to(const char* function_name, SEXP r_call) {
-    SEXP r_function_name = CAR(r_call);
-    bool library =
-        TYPEOF(r_function_name) == SYMSXP &&
-        (strcmp(function_name, CHAR(PRINTNAME(r_function_name))) == 0);
-    return library;
-}
-
 const char* get_package_name(SEXP r_call, SEXP r_rho) {
     /* if package is not provided, then we return null  */
     if (CADR(r_call) == R_MissingArg) {
@@ -271,23 +267,10 @@ const char* get_package_name(SEXP r_call, SEXP r_rho) {
     return "???";
 }
 
-int get_which(SEXP r_call, SEXP r_rho) {
-    /* if package is not provided, then we return null  */
-    if (CADR(r_call) == R_MissingArg) {
-        return -1;
-    }
-
-    SEXP r_which_promise = Rf_findVarInFrame(r_rho, WhichSymbol);
-
-    SEXP r_which = Rf_eval(r_which_promise, r_rho);
-
-    if (TYPEOF(r_which) == INTSXP) {
-        return INTEGER(r_which)[0];
-    } else if (TYPEOF(r_which) == REALSXP) {
-        return (int) (REAL(r_which)[0]);
-    } else {
-        return -1;
-    }
+ReflectionTable* get_reflection_table(SEXP r_data) {
+    SEXP r_reflection_table = Rf_findVarInFrame(r_data, ReflectionTableSymbol);
+    ReflectionTable* reflection_table = (ReflectionTable*)(R_ExternalPtrAddr(r_reflection_table));
+    return reflection_table;
 }
 
 void closure_call_entry_callback(ContextSPtr context,
@@ -297,8 +280,11 @@ void closure_call_entry_callback(ContextSPtr context,
                                  SEXP r_args,
                                  SEXP r_rho) {
     SEXP r_data = context->get_data();
+    ReflectionTable* reflection_table = get_reflection_table(r_data);
     SEXP r_counters = Rf_findVarInFrame(r_data, CountersSymbol);
     SEXP r_counter = VECTOR_ELT(r_counters, Rf_length(r_counters) - 1);
+    int call_id = counter_get_call_id(r_counter);
+    int eval_frame_depth = counter_get_eval_frame_depth(r_counter);
 
     if (is_call_to("library", r_call)) {
         const char* package_name = get_package_name(r_call, r_rho);
@@ -316,41 +302,12 @@ void closure_call_entry_callback(ContextSPtr context,
         }
     }
 
-    if (is_call_to("sys.calls", r_call)) {
-        counter_increment_field(r_counter, 18);
-    }
-
-    if (is_call_to("sys.frames", r_call)) {
-        counter_increment_field(r_counter, 19);
-    }
-
-    if (is_call_to("sys.parents", r_call)) {
-        counter_increment_field(r_counter, 20);
-    }
-
-    if (is_call_to("sys.frame", r_call)) {
-        int which_value = get_which(r_call, r_rho);
-
-        if (which_value != 0) {
-            counter_add_which(r_counter, 21, which_value);
-        }
-    }
-
-    if (is_call_to("sys.call", r_call)) {
-        int which_value = get_which(r_call, r_rho);
-
-        if (which_value != 0) {
-            counter_add_which(r_counter, 22, which_value);
-        }
-    }
-
-    if (is_call_to("sys.function", r_call)) {
-        int which_value = get_which(r_call, r_rho);
-
-        if (which_value != 0) {
-            counter_add_which(r_counter, 23, which_value);
-        }
-    }
+    inspect_for_reflective_call(reflection_table,
+                                r_call,
+                                r_rho,
+                                call_id,
+                                eval_frame_depth,
+                                dyntrace_get_frame_depth());
 
     increment_counters(context,
                        counter_increment_direct_closure,

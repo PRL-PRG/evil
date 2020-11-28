@@ -7,12 +7,15 @@
 #include "r_callbacks.h"
 #include "r_utilities.h"
 #include "r_init.h"
+#include "r_reflection.h"
 
 SEXP R_ParsedExpressionAttrib = NULL;
 SEXP CountersSymbol = NULL;
 SEXP PackageSymbol = NULL;
 SEXP CharacterDotOnlySymbol = NULL;
 SEXP WhichSymbol = NULL;
+SEXP NSymbol = NULL;
+SEXP ReflectionTableSymbol = NULL;
 
 static const R_CallMethodDef callMethods[] = {
     {"sexp_typeof", (DL_FUNC) &sexp_typeof, 1},
@@ -27,6 +30,8 @@ static const R_CallMethodDef callMethods[] = {
     {"get_variable_assignment_callback", (DL_FUNC) &r_get_variable_assignment_callback, 0},
     {"get_variable_removal_callback", (DL_FUNC) &r_get_variable_removal_callback, 0},
     {"get_variable_lookup_callback", (DL_FUNC) &r_get_variable_lookup_callback, 0},
+    {"create_reflection_table", (DL_FUNC) &r_create_reflection_table, 0},
+    {"reflection_table_to_data_frame", (DL_FUNC) &r_reflection_table_to_data_frame, 1},
     {NULL, NULL, 0}
 };
 
@@ -38,10 +43,9 @@ void R_init_evil(DllInfo* dll) {
     R_ParsedExpressionAttrib = Rf_install("._evil_parsed_expression");
 
     CountersSymbol = Rf_install("counters");
-
     PackageSymbol = Rf_install("package");
-
     CharacterDotOnlySymbol = Rf_install("character.only");
-
     WhichSymbol = Rf_install("which");
+    NSymbol = Rf_install("n");
+    ReflectionTableSymbol = Rf_install("reflection_table");
 }

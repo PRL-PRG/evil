@@ -28,7 +28,7 @@ eval_tracer <- function() {
     )
 }
 
-create_counters <- function(call_id, eval_env) {
+create_counters <- function(call_id, eval_env, eval_frame_depth) {
     list(call_id = call_id,
 
          eval_env = eval_env,
@@ -58,17 +58,11 @@ create_counters <- function(call_id, eval_env) {
 
          require_packages = "",
 
-         sys.calls = 0L,
-         sys.frames = 0L,
-         sys.parents = 0L,
-
-         sys.frame = "",
-         sys.call = "",
-         sys.function = "")
+         eval_frame_depth = as.integer(eval_frame_depth))
 }
 
-push_counters <- function(context_data, call_id, eval_env) {
-    context_data$counters[[length(context_data$counters) + 1]] <- create_counters(call_id, eval_env)
+push_counters <- function(context_data, call_id, eval_env, eval_frame_depth) {
+    context_data$counters[[length(context_data$counters) + 1]] <- create_counters(call_id, eval_env, eval_frame_depth)
 }
 
 pop_counters <- function(context_data) {
@@ -77,6 +71,7 @@ pop_counters <- function(context_data) {
     counters
 }
 
+#' @importFrom instrumentr get_frame_position
 trace_eval_entry_callback <- function(context, application, package, func, call) {
 
     call_name <- get_name(func)
@@ -89,8 +84,9 @@ trace_eval_entry_callback <- function(context, application, package, func, call)
 
     eval_env <- get("envir", envir = eval_call_env)
 
-    push_counters(get_data(context), get_id(call), eval_env)
+    eval_frame_depth <- get_frame_position(call)
 
+    push_counters(get_data(context), get_id(call), eval_env, eval_frame_depth)
 
     ## NOTE: logic for computing eval.parent environments
 ###n <- get("n", envir = eval_call_env)
@@ -326,7 +322,7 @@ trace_eval_callback <- function(context, application, package, func, call) {
     counters <- if (call_name == "eval" || call_name == "evalq") {
                     pop_counters(get_data(context))
                 } else {
-                    create_counters(eval_call_id, NULL)
+                    create_counters(eval_call_id, NULL, eval_call_frame_position)
                 }
 
     trace <- data.frame(
@@ -397,19 +393,7 @@ trace_eval_callback <- function(context, application, package, func, call) {
 
         library_packages = counters$library_packages,
 
-        require_packages = counters$require_packages,
-
-        sys.calls = counters$sys.calls,
-
-        sys.frames = counters$sys.frames,
-
-        sys.parents = counters$sys.parents,
-
-        sys.call = counters$sys.call,
-
-        sys.frame = counters$sys.frame,
-
-        sys.function = counters$sys.function
+        require_packages = counters$require_packages
     )
 
     assign(as.character(get_id(arg)), trace, envir=get_data(context)$calls)
