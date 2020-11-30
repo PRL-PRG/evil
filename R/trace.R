@@ -86,8 +86,8 @@ write_traces <- function(traces, data_dir) {
     }
 
 
-    for(table_name in names(traces$data)) {
-        table <- traces$data[[table_name]]
+    for(table_name in names(traces$tables)) {
+        table <- traces$tables[[table_name]]
         path <- file.path(data_dir, paste0(table_name, ".fst"))
 
         if(is.data.frame(table)) {
