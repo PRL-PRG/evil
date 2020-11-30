@@ -31,20 +31,23 @@ trace_code <- function(context, code, envir=parent.frame(), quote=TRUE) {
 
     set_application_unload_callback(context, function(context, application) {
         data <- get_data(context)
-        data$calls <- do.call(rbind, as.list(data$calls))
+        calls <- do.call(rbind, as.list(data$calls))
+        data$calls <- NULL
         ## at this point, there should be only one frame in the counter stack
         ## because other frames are popped out as evals exit.
         counters <- data$counters[[1]]
         data$counters <- NULL
         counters$call_id <- NULL
         counters$eval_env <- NULL
-        data$program <- as.data.frame(counters)
+        program <- as.data.frame(counters)
+
+        data$tables <- c(list(calls = calls, program = program),
+                         .Call(C_get_tables_as_data_frames, data))
     })
 
     result <- instrumentr::trace_code(context, code, envir, quote = FALSE)
     data <- instrumentr::get_data(context)
-    tables <- c("calls" = data$calls, "program" = data$program, .Call(C_get_tables_as_data_frames, data))
-    list(result = result, tables = tables)
+    list(result = result, tables = data$tables)
 }
 
 #' @export
