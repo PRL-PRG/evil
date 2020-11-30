@@ -7,71 +7,100 @@
 #include "Table.h"
 
 class ReflectionTable: public Table {
-public:
+  public:
     ReflectionTable(): Table() {
     }
 
-    void record_call(int call_id,
+    void record_call(int eval_call_id,
                      const char* function,
                      int eval_frame_depth = NA_INTEGER,
                      int call_frame_depth = NA_INTEGER,
                      int reverse_frame_depth = NA_INTEGER) {
-        call_ids_.push_back(call_id);
+        eval_call_ids_.push_back(eval_call_id);
         functions_.push_back(function);
         eval_frame_depths_.push_back(eval_frame_depth);
         call_frame_depths_.push_back(call_frame_depth);
-        int accessed_frame_depth = reverse_frame_depth == NA_INTEGER ? NA_INTEGER : call_frame_depth - accessed_frame_depth;
+        int accessed_frame_depth =
+            reverse_frame_depth == NA_INTEGER
+                ? NA_INTEGER
+                : call_frame_depth - accessed_frame_depth;
         accessed_frame_depths_.push_back(accessed_frame_depth);
         int leak = NA_LOGICAL;
-        if(eval_frame_depth != NA_INTEGER && call_frame_depth != NA_INTEGER && accessed_frame_depth != NA_INTEGER) {
+        if (eval_frame_depth != NA_INTEGER && call_frame_depth != NA_INTEGER &&
+            accessed_frame_depth != NA_INTEGER) {
             leak = accessed_frame_depth <= eval_frame_depth;
         }
         leaks_.push_back(leak);
     }
 
-    SEXP to_data_frame() {
+    void inspect_and_record(CallState& call_state) override {
+        SEXP r_call = call_state.get_call();
+        SEXP r_rho = call_state.get_rho();
+        int eval_call_id = call_state.get_eval_call_id();
+        int eval_frame_depth = call_state.get_eval_frame_depth();
+        int current_frame_depth = call_state.get_current_frame_depth();
 
-        int row_size = call_ids_.size();
-
-        SEXP r_call_ids = PROTECT(allocVector(INTSXP, row_size));
-        SEXP r_functions = PROTECT(allocVector(STRSXP, row_size));
-        SEXP r_eval_frame_depths = PROTECT(allocVector(INTSXP, row_size));
-        SEXP r_call_frame_depths = PROTECT(allocVector(INTSXP, row_size));
-        SEXP r_accessed_frame_depths = PROTECT(allocVector(INTSXP, row_size));
-        SEXP r_leaks = PROTECT(allocVector(INTSXP, row_size));
-
-        for(int row_index = 0; row_index < row_size; ++row_index) {
-            INTEGER(r_call_ids)[row_index] = call_ids_[row_index];
-            SET_STRING_ELT(r_functions, row_index, mkChar(functions_[row_index].c_str()));
-            INTEGER(r_eval_frame_depths)[row_index] = eval_frame_depths_[row_index];
-            INTEGER(r_call_frame_depths)[row_index] = call_frame_depths_[row_index];
-            INTEGER(r_accessed_frame_depths)[row_index] = accessed_frame_depths_[row_index];
-            LOGICAL(r_leaks)[row_index] = leaks_[row_index];
+        if (call_state.is_call_to("sys.calls")) {
+            record_call(eval_call_id, "sys.calls");
+        } else if (call_state.is_call_to("sys.frames")) {
+            record_call(eval_call_id, "sys.frames");
+        } else if (call_state.is_call_to("sys.parents")) {
+            record_call(eval_call_id, "sys.parents");
+        } else if (call_state.is_call_to("sys.frame")) {
+            int reverse_frame_index =
+                call_state.get_integer_argument(WhichSymbol);
+            record_call(eval_call_id,
+                        "sys.frame",
+                        eval_frame_depth,
+                        current_frame_depth,
+                        reverse_frame_index);
+        } else if (call_state.is_call_to("sys.call")) {
+            int reverse_frame_index =
+                call_state.get_integer_argument(WhichSymbol);
+            record_call(eval_call_id,
+                        "sys.call",
+                        eval_frame_depth,
+                        current_frame_depth,
+                        reverse_frame_index);
+        } else if (call_state.is_call_to("sys.function")) {
+            int reverse_frame_index =
+                call_state.get_integer_argument(WhichSymbol);
+            record_call(eval_call_id,
+                        "sys.function",
+                        eval_frame_depth,
+                        current_frame_depth,
+                        reverse_frame_index);
+        } else if (call_state.is_call_to("parent.frame")) {
+            int reverse_frame_index = call_state.get_integer_argument(NSymbol);
+            record_call(eval_call_id,
+                        "parent.frame",
+                        eval_frame_depth,
+                        current_frame_depth,
+                        reverse_frame_index);
         }
+    }
 
-        SEXP r_data_frame = create_data_frame({{"call_id", r_call_ids},
-                                               {"function", r_functions},
-                                               {"eval_frame_depth", r_eval_frame_depths},
-                                               {"call_frame_depth", r_call_frame_depths},
-                                               {"accessed_frame_depth", r_accessed_frame_depths},
-                                               {"leak", r_leaks}});
+    SEXP to_data_frame() {
+        SEXP r_data_frame = create_data_frame(
+            {{"eval_call_id", PROTECT(create_integer_vector(eval_call_ids_))},
+             {"function", PROTECT(create_character_vector(functions_))},
+             {"eval_frame_depth",
+              PROTECT(create_integer_vector(eval_frame_depths_))},
+             {"call_frame_depth",
+              PROTECT(create_integer_vector(call_frame_depths_))},
+             {"accessed_frame_depth",
+              PROTECT(create_integer_vector(accessed_frame_depths_))},
+             {"leak", PROTECT(create_logical_vector(leaks_))}});
 
         UNPROTECT(6);
 
         return r_data_frame;
     }
 
-    static void inspect_and_record(ReflectionTable* table,
-                                   SEXP r_call,
-                                   SEXP r_rho,
-                                   int call_id,
-                                   int eval_frame_position,
-                                   int current_frame_position);
-
     static SEXP get_name();
 
-private:
-    std::vector<int> call_ids_;
+  private:
+    std::vector<int> eval_call_ids_;
     std::vector<std::string> functions_;
     std::vector<int> eval_frame_depths_;
     std::vector<int> call_frame_depths_;

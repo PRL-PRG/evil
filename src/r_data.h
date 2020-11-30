@@ -9,7 +9,7 @@ extern "C" {
 #endif
 
 SEXP r_initialize_tables(SEXP r_data);
-SEXP r_get_tables(SEXP r_data);
+SEXP r_get_tables_as_data_frames(SEXP r_data);
 
 #ifdef __cplusplus
 }

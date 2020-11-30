@@ -9,7 +9,8 @@ extern SEXP PackageSymbol;
 extern SEXP CharacterDotOnlySymbol;
 extern SEXP WhichSymbol;
 extern SEXP NSymbol;
-extern SEXP ReflectionTableSymbol;
-extern SEXP CodeTableSymbol;
+extern SEXP FileSymbol;
+extern SEXP LocalSymbol;
+extern SEXP TablesSymbol;
 
 #endif /* EVIL_R_INIT_H */

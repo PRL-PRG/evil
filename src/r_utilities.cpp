@@ -1,6 +1,8 @@
 #include "r_utilities.h"
 #include "r_init.h"
 
+const char* MissingStringValue = "_evil_missing_string_value_";
+
 SEXP sexp_typeof(SEXP x) {
     return ScalarString(Rf_type2str(TYPEOF(x)));
 }
@@ -47,39 +49,4 @@ int get_ast_size(SEXP ast, int null_size) {
 SEXP r_get_ast_size(SEXP ast) {
     int size = get_ast_size(ast, 1);
     return ScalarInteger(size);
-}
-
-SEXP r_get_argument(SEXP r_call, SEXP r_rho, SEXP r_argument_name, int evaluate) {
-    SEXP r_value = Rf_findVarInFrame(r_rho, r_argument_name);
-
-    if(r_value == R_MissingArg || TYPEOF(r_value) != PROMSXP) {
-        return r_value;
-    } else if (evaluate) {
-        return Rf_eval(r_value, r_rho);
-    } else {
-        return r_value;
-    }
-}
-
-int get_argument_as_integer(SEXP r_call, SEXP r_rho, SEXP r_argument_name)  {
-    SEXP r_value = r_get_argument(r_call, r_rho, r_argument_name, 1);
-    int result = NA_INTEGER;
-
-    if(TYPEOF(r_value) == REALSXP) {
-        double value = REAL(r_value)[0];
-        result = value == NA_REAL ? NA_INTEGER : (int)(value);
-    }
-    else if(TYPEOF(r_value) == INTSXP) {
-        result = INTEGER(r_value)[0];
-    }
-
-    return result;
-}
-
-int is_call_to(const char* function_name, SEXP r_call) {
-    SEXP r_function_name = CAR(r_call);
-    int library =
-        TYPEOF(r_function_name) == SYMSXP &&
-        (strcmp(function_name, CHAR(PRINTNAME(r_function_name))) == 0);
-    return library;
 }

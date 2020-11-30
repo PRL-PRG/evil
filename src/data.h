@@ -4,6 +4,7 @@
 #include <R.h>
 #include "ReflectionTable.h"
 #include "CodeTable.h"
+#include <vector>
 
 template<typename T>
 T* get_table(SEXP r_data) {
@@ -11,5 +12,7 @@ T* get_table(SEXP r_data) {
     T* table = (T*)(R_ExternalPtrAddr(r_table));
     return table;
 }
+
+std::vector<Table*> get_tables(SEXP r_data);
 
 #endif /* EVIL_DATA_H */

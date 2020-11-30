@@ -43,7 +43,7 @@ trace_code <- function(context, code, envir=parent.frame(), quote=TRUE) {
 
     result <- instrumentr::trace_code(context, code, envir, quote = FALSE)
     data <- instrumentr::get_data(context)
-    tables <- c("calls" = data$calls, "program" = data$program, .Call(C_get_tables, data))
+    tables <- c("calls" = data$calls, "program" = data$program, .Call(C_get_tables_as_data_frames, data))
     list(result = result, tables = tables)
 }
 

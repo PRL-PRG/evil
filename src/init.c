@@ -15,8 +15,9 @@ SEXP PackageSymbol = NULL;
 SEXP CharacterDotOnlySymbol = NULL;
 SEXP WhichSymbol = NULL;
 SEXP NSymbol = NULL;
-SEXP ReflectionTableSymbol = NULL;
-SEXP CodeTableSymbol = NULL;
+SEXP FileSymbol = NULL;
+SEXP LocalSymbol = NULL;
+SEXP TablesSymbol = NULL;
 
 static const R_CallMethodDef callMethods[] = {
     {"sexp_typeof", (DL_FUNC) &sexp_typeof, 1},
@@ -32,7 +33,7 @@ static const R_CallMethodDef callMethods[] = {
     {"get_variable_removal_callback", (DL_FUNC) &r_get_variable_removal_callback, 0},
     {"get_variable_lookup_callback", (DL_FUNC) &r_get_variable_lookup_callback, 0},
     {"initialize_tables", (DL_FUNC) &r_initialize_tables, 1},
-    {"get_tables", (DL_FUNC) &r_get_tables, 1},
+    {"get_tables_as_data_frames", (DL_FUNC) &r_get_tables_as_data_frames, 1},
     {NULL, NULL, 0}
 };
 
@@ -48,6 +49,7 @@ void R_init_evil(DllInfo* dll) {
     CharacterDotOnlySymbol = Rf_install("character.only");
     WhichSymbol = Rf_install("which");
     NSymbol = Rf_install("n");
-    ReflectionTableSymbol = Rf_install("reflection_table");
-    CodeTableSymbol = Rf_install("code_table");
+    FileSymbol = Rf_install("file");
+    LocalSymbol = Rf_install("local");
+    TablesSymbol = Rf_install("tables");
 }

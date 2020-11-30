@@ -3,6 +3,8 @@
 
 #include <Rincludes.h>
 
+extern const char* MissingStringValue;
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -10,9 +12,6 @@ extern "C" {
 SEXP sexp_typeof(SEXP x);
 SEXP mark_parsed_expression(SEXP x, SEXP parse_fun_name);
 SEXP r_get_ast_size(SEXP ast);
-SEXP r_get_argument(SEXP r_call, SEXP r_rho, SEXP r_argument_name, int evaluate);
-int get_argument_as_integer(SEXP r_call, SEXP r_rho, SEXP r_argument_name);
-int is_call_to(const char* function_name, SEXP r_call);
 
 #ifdef __cplusplus
 }

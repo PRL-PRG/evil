@@ -1,7 +1,7 @@
 #include "callbacks.h"
 #include "r_init.h"
 #include "data.h"
-#include "r_utilities.h"
+
 
 
 std::unordered_map<SEXP, int> environments_;
@@ -243,25 +243,16 @@ void closure_call_entry_callback(ContextSPtr context,
                                  SEXP r_args,
                                  SEXP r_rho) {
     SEXP r_data = context->get_data();
-    ReflectionTable* reflection_table = get_table<ReflectionTable>(r_data);
-    CodeTable* code_table = get_table<CodeTable>(r_data);
     SEXP r_counters = Rf_findVarInFrame(r_data, CountersSymbol);
     SEXP r_counter = VECTOR_ELT(r_counters, Rf_length(r_counters) - 1);
     int call_id = counter_get_call_id(r_counter);
     int eval_frame_depth = counter_get_eval_frame_depth(r_counter);
 
+    CallState call_state(call_id, r_call, r_rho, eval_frame_depth);
 
-    CodeTable::inspect_and_record(code_table,
-                                      r_call,
-                                      r_rho,
-                                      call_id);
-
-    ReflectionTable::inspect_and_record(reflection_table,
-                                            r_call,
-                                            r_rho,
-                                            call_id,
-                                            eval_frame_depth,
-                                            dyntrace_get_frame_depth());
+    for(Table* table : get_tables(r_data)) {
+        table -> inspect_and_record(call_state);
+    }
 
     increment_counters(context,
                        counter_increment_direct_closure,
