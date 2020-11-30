@@ -82,6 +82,12 @@ trace_eval_entry_callback <- function(context, application, package, func, call)
 
     eval_call_env <- get_environment(call)
 
+    ## WARN: The way eval works, it will first force this argument and then eval
+    ## the result. To make sure we only capture events from evaluation of the
+    ## result, we force the argument here manually.
+
+    force(eval_call_env$expr)
+
     eval_env <- get("envir", envir = eval_call_env)
 
     eval_frame_depth <- get_frame_position(call)
