@@ -7,16 +7,17 @@ trace_eval <- function(code, ...) {
 #' @importFrom methods is
 #' @importFrom instrumentr set_application_load_callback set_application_unload_callback
 #' @importFrom instrumentr set_data get_data trace_code get_frame_position
-trace_code <- function(context, code, envir=parent.frame(), quote=TRUE, packages) {
+trace_code <- function(context,
+                       code,
+                       envir = parent.frame(),
+                       quote=TRUE,
+                       packages = readLines(system.file("extdata", "corpus.txt", package = "evil"))) {
+
     if (!is(context, "instrumentr_context")) {
         stop("context is not a valid instrumentr context")
     }
 
     message("*** keep.source: ", getOption("keep.source"))
-
-    if (missing(packages)) {
-        packages <- readLines(system.file("extdata", "corpus.txt", package="evil"))
-    }
 
     if (typeof(packages) != "character") {
         stop("expected a character vector of package names for argument 'package'")
