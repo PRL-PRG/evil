@@ -51,22 +51,6 @@ trace_code <- function(context, code, envir=parent.frame(), quote=TRUE) {
 }
 
 #' @export
-trace_file <- function(context, file) {
-                                        # TODO - one has to create a new file, wrap and run
-                                        # in an external process
-    code <- parse(file, keep.source=TRUE)
-    trace_code(context, code, quote=FALSE)
-}
-
-                                        # TODO: clean up the next two functions
-
-#' @export
-trace_to_file <- function(path, context, quote, code) {
-    traces <- trace_code(code, context=context, quote=quote)
-    write_traces(traces, path)
-}
-
-#' @export
 #' @importFrom instrumentr is_error get_error get_source get_message get_call
 #' @importFrom fst write_fst
 #' @importFrom tools file_path_sans_ext
@@ -104,4 +88,12 @@ write_traces <- function(traces, data_dir) {
     }
 
     invisible(traces)
+}
+
+#' @export
+trace_to_file <- function(data_dir, code) {
+  write_traces(
+    trace_eval(code=code, quote=TRUE),
+    data_dir=data_dir
+  )
 }
