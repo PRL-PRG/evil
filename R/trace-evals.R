@@ -80,6 +80,14 @@ trace_eval_entry_callback <- function(context, application, package, func, call)
         return()
     }
 
+    ## ignore eval if coming from a package outside of package list
+    caller <- get_caller(call)
+    caller_package <- caller$package_name
+    data <- get_data(context)
+    if(!(caller_package %in% data$packages)) {
+        return()
+    }
+
     eval_call_env <- get_environment(call)
 
     ## WARN: The way eval works, it will first force this argument and then eval
@@ -132,6 +140,17 @@ trace_eval_callback <- function(context, application, package, func, call) {
     eval_call_srcref <- get_call_srcref(eval_call_expression)
     eval_call_frame_position <- get_frame_position(call)
 
+    caller <- get_caller(call)
+    caller_package <- caller$package_name
+    data <- get_data(context)
+    if(!(caller_package %in% data$packages)) {
+        return()
+    }
+    caller_expression <- caller$call_expression
+    caller_function <- caller$function_name
+    caller_srcref <- get_call_srcref(caller_expression)
+
+
     application_frame_position <- get_frame_position(application)
 
     ## eval, evalq and local use `envir` parameter name to denote environment
@@ -151,11 +170,6 @@ trace_eval_callback <- function(context, application, package, func, call) {
     }
     enclos_env <- eval_call_env$enclos
 
-    caller <- get_caller(call)
-    caller_expression <- caller$call_expression
-    caller_package <- caller$package_name
-    caller_function <- caller$function_name
-    caller_srcref <- get_call_srcref(caller_expression)
 
     envir_from_arg <- NA
     if (is.environment(eval_env)) {
