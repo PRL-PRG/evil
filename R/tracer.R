@@ -1,6 +1,6 @@
-#' @export
-#' @importFrom instrumentr create_context
-eval_tracer <- function() {
+
+#' @importFrom instrumentr create_context set_data
+create_tracer <- function(packages) {
     functions <- c(
         "base::eval",
         "base::evalq",
@@ -12,9 +12,11 @@ eval_tracer <- function() {
         "base::str2lang"
     )
 
-    create_context(
-        call_entry_callback = trace_eval_entry_callback,
-        call_exit_callback = trace_eval_callback,
+    context <- create_context(
+        application_load_callback = application_load_callback,
+        application_unload_callback = application_unload_callback,
+        call_entry_callback = call_entry_callback,
+        call_exit_callback = call_exit_callback,
         builtin_call_entry_callback = .Call(C_get_builtin_call_entry_callback),
         special_call_entry_callback = .Call(C_get_special_call_entry_callback),
         closure_call_entry_callback = .Call(C_get_closure_call_entry_callback),
@@ -26,53 +28,50 @@ eval_tracer <- function() {
         variable_lookup_callback = .Call(C_get_variable_lookup_callback),
         functions = functions
     )
+
+    data <- new.env(parent = emptyenv())
+    data$packages <- packages
+    data$counters <- list()
+    .Call(C_initialize_tables, data)
+    data$calls <- new.env(parent = emptyenv())
+    set_data(context, data)
+
+    context
 }
 
-create_counters <- function(call_id, eval_env, eval_frame_depth) {
-    list(call_id = call_id,
+#' @importFrom instrumentr get_data get_environment
+#' @importFrom instrumentr get_id get_frame_position
+application_load_callback <- function(context, application) {
 
-         eval_env = eval_env,
-
-         direct_builtin = 0L,
-         indirect_builtin = 0L,
-
-         direct_special = 0L,
-         indirect_special = 0L,
-
-         direct_closure = 0L,
-         indirect_closure = 0L,
-
-         direct_interpreter_eval = 0L,
-         indirect_interpreter_eval = 0L,
-
-         direct_c_call = 0L,
-         indirect_c_call = 0L,
-
-         direct_allocation = 0L,
-         indirect_allocation = 0L,
-
-         direct_writes = 0L,
-         indirect_writes = 0L,
-
-         library_packages = "",
-
-         require_packages = "",
-
-         eval_frame_depth = as.integer(eval_frame_depth))
+    ## NOTE: this set of counters is the global count of all operations.
+    ##       new entries on top of this will be specific to eval calls.
+    data <- get_data(context)
+    push_counters(data,
+                  get_id(application),
+                  get_environment(application),
+                  get_frame_position(application))
 }
 
-push_counters <- function(context_data, call_id, eval_env, eval_frame_depth) {
-    context_data$counters[[length(context_data$counters) + 1]] <- create_counters(call_id, eval_env, eval_frame_depth)
+#' @importFrom instrumentr get_data
+application_unload_callback <- function(context, application) {
+    data <- get_data(context)
+    calls <- do.call(rbind, as.list(data$calls))
+    data$calls <- NULL
+    ## at this point, there should be only one frame in the counter stack
+    ## because other frames are popped out as evals exit.
+    counters <- data$counters[[1]]
+    data$counters <- NULL
+    counters$call_id <- NULL
+    counters$eval_env <- NULL
+    program <- as.data.frame(counters)
+
+    data$tables <- c(list(calls = calls, program = program),
+                     .Call(C_get_tables_as_data_frames, data))
 }
 
-pop_counters <- function(context_data) {
-    counters <- context_data$counters[[length(context_data$counters)]]
-    context_data$counters[[length(context_data$counters)]] <- NULL
-    counters
-}
-
-#' @importFrom instrumentr get_frame_position
-trace_eval_entry_callback <- function(context, application, package, func, call) {
+#' @importFrom instrumentr get_frame_position get_name get_caller
+#' @importFrom instrumentr get_data get_environment get_id
+call_entry_callback <- function(context, application, package, func, call) {
 
     call_name <- get_name(func)
 
@@ -101,22 +100,7 @@ trace_eval_entry_callback <- function(context, application, package, func, call)
     eval_frame_depth <- get_frame_position(call)
 
     push_counters(get_data(context), get_id(call), eval_env, eval_frame_depth)
-
-    ## NOTE: logic for computing eval.parent environments
-###n <- get("n", envir = eval_call_env)
-###parents <- sys.parents()
-###parent_index <- eval_call_frame_position
-###while(n > 0 && parent_index != 0) {
-###    parent_index <- parents[parent_index]
-###    n <- n - 1
-###}
-###if (parent_index == 0) {
-###    globalenv()
-###} else {
-###    sys.frames()[[parent_index]]
-###}
 }
-
 
 #' @importFrom instrumentr get_data set_data get_id get_name get_parameters
 #' @importFrom instrumentr get_arguments get_position get_expression
@@ -124,7 +108,7 @@ trace_eval_entry_callback <- function(context, application, package, func, call)
 #' @importFrom instrumentr get_caller is_successful
 #' @importFrom digest sha1
 #' @importFrom purrr detect_index discard map_chr
-trace_eval_callback <- function(context, application, package, func, call) {
+call_exit_callback <- function(context, application, package, func, call) {
     call_name <- get_name(func)
     if (call_name %in% c("parse", "str2expression", "str2lang")) {
         expression <- get_expression(call)
