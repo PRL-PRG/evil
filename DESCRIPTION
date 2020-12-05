@@ -13,7 +13,6 @@ LazyData: true
 Imports:
     instrumentr,
     digest,
-    purrr,
     methods,
     utils
 Remotes:

@@ -107,7 +107,6 @@ call_entry_callback <- function(context, application, package, func, call) {
 #' @importFrom instrumentr is_evaluated get_frame_position get_environment
 #' @importFrom instrumentr get_caller is_successful
 #' @importFrom digest sha1
-#' @importFrom purrr detect_index discard map_chr
 call_exit_callback <- function(context, application, package, func, call) {
     call_name <- get_name(func)
     if (call_name %in% c("parse", "str2expression", "str2lang")) {
@@ -196,30 +195,46 @@ call_exit_callback <- function(context, application, package, func, call) {
     ##   caller_stack <- caller_stack[1:caller_stack_instrumentr_idx-1]
     ## }
 
-    caller_stack <- purrr::discard(
-                               caller_stack,
-                               ~ is.symbol(.[[1]]) && as.character(.[[1]]) %in% c(
-                                                                                    "tryCatch",
-                                                                                    "tryCatchList",
-                                                                                    "tryCatchOne",
-                                                                                    "doTryCatch",
-                                                                                    "doWithOneRestart",
-                                                                                    "withRestarts",
-                                                                                    "withOneRestart",
-                                                                                    "withCallingHandlers"
-                                                                                )
-                           )
+    caller_stack <- Filter(
+        function(frame) {
+            result <- is.symbol(frame[[1]]) && as.character(frame[[1]]) %in% c(
+                                                                                 "tryCatch",
+                                                                                 "tryCatchList",
+                                                                                 "tryCatchOne",
+                                                                                 "doTryCatch",
+                                                                                 "doWithOneRestart",
+                                                                                 "withRestarts",
+                                                                                 "withOneRestart",
+                                                                                 "withCallingHandlers"
+                                                                             )
+            !result
+        },
+        caller_stack)
 
     caller_stack_expression <- paste(
-        map_chr(caller_stack, ~expr_to_string(., max_length=80, one_line=TRUE)),
+        unlist(
+            unname(
+                Map(function(frame) expr_to_string(frame, max_length=80, one_line=TRUE),
+                    caller_stack)
+            )
+        ),
         collapse="\n"
     )
+
+
+
     caller_stack_expression_raw <- paste(
-        map_chr(caller_stack, ~expr_to_string(., max_length=80, raw=TRUE, one_line=TRUE)),
+        unlist(
+            unname(
+                Map(function(frame) expr_to_string(frame, max_length=80, raw=TRUE, one_line=TRUE),
+                    caller_stack)
+            )
+        ),
         collapse="\n"
     )
+
     caller_stack_expression_srcref <- paste(
-        map_chr(caller_stack, get_call_srcref),
+        unlist(unname(Map(get_call_srcref, caller_stack))),
         collapse="\n"
     )
     ## }
