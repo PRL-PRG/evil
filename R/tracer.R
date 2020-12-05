@@ -65,7 +65,9 @@ application_unload_callback <- function(context, application) {
     counters$eval_env <- NULL
     program <- as.data.frame(counters)
 
-    data$tables <- c(list(calls = calls, program = program),
+    dependencies <- data.frame(package = loadedNamespaces())
+
+    data$tables <- c(list(program = program, dependencies = dependencies, calls = calls),
                      .Call(C_get_tables_as_data_frames, data))
 }
 
