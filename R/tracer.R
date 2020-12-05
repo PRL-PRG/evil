@@ -47,7 +47,7 @@ application_load_callback <- function(context, application) {
     ##       new entries on top of this will be specific to eval calls.
     data <- get_data(context)
     push_counters(data,
-                  get_id(application),
+                  0,
                   get_environment(application),
                   get_frame_position(application))
 }
