@@ -95,7 +95,7 @@ get_call_srcref <- function(call) {
                             paste0(c(file, first_line, first_col, last_line, last_col),
                                    collapse = ":")
                         } else {
-                            NA
+                            NA_character_
                         }
 
     eval_call_srcref

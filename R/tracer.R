@@ -56,6 +56,13 @@ application_load_callback <- function(context, application) {
 application_unload_callback <- function(context, application) {
     data <- get_data(context)
     calls <- do.call(rbind, as.list(data$calls))
+
+    ## NOTE: if there are no eval calls, create an empty data frame
+    ## with correct number of and type of columns
+    if(is.null(calls)) {
+        calls <- create_call_row()
+    }
+
     data$calls <- NULL
     ## at this point, there should be only one frame in the counter stack
     ## because other frames are popped out as evals exit.
@@ -156,7 +163,7 @@ call_exit_callback <- function(context, application, package, func, call) {
     enclos_env <- eval_call_env$enclos
 
 
-    envir_from_arg <- NA
+    envir_from_arg <- NA_integer_
     if (is.environment(eval_env)) {
         args_caller <- names(formals(caller$definition))
         for (arg_caller in args_caller) {
@@ -166,14 +173,14 @@ call_exit_callback <- function(context, application, package, func, call) {
                                         # (which would mean it was built with new.env probably )
                                         # or is equal to envir
             if (!is.null(arg_val) && is.environment(arg_val)) {
-                envir_from_arg <- 0
+                envir_from_arg <- 0L
                 cur_env <- eval_env
                 while (!identical(arg_val, cur_env)) {
                     if (identical(cur_env, emptyenv())) {
-                        envir_from_arg <- NA
+                        envir_from_arg <- NA_integer_
                         break
                     }
-                    envir_from_arg <- envir_from_arg + 1
+                    envir_from_arg <- envir_from_arg + 1L
                     cur_env <- parent.env(cur_env)
                 }
             }
@@ -310,14 +317,14 @@ call_exit_callback <- function(context, application, package, func, call) {
             s <- expr_to_string(e)
 
             list(
-                text=if (is.language(e)) s else NA,
+                text=if (is.language(e)) s else NA_character_,
                 hash=sha1(s),
                 length=nchar(s),
                 type=sexp_typeof(e),
                 tag=sexp_typeof(e, tag=TRUE)
             )
         } else {
-            list(text=NA, hash=NA, length=NA, type=NA)
+            list(text=NA_character_, hash=NA_character_, length=NA_integer_, type=NA_character_)
         }
     }
 
@@ -329,11 +336,11 @@ call_exit_callback <- function(context, application, package, func, call) {
 
     if (is.call(expr_expression)) {
         expr_expression_function <- expr_to_string(expr_expression[[1]])
-        expr_expression_args_num <- length(expr_expression) - 1
+        expr_expression_args_num <- as.integer(length(expr_expression) - 1)
     }
 
-    expr_resolved_function <- NA
-    expr_resolved_args_num <- NA
+    expr_resolved_function <- NA_character_
+    expr_resolved_args_num <- NA_integer_
 
     if (is.call(expr_resolved)) {
         expr_resolved_function <- expr_to_string(expr_resolved[[1]])
@@ -346,7 +353,7 @@ call_exit_callback <- function(context, application, package, func, call) {
                     create_counters(eval_call_id, NULL, eval_call_frame_position)
                 }
 
-    trace <- data.frame(
+    trace <- create_call_row(
         eval_call_id,
         eval_function=call_name,
         eval_call_expression=expr_to_string(eval_call_expression),
@@ -377,7 +384,7 @@ call_exit_callback <- function(context, application, package, func, call) {
         expr_resolved_type_tag  = expr_resolved_repr$tag,
         expr_resolved_nodes   = get_ast_size(substitute(expr_resolved)),
         expr_resolved_function,
-        expr_resolved_args_num,
+        expr_resolved_args_num = as.integer(expr_resolved_args_num),
 
         expr_parsed_expression = expr_to_string(expr_parsed_expression),
         expr_forced,
