@@ -14,8 +14,6 @@ trace_code <- function(code,
         stop("context is not a valid instrumentr context")
     }
 
-    message("*** keep.source: ", getOption("keep.source"))
-
     if (!is.null(packages) && !is.character(packages)) {
         stop("expected null or a character vector of package names for argument 'package'")
     }
