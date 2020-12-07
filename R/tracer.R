@@ -255,7 +255,7 @@ call_exit_callback <- function(context, application, package, func, call) {
                                         # eval.parent: expr, n
                                         # local: expr, envir
     params <- get_parameters(call)
-    names(params) <- map_chr(params, get_name)
+    names(params) <- unlist(unname(Map(get_name, params)))
 
                                         # all evals define expr
     arg <- get_arguments(params$expr)[[1]]
