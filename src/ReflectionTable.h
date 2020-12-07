@@ -23,7 +23,7 @@ class ReflectionTable: public Table {
         int accessed_frame_depth =
             reverse_frame_depth == NA_INTEGER
                 ? NA_INTEGER
-                : call_frame_depth - accessed_frame_depth;
+                : call_frame_depth - reverse_frame_depth;
         accessed_frame_depths_.push_back(accessed_frame_depth);
         int leak = NA_LOGICAL;
         if (eval_frame_depth != NA_INTEGER && call_frame_depth != NA_INTEGER &&
