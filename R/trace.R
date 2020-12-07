@@ -16,8 +16,8 @@ trace_code <- function(code,
 
     message("*** keep.source: ", getOption("keep.source"))
 
-    if (typeof(packages) != "character") {
-        stop("expected a character vector of package names for argument 'package'")
+    if (!is.null(packages) && !is.character(packages)) {
+        stop("expected null or a character vector of package names for argument 'package'")
     }
 
     if (quote) {

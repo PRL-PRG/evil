@@ -92,7 +92,7 @@ call_entry_callback <- function(context, application, package, func, call) {
     caller <- get_caller(call)
     caller_package <- caller$package_name
     data <- get_data(context)
-    if(!(caller_package %in% data$packages)) {
+    if(!is.null(data$packages) && !(caller_package %in% data$packages)) {
         return()
     }
 
@@ -135,7 +135,7 @@ call_exit_callback <- function(context, application, package, func, call) {
     caller <- get_caller(call)
     caller_package <- caller$package_name
     data <- get_data(context)
-    if(!(caller_package %in% data$packages)) {
+    if(!is.null(data$packages) && !(caller_package %in% data$packages)) {
         return()
     }
     caller_expression <- caller$call_expression
