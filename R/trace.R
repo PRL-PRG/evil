@@ -78,7 +78,11 @@ trace_to_file <- function(code,
                           quote = TRUE,
                           packages = read_system_file("corpus.txt"),
                           writer) {
-    traces <- trace_code(code, envir, quote, packages)
-    write_trace(traces, writer)
 
+    if (quote) {
+        code <- substitute(code)
+    }
+
+    traces <- trace_code(code, envir, quote = FALSE, packages)
+    write_trace(traces, writer)
 }
