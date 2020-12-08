@@ -20,10 +20,9 @@ class ReflectionTable: public Table {
         functions_.push_back(function);
         eval_frame_depths_.push_back(eval_frame_depth);
         call_frame_depths_.push_back(call_frame_depth);
-        int accessed_frame_depth =
-            reverse_frame_depth == NA_INTEGER
-                ? NA_INTEGER
-                : call_frame_depth - reverse_frame_depth;
+        int accessed_frame_depth = reverse_frame_depth == NA_INTEGER
+                                       ? NA_INTEGER
+                                       : call_frame_depth - reverse_frame_depth;
         accessed_frame_depths_.push_back(accessed_frame_depth);
         int leak = NA_LOGICAL;
         if (eval_frame_depth != NA_INTEGER && call_frame_depth != NA_INTEGER &&
@@ -34,6 +33,9 @@ class ReflectionTable: public Table {
     }
 
     void inspect_and_record(CallState& call_state) override {
+        if (call_state.get_event() != Event::ClosureCallEntry) {
+            return;
+        }
         SEXP r_call = call_state.get_call();
         SEXP r_rho = call_state.get_rho();
         int eval_call_id = call_state.get_eval_call_id();

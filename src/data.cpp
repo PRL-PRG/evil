@@ -1,5 +1,8 @@
 #include "r_data.h"
 #include "data.h"
+#include "ReflectionTable.h"
+#include "CodeTable.h"
+#include "SideEffectTable.h"
 
 Table* unwrap_table(SEXP r_table) {
     return (Table*) (R_ExternalPtrAddr(r_table));
@@ -29,7 +32,8 @@ SEXP create_table() {
 SEXP r_initialize_tables(SEXP r_data) {
     std::vector<std::pair<SEXP, SEXP>> tables = {
         {ReflectionTable::get_name(), create_table<ReflectionTable>()},
-        {CodeTable::get_name(), create_table<CodeTable>()}};
+        {CodeTable::get_name(), create_table<CodeTable>()},
+        {SideEffectTable::get_name(), create_table<SideEffectTable>()}};
 
     int count = tables.size();
 

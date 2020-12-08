@@ -2,8 +2,6 @@
 #include "r_init.h"
 #include "data.h"
 
-
-
 std::unordered_map<SEXP, int> environments_;
 
 int counter_get_call_id(SEXP r_counter) {
@@ -148,6 +146,17 @@ void add_environment(ContextSPtr context, SEXP r_env) {
     environments_[r_env] = eval_call_id;
 }
 
+bool is_local_environment(int eval_call_id, SEXP r_rho) {
+    auto result = environments_.find(r_rho);
+    /* NOTE: if environment is not present in the map, then it means that it was
+     * created before all calls on the stack. Setting it to -1 will have that
+     * effect.  */
+    int environment_call_id =
+        result != environments_.end() ? result->second : -1;
+
+    return environment_call_id >= eval_call_id;
+}
+
 /*NOTE: r_variable is an extra argument that is useful for debugging, don't
  * remove it.*/
 void check_side_effect(ContextSPtr context, SEXP r_rho, SEXP r_variable) {
@@ -248,10 +257,11 @@ void closure_call_entry_callback(ContextSPtr context,
     int call_id = counter_get_call_id(r_counter);
     int eval_frame_depth = counter_get_eval_frame_depth(r_counter);
 
-    CallState call_state(call_id, r_call, r_rho, eval_frame_depth);
+    CallState call_state =
+        CallState::closure_call_entry(call_id, r_call, r_rho, eval_frame_depth);
 
-    for(Table* table : get_tables(r_data)) {
-        table -> inspect_and_record(call_state);
+    for (Table* table: get_tables(r_data)) {
+        table->inspect_and_record(call_state);
     }
 
     increment_counters(context,
@@ -285,6 +295,18 @@ void variable_definition_callback(ContextSPtr context,
                                   SEXP r_variable,
                                   SEXP r_value,
                                   SEXP r_rho) {
+    SEXP r_data = context->get_data();
+    SEXP r_counters = Rf_findVarInFrame(r_data, CountersSymbol);
+    SEXP r_counter = VECTOR_ELT(r_counters, Rf_length(r_counters) - 1);
+    int call_id = counter_get_call_id(r_counter);
+
+    CallState call_state =
+        CallState::variable_definition(call_id, r_variable, r_value, r_rho);
+
+    for (Table* table: get_tables(r_data)) {
+        table->inspect_and_record(call_state);
+    }
+
     check_side_effect(context, r_rho, r_variable);
 }
 
@@ -293,6 +315,18 @@ void variable_assignment_callback(ContextSPtr context,
                                   SEXP r_variable,
                                   SEXP r_value,
                                   SEXP r_rho) {
+    SEXP r_data = context->get_data();
+    SEXP r_counters = Rf_findVarInFrame(r_data, CountersSymbol);
+    SEXP r_counter = VECTOR_ELT(r_counters, Rf_length(r_counters) - 1);
+    int call_id = counter_get_call_id(r_counter);
+
+    CallState call_state =
+        CallState::variable_assignment(call_id, r_variable, r_value, r_rho);
+
+    for (Table* table: get_tables(r_data)) {
+        table->inspect_and_record(call_state);
+    }
+
     check_side_effect(context, r_rho, r_variable);
 }
 
@@ -300,6 +334,18 @@ void variable_removal_callback(ContextSPtr context,
                                ApplicationSPtr application,
                                SEXP r_variable,
                                SEXP r_rho) {
+    SEXP r_data = context->get_data();
+    SEXP r_counters = Rf_findVarInFrame(r_data, CountersSymbol);
+    SEXP r_counter = VECTOR_ELT(r_counters, Rf_length(r_counters) - 1);
+    int call_id = counter_get_call_id(r_counter);
+
+    CallState call_state =
+        CallState::variable_removal(call_id, r_variable, r_rho);
+
+    for (Table* table: get_tables(r_data)) {
+        table->inspect_and_record(call_state);
+    }
+
     check_side_effect(context, r_rho, r_variable);
 }
 
@@ -308,5 +354,17 @@ void variable_lookup_callback(ContextSPtr context,
                               SEXP r_variable,
                               SEXP r_value,
                               SEXP r_rho) {
+    SEXP r_data = context->get_data();
+    SEXP r_counters = Rf_findVarInFrame(r_data, CountersSymbol);
+    SEXP r_counter = VECTOR_ELT(r_counters, Rf_length(r_counters) - 1);
+    int call_id = counter_get_call_id(r_counter);
+
+    CallState call_state =
+        CallState::variable_lookup(call_id, r_variable, r_value, r_rho);
+
+    for (Table* table: get_tables(r_data)) {
+        table->inspect_and_record(call_state);
+    }
+
     // std::cerr << "lookup" << std::endl;
 }

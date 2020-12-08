@@ -11,8 +11,10 @@ class CodeTable: public Table {
     CodeTable(): Table() {
     }
 
-    void
-    record_call(int call_id, const std::string& function, const std::string& description, int local = 0) {
+    void record_call(int call_id,
+                     const std::string& function,
+                     const std::string& description,
+                     int local = 0) {
         call_ids_.push_back(call_id);
         functions_.push_back(function);
         descriptions_.push_back(description);
@@ -20,6 +22,10 @@ class CodeTable: public Table {
     }
 
     void inspect_and_record(CallState& call_state) override final {
+        if (call_state.get_event() != Event::ClosureCallEntry) {
+            return;
+        }
+
         SEXP r_call = call_state.get_call();
         SEXP r_rho = call_state.get_rho();
         int eval_call_id = call_state.get_eval_call_id();
@@ -31,11 +37,13 @@ class CodeTable: public Table {
             std::string package_name = get_package_name_(r_call, r_rho);
             record_call(eval_call_id, "require", package_name);
         } else if (call_state.is_call_to("source")) {
-            std::string file_path = call_state.get_character_argument(FileSymbol);
+            std::string file_path =
+                call_state.get_character_argument(FileSymbol);
             int local = call_state.get_logical_argument(LocalSymbol);
             record_call(eval_call_id, "source", file_path, local);
         } else if (call_state.is_call_to("sys.source")) {
-            std::string file_path = call_state.get_character_argument(FileSymbol);
+            std::string file_path =
+                call_state.get_character_argument(FileSymbol);
             record_call(eval_call_id, "sys.source", file_path);
         }
     }

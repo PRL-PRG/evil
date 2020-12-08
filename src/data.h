@@ -2,9 +2,8 @@
 #define EVIL_DATA_H
 
 #include <R.h>
-#include "ReflectionTable.h"
-#include "CodeTable.h"
 #include <vector>
+#include "Table.h"
 
 template<typename T>
 T* get_table(SEXP r_data) {
