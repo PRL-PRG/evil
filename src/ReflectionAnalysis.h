@@ -1,14 +1,14 @@
-#ifndef EVIL_REFLECTION_TABLE_H
-#define EVIL_REFLECTION_TABLE_H
+#ifndef EVIL_REFLECTION_ANALYSIS_H
+#define EVIL_REFLECTION_ANALYSIS_H
 
 #include <vector>
 #include <string>
 #include "r_init.h"
-#include "Table.h"
+#include "Analysis.h"
 
-class ReflectionTable: public Table {
+class ReflectionAnalysis: public Analysis {
   public:
-    ReflectionTable(): Table() {
+    ReflectionAnalysis(): Analysis() {
     }
 
     void record_call(int eval_call_id,
@@ -32,7 +32,7 @@ class ReflectionTable: public Table {
         leaks_.push_back(leak);
     }
 
-    void inspect_and_record(CallState& call_state) override {
+    void analyze(CallState& call_state) override {
         if (call_state.get_event() != Event::ClosureCallEntry) {
             return;
         }
@@ -82,7 +82,7 @@ class ReflectionTable: public Table {
         }
     }
 
-    SEXP to_data_frame() {
+    std::vector<table_t> get_tables() override {
         SEXP r_data_frame = create_data_frame(
             {{"eval_call_id", PROTECT(create_integer_vector(eval_call_ids_))},
              {"function", PROTECT(create_character_vector(functions_))},
@@ -96,10 +96,8 @@ class ReflectionTable: public Table {
 
         UNPROTECT(6);
 
-        return r_data_frame;
+        return {{"reflection", r_data_frame}};
     }
-
-    static SEXP get_name();
 
   private:
     std::vector<int> eval_call_ids_;
@@ -110,4 +108,4 @@ class ReflectionTable: public Table {
     std::vector<int> leaks_;
 };
 
-#endif /* EVIL_REFLECTION_TABLE_H */
+#endif /* EVIL_REFLECTION_ANALYSIS_H */

@@ -32,7 +32,7 @@ create_tracer <- function(packages) {
     data <- new.env(parent = emptyenv())
     data$packages <- packages
     data$counters <- list()
-    .Call(C_initialize_tables, data)
+    .Call(C_initialize_analyses, data)
     data$calls <- new.env(parent = emptyenv())
     set_data(context, data)
 
@@ -74,8 +74,10 @@ application_unload_callback <- function(context, application) {
 
     dependencies <- data.frame(package = loadedNamespaces())
 
-    data$tables <- c(list(program = program, dependencies = dependencies, calls = calls),
-                     .Call(C_get_tables_as_data_frames, data))
+    data$tables <- c(list(program = program,
+                          dependencies = dependencies,
+                          calls = calls),
+                     .Call(C_get_tables, data))
 }
 
 #' @importFrom instrumentr get_frame_position get_name get_caller

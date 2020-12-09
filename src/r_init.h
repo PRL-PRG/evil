@@ -11,6 +11,6 @@ extern SEXP WhichSymbol;
 extern SEXP NSymbol;
 extern SEXP FileSymbol;
 extern SEXP LocalSymbol;
-extern SEXP TablesSymbol;
+extern SEXP AnalysesSymbol;
 
 #endif /* EVIL_R_INIT_H */

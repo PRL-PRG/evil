@@ -1,23 +1,24 @@
-#ifndef EVIL_SIDE_EFFECT_TABLE_H
-#define EVIL_SIDE_EFFECT_TABLE_H
+#ifndef EVIL_SIDE_EFFECT_ANALYSIS_H
+#define EVIL_SIDE_EFFECT_ANALYSIS_H
 
 #include <vector>
 #include <string>
 #include "r_init.h"
-#include "Table.h"
+#include "Analysis.h"
 
 bool is_local_environment(int eval_call_id, SEXP r_rho);
 
-class SideEffectTable: public Table {
+class SideEffectAnalysis: public Analysis {
   public:
-    SideEffectTable(): Table() {
+    SideEffectAnalysis(): Analysis() {
     }
 
-    void record_call(int eval_call_id,
-                     const std::string& category,
-                     const char* variable,
-                     int local = NA_LOGICAL,
-                     const std::string& environment_class = MissingStringValue) {
+    void
+    record_call(int eval_call_id,
+                const std::string& category,
+                const char* variable,
+                int local = NA_LOGICAL,
+                const std::string& environment_class = MissingStringValue) {
         eval_call_ids_.push_back(eval_call_id);
         category_.push_back(category);
         variable_.push_back(variable);
@@ -25,13 +26,12 @@ class SideEffectTable: public Table {
         environment_class_.push_back(environment_class);
     }
 
-    void inspect_and_record(CallState& call_state) override {
+    void analyze(CallState& call_state) override {
         Event event = call_state.get_event();
 
         if (event != Event::VariableAssignment &&
             event != Event::VariableDefinition &&
-            event != Event::VariableLookup &&
-            event != Event::VariableRemoval) {
+            event != Event::VariableLookup && event != Event::VariableRemoval) {
             return;
         }
 
@@ -48,7 +48,7 @@ class SideEffectTable: public Table {
                     environment_class);
     }
 
-    SEXP to_data_frame() {
+    std::vector<table_t> get_tables() override {
         SEXP r_data_frame = create_data_frame(
             {{"eval_call_id", PROTECT(create_integer_vector(eval_call_ids_))},
              {"category", PROTECT(create_character_vector(category_))},
@@ -59,10 +59,8 @@ class SideEffectTable: public Table {
 
         UNPROTECT(5);
 
-        return r_data_frame;
+        return {{"side_effect", r_data_frame}};
     }
-
-    static SEXP get_name();
 
   private:
     std::vector<int> eval_call_ids_;
@@ -80,7 +78,7 @@ class SideEffectTable: public Table {
             return "base";
         }
 
-        if(R_IsPackageEnv(r_rho)) {
+        if (R_IsPackageEnv(r_rho)) {
             SEXP r_name = R_PackageEnvName(r_rho);
             const char* name = CHAR(STRING_ELT(r_name, 0));
             return std::string(name + strlen("package:"));
@@ -90,4 +88,4 @@ class SideEffectTable: public Table {
     }
 };
 
-#endif /* EVIL_SIDE_EFFECT_TABLE_H */
+#endif /* EVIL_SIDE_EFFECT_ANALYSIS_H */

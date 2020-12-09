@@ -1,14 +1,14 @@
-#ifndef EVIL_CODE_TABLE_H
-#define EVIL_CODE_TABLE_H
+#ifndef EVIL_CODE_ANALYSIS_H
+#define EVIL_CODE_ANALYSIS_H
 
 #include <vector>
 #include <string>
 #include "r_init.h"
-#include "Table.h"
+#include "Analysis.h"
 
-class CodeTable: public Table {
+class CodeAnalysis: public Analysis {
   public:
-    CodeTable(): Table() {
+    CodeAnalysis(): Analysis() {
     }
 
     void record_call(int call_id,
@@ -21,7 +21,7 @@ class CodeTable: public Table {
         locals_.push_back(local);
     }
 
-    void inspect_and_record(CallState& call_state) override final {
+    void analyze(CallState& call_state) override final {
         if (call_state.get_event() != Event::ClosureCallEntry) {
             return;
         }
@@ -48,7 +48,7 @@ class CodeTable: public Table {
         }
     }
 
-    SEXP to_data_frame() override {
+    std::vector<table_t> get_tables() override {
         SEXP r_data_frame = create_data_frame(
             {{"call_id", PROTECT(create_integer_vector(call_ids_))},
              {"function", PROTECT(create_character_vector(functions_))},
@@ -57,10 +57,8 @@ class CodeTable: public Table {
 
         UNPROTECT(4);
 
-        return r_data_frame;
+        return {{"code", r_data_frame}};
     }
-
-    static SEXP get_name();
 
   private:
     std::vector<int> call_ids_;
@@ -102,4 +100,4 @@ class CodeTable: public Table {
     }
 };
 
-#endif /* EVIL_CODE_TABLE_H */
+#endif /* EVIL_CODE_ANALYSIS_H */

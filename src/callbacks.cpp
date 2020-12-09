@@ -260,8 +260,8 @@ void closure_call_entry_callback(ContextSPtr context,
     CallState call_state =
         CallState::closure_call_entry(call_id, r_call, r_rho, eval_frame_depth);
 
-    for (Table* table: get_tables(r_data)) {
-        table->inspect_and_record(call_state);
+    for (Analysis* analysis: get_analyses(r_data)) {
+        analysis->analyze(call_state);
     }
 
     increment_counters(context,
@@ -303,8 +303,8 @@ void variable_definition_callback(ContextSPtr context,
     CallState call_state =
         CallState::variable_definition(call_id, r_variable, r_value, r_rho);
 
-    for (Table* table: get_tables(r_data)) {
-        table->inspect_and_record(call_state);
+    for (Analysis* analysis: get_analyses(r_data)) {
+        analysis->analyze(call_state);
     }
 
     check_side_effect(context, r_rho, r_variable);
@@ -323,8 +323,8 @@ void variable_assignment_callback(ContextSPtr context,
     CallState call_state =
         CallState::variable_assignment(call_id, r_variable, r_value, r_rho);
 
-    for (Table* table: get_tables(r_data)) {
-        table->inspect_and_record(call_state);
+    for (Analysis* analysis: get_analyses(r_data)) {
+        analysis->analyze(call_state);
     }
 
     check_side_effect(context, r_rho, r_variable);
@@ -342,8 +342,8 @@ void variable_removal_callback(ContextSPtr context,
     CallState call_state =
         CallState::variable_removal(call_id, r_variable, r_rho);
 
-    for (Table* table: get_tables(r_data)) {
-        table->inspect_and_record(call_state);
+    for (Analysis* analysis: get_analyses(r_data)) {
+        analysis->analyze(call_state);
     }
 
     check_side_effect(context, r_rho, r_variable);
@@ -362,8 +362,8 @@ void variable_lookup_callback(ContextSPtr context,
     CallState call_state =
         CallState::variable_lookup(call_id, r_variable, r_value, r_rho);
 
-    for (Table* table: get_tables(r_data)) {
-        table->inspect_and_record(call_state);
+    for (Analysis* analysis: get_analyses(r_data)) {
+        analysis->analyze(call_state);
     }
 
     // std::cerr << "lookup" << std::endl;

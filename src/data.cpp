@@ -1,93 +1,106 @@
 #include "r_data.h"
 #include "data.h"
-#include "ReflectionTable.h"
-#include "CodeTable.h"
-#include "SideEffectTable.h"
+#include "ReflectionAnalysis.h"
+#include "CodeAnalysis.h"
+#include "SideEffectAnalysis.h"
 
-Table* unwrap_table(SEXP r_table) {
-    return (Table*) (R_ExternalPtrAddr(r_table));
+Analysis* unwrap_analysis(SEXP r_analysis) {
+    return (Analysis*) (R_ExternalPtrAddr(r_analysis));
 }
 
-void r_destroy_table(SEXP r_table) {
-    Table *table = unwrap_table(r_table);
-    if(table != NULL) {
-        delete table;
-        R_SetExternalPtrAddr(r_table, NULL);
+void r_destroy_analysis(SEXP r_analysis) {
+    Analysis* analysis = unwrap_analysis(r_analysis);
+    if (analysis != NULL) {
+        delete analysis;
+        R_SetExternalPtrAddr(r_analysis, NULL);
     }
 }
 
-SEXP wrap_table(Table* table) {
-    SEXP r_table = PROTECT(R_MakeExternalPtr(table, R_NilValue, R_NilValue));
-    R_RegisterCFinalizerEx(r_table, r_destroy_table, TRUE);
+SEXP wrap_analysis(Analysis* analysis) {
+    SEXP r_analysis =
+        PROTECT(R_MakeExternalPtr(analysis, R_NilValue, R_NilValue));
+    R_RegisterCFinalizerEx(r_analysis, r_destroy_analysis, TRUE);
     UNPROTECT(1);
-    return r_table;
+    return r_analysis;
 }
 
 template <typename T>
-SEXP create_table() {
-    T* table = new T();
-    return wrap_table(table);
+SEXP create_analysis() {
+    T* analysis = new T();
+    return wrap_analysis(analysis);
 }
 
-SEXP r_initialize_tables(SEXP r_data) {
-    std::vector<std::pair<SEXP, SEXP>> tables = {
-        {ReflectionTable::get_name(), create_table<ReflectionTable>()},
-        {CodeTable::get_name(), create_table<CodeTable>()},
-        {SideEffectTable::get_name(), create_table<SideEffectTable>()}};
+SEXP r_initialize_analyses(SEXP r_data) {
+    std::vector<SEXP> analyses = {
+        create_analysis<ReflectionAnalysis>(),
+        create_analysis<CodeAnalysis>(),
+        create_analysis<SideEffectAnalysis>()};
 
-    int count = tables.size();
+    int count = analyses.size();
 
-    SEXP r_table_names = PROTECT(allocVector(STRSXP, count));
-    SEXP r_table_list = PROTECT(allocVector(VECSXP, count));
+    SEXP r_analysis_list = PROTECT(allocVector(VECSXP, count));
 
     for (int i = 0; i < count; ++i) {
-        SET_STRING_ELT(
-            r_table_names, i, mkChar(CHAR(PRINTNAME(tables[i].first))));
-        SET_VECTOR_ELT(r_table_list, i, tables[i].second);
+        SET_VECTOR_ELT(r_analysis_list, i, analyses[i]);
+    }
+
+    UNPROTECT(1);
+
+    defineVar(AnalysesSymbol, r_analysis_list, r_data);
+
+    return R_NilValue;
+}
+
+SEXP get_analysis_list(SEXP r_data) {
+    return Rf_findVarInFrame(r_data, AnalysesSymbol);
+}
+
+std::vector<Analysis*> get_analyses(SEXP r_data) {
+    SEXP r_analysis_list = get_analysis_list(r_data);
+    int analysis_count = Rf_length(r_analysis_list);
+    std::vector<Analysis*> analyses(analysis_count);
+
+    for (int i = 0; i < analysis_count; ++i) {
+        analyses[i] = unwrap_analysis(VECTOR_ELT(r_analysis_list, i));
+    }
+
+    return analyses;
+}
+
+SEXP r_get_tables(SEXP r_data) {
+    SEXP r_analysis_list = get_analysis_list(r_data);
+    std::vector<std::vector<table_t>> tables;
+    int table_count = 0;
+
+    int analysis_count = Rf_length(r_analysis_list);
+
+    for (int i = 0; i < analysis_count; ++i) {
+        SEXP r_analysis = VECTOR_ELT(r_analysis_list, i);
+        Analysis* analysis = unwrap_analysis(r_analysis);
+        auto analysis_tables = analysis->get_tables();
+        tables.push_back(analysis_tables);
+        table_count += analysis_tables.size();
+    }
+
+    SEXP r_table_list = PROTECT(allocVector(VECSXP, table_count));
+    SEXP r_table_names = PROTECT(allocVector(STRSXP, table_count));
+
+    int table_index = 0;
+    for (int analysis_index = 0; analysis_index < tables.size();
+         ++analysis_index) {
+        std::vector<table_t> analysis_tables = tables[analysis_index];
+        for (int i = 0; i < analysis_tables.size(); ++i) {
+            table_t table = analysis_tables[i];
+            SET_VECTOR_ELT(r_table_list, table_index, table.r_data_frame);
+            SET_STRING_ELT(
+                r_table_names, table_index, mkChar(table.name.c_str()));
+            ++table_index;
+        }
     }
 
     Rf_setAttrib(r_table_list, R_NamesSymbol, r_table_names);
 
     UNPROTECT(2);
 
-    defineVar(TablesSymbol, r_table_list, r_data);
-
-    return R_NilValue;
-}
-
-SEXP get_table_list(SEXP r_data) {
-    return Rf_findVarInFrame(r_data, TablesSymbol);
-}
-
-std::vector<Table*> get_tables(SEXP r_data) {
-    SEXP r_table_list = get_table_list(r_data);
-    int table_count = Rf_length(r_table_list);
-    std::vector<Table*> tables(table_count);
-
-    for (int i = 0; i < table_count; ++i) {
-        tables[i] = unwrap_table(VECTOR_ELT(r_table_list, i));
-    }
-
-    return tables;
-}
-
-SEXP r_get_tables_as_data_frames(SEXP r_data) {
-    SEXP r_table_list = get_table_list(r_data);
-    SEXP r_table_names = Rf_getAttrib(r_table_list, R_NamesSymbol);
-
-    int count = Rf_length(r_table_list);
-
-    SEXP r_result = PROTECT(allocVector(VECSXP, count));
-
-    for(int i = 0; i < count; ++i) {
-        SEXP r_table = VECTOR_ELT(r_table_list, i);
-        Table* table = unwrap_table(r_table);
-        SET_VECTOR_ELT(r_result, i, table -> to_data_frame());
-    }
-
-    Rf_setAttrib(r_result, R_NamesSymbol, r_table_names);
-
-    UNPROTECT(1);
-
-    return r_result;
+    return r_table_list;
 }

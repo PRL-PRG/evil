@@ -1,4 +1,4 @@
-#include "Table.h"
+#include "Analysis.h"
 
 SEXP create_data_frame(
     const std::vector<std::pair<std::string, SEXP>>& columns) {

@@ -17,7 +17,7 @@ SEXP WhichSymbol = NULL;
 SEXP NSymbol = NULL;
 SEXP FileSymbol = NULL;
 SEXP LocalSymbol = NULL;
-SEXP TablesSymbol = NULL;
+SEXP AnalysesSymbol = NULL;
 
 static const R_CallMethodDef callMethods[] = {
     {"sexp_typeof", (DL_FUNC) &sexp_typeof, 1},
@@ -32,8 +32,8 @@ static const R_CallMethodDef callMethods[] = {
     {"get_variable_assignment_callback", (DL_FUNC) &r_get_variable_assignment_callback, 0},
     {"get_variable_removal_callback", (DL_FUNC) &r_get_variable_removal_callback, 0},
     {"get_variable_lookup_callback", (DL_FUNC) &r_get_variable_lookup_callback, 0},
-    {"initialize_tables", (DL_FUNC) &r_initialize_tables, 1},
-    {"get_tables_as_data_frames", (DL_FUNC) &r_get_tables_as_data_frames, 1},
+    {"initialize_analyses", (DL_FUNC) &r_initialize_analyses, 1},
+    {"get_tables", (DL_FUNC) &r_get_tables, 1},
     {NULL, NULL, 0}
 };
 
@@ -51,5 +51,5 @@ void R_init_evil(DllInfo* dll) {
     NSymbol = Rf_install("n");
     FileSymbol = Rf_install("file");
     LocalSymbol = Rf_install("local");
-    TablesSymbol = Rf_install("tables");
+    AnalysesSymbol = Rf_install("tables");
 }
