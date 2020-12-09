@@ -5,20 +5,11 @@
 #include <string>
 #include "r_init.h"
 #include "Analysis.h"
+#include "CodeTable.h"
 
 class CodeAnalysis: public Analysis {
   public:
-    CodeAnalysis(): Analysis() {
-    }
-
-    void record_call(int call_id,
-                     const std::string& function,
-                     const std::string& description,
-                     int local = 0) {
-        call_ids_.push_back(call_id);
-        functions_.push_back(function);
-        descriptions_.push_back(description);
-        locals_.push_back(local);
+    CodeAnalysis(): Analysis(), code_table_(CodeTable()) {
     }
 
     void analyze(CallState& call_state) override final {
@@ -32,39 +23,28 @@ class CodeAnalysis: public Analysis {
 
         if (call_state.is_call_to("library")) {
             std::string package_name = get_package_name_(r_call, r_rho);
-            record_call(eval_call_id, "library", package_name);
+            code_table_.record(eval_call_id, "library", package_name);
         } else if (call_state.is_call_to("require")) {
             std::string package_name = get_package_name_(r_call, r_rho);
-            record_call(eval_call_id, "require", package_name);
+            code_table_.record(eval_call_id, "require", package_name);
         } else if (call_state.is_call_to("source")) {
             std::string file_path =
                 call_state.get_character_argument(FileSymbol);
             int local = call_state.get_logical_argument(LocalSymbol);
-            record_call(eval_call_id, "source", file_path, local);
+            code_table_.record(eval_call_id, "source", file_path, local);
         } else if (call_state.is_call_to("sys.source")) {
             std::string file_path =
                 call_state.get_character_argument(FileSymbol);
-            record_call(eval_call_id, "sys.source", file_path);
+            code_table_.record(eval_call_id, "sys.source", file_path);
         }
     }
 
-    std::vector<table_t> get_tables() override {
-        SEXP r_data_frame = create_data_frame(
-            {{"call_id", PROTECT(create_integer_vector(call_ids_))},
-             {"function", PROTECT(create_character_vector(functions_))},
-             {"description", PROTECT(create_character_vector(descriptions_))},
-             {"local", PROTECT(create_logical_vector(locals_))}});
-
-        UNPROTECT(4);
-
-        return {{"code", r_data_frame}};
+    std::vector<Table*> get_tables() override {
+        return {&code_table_};
     }
 
   private:
-    std::vector<int> call_ids_;
-    std::vector<std::string> functions_;
-    std::vector<std::string> descriptions_;
-    std::vector<int> locals_;
+    CodeTable code_table_;
 
     std::string get_package_name_(SEXP r_call, SEXP r_rho) {
         /* if package is not provided, then we return null  */

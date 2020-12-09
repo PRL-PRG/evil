@@ -31,10 +31,9 @@ SEXP create_analysis() {
 }
 
 SEXP r_initialize_analyses(SEXP r_data) {
-    std::vector<SEXP> analyses = {
-        create_analysis<ReflectionAnalysis>(),
-        create_analysis<CodeAnalysis>(),
-        create_analysis<SideEffectAnalysis>()};
+    std::vector<SEXP> analyses = {create_analysis<ReflectionAnalysis>(),
+                                  create_analysis<CodeAnalysis>(),
+                                  create_analysis<SideEffectAnalysis>()};
 
     int count = analyses.size();
 
@@ -69,7 +68,7 @@ std::vector<Analysis*> get_analyses(SEXP r_data) {
 
 SEXP r_get_tables(SEXP r_data) {
     SEXP r_analysis_list = get_analysis_list(r_data);
-    std::vector<std::vector<table_t>> tables;
+    std::vector<std::vector<Table*>> tables;
     int table_count = 0;
 
     int analysis_count = Rf_length(r_analysis_list);
@@ -88,12 +87,12 @@ SEXP r_get_tables(SEXP r_data) {
     int table_index = 0;
     for (int analysis_index = 0; analysis_index < tables.size();
          ++analysis_index) {
-        std::vector<table_t> analysis_tables = tables[analysis_index];
+        std::vector<Table*> analysis_tables = tables[analysis_index];
         for (int i = 0; i < analysis_tables.size(); ++i) {
-            table_t table = analysis_tables[i];
-            SET_VECTOR_ELT(r_table_list, table_index, table.r_data_frame);
+            Table* table = analysis_tables[i];
+            SET_VECTOR_ELT(r_table_list, table_index, table->as_data_frame());
             SET_STRING_ELT(
-                r_table_names, table_index, mkChar(table.name.c_str()));
+                r_table_names, table_index, mkChar(table->get_name().c_str()));
             ++table_index;
         }
     }

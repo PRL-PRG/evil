@@ -6,11 +6,7 @@
 #include <utility>
 #include "r_init.h"
 #include "CallState.h"
-
-struct table_t {
-    std::string name;
-    SEXP r_data_frame;
-};
+#include "Table.h"
 
 class Analysis {
   public:
@@ -22,7 +18,7 @@ class Analysis {
 
     virtual void analyze(CallState& call_state) = 0;
 
-    virtual std::vector<table_t> get_tables() = 0;
+    virtual std::vector<Table*> get_tables() = 0;
 };
 
 SEXP create_data_frame(

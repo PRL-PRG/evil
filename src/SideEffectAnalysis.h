@@ -5,25 +5,13 @@
 #include <string>
 #include "r_init.h"
 #include "Analysis.h"
+#include "SideEffectTable.h"
 
 bool is_local_environment(int eval_call_id, SEXP r_rho);
 
 class SideEffectAnalysis: public Analysis {
   public:
-    SideEffectAnalysis(): Analysis() {
-    }
-
-    void
-    record_call(int eval_call_id,
-                const std::string& category,
-                const char* variable,
-                int local = NA_LOGICAL,
-                const std::string& environment_class = MissingStringValue) {
-        eval_call_ids_.push_back(eval_call_id);
-        category_.push_back(category);
-        variable_.push_back(variable);
-        local_.push_back(local);
-        environment_class_.push_back(environment_class);
+    SideEffectAnalysis(): Analysis(), side_effect_table_(SideEffectTable()) {
     }
 
     void analyze(CallState& call_state) override {
@@ -41,33 +29,19 @@ class SideEffectAnalysis: public Analysis {
         int local = is_local_environment(eval_call_id, r_rho);
         std::string environment_class = get_environment_class_(r_rho);
 
-        record_call(eval_call_id,
-                    event_to_string(event),
-                    CHAR(STRING_ELT(r_variable, 0)),
-                    local,
-                    environment_class);
+        side_effect_table_.record(eval_call_id,
+                                  event_to_string(event),
+                                  CHAR(STRING_ELT(r_variable, 0)),
+                                  local,
+                                  environment_class);
     }
 
-    std::vector<table_t> get_tables() override {
-        SEXP r_data_frame = create_data_frame(
-            {{"eval_call_id", PROTECT(create_integer_vector(eval_call_ids_))},
-             {"category", PROTECT(create_character_vector(category_))},
-             {"variable", PROTECT(create_character_vector(variable_))},
-             {"local", PROTECT(create_logical_vector(local_))},
-             {"environment_class",
-              PROTECT(create_character_vector(environment_class_))}});
-
-        UNPROTECT(5);
-
-        return {{"side_effect", r_data_frame}};
+    std::vector<Table*> get_tables() override {
+        return {&side_effect_table_};
     }
 
   private:
-    std::vector<int> eval_call_ids_;
-    std::vector<std::string> category_;
-    std::vector<std::string> variable_;
-    std::vector<int> local_;
-    std::vector<std::string> environment_class_;
+    SideEffectTable side_effect_table_;
 
     std::string get_environment_class_(SEXP r_rho) {
         if (r_rho == R_GlobalEnv) {
