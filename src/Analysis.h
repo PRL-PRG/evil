@@ -5,7 +5,8 @@
 #include <string>
 #include <utility>
 #include "r_init.h"
-#include "CallState.h"
+#include "TracerState.h"
+#include "Event.h"
 #include "Table.h"
 
 class Analysis {
@@ -16,7 +17,7 @@ class Analysis {
     virtual ~Analysis() {
     }
 
-    virtual void analyze(CallState& call_state) = 0;
+    virtual void analyze(TracerState& tracer_state, Event& event) = 0;
 
     virtual std::vector<Table*> get_tables() = 0;
 };

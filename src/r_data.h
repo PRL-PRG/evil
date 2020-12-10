@@ -8,8 +8,13 @@
 extern "C" {
 #endif
 
-SEXP r_initialize_analyses(SEXP r_data);
-SEXP r_get_tables(SEXP r_data);
+SEXP r_tracer_data_initialize(SEXP r_data);
+SEXP r_tracer_data_finalize(SEXP r_data);
+SEXP r_tracer_data_push_eval_call(SEXP r_data,
+                                  SEXP r_call_id,
+                                  SEXP r_env,
+                                  SEXP r_frame_depth);
+SEXP r_tracer_data_pop_eval_call(SEXP r_data);
 
 #ifdef __cplusplus
 }

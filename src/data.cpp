@@ -4,36 +4,37 @@
 #include "CodeAnalysis.h"
 #include "SideEffectAnalysis.h"
 
-Analysis* unwrap_analysis(SEXP r_analysis) {
-    return (Analysis*) (R_ExternalPtrAddr(r_analysis));
-}
-
-void r_destroy_analysis(SEXP r_analysis) {
-    Analysis* analysis = unwrap_analysis(r_analysis);
-    if (analysis != NULL) {
-        delete analysis;
-        R_SetExternalPtrAddr(r_analysis, NULL);
-    }
-}
-
-SEXP wrap_analysis(Analysis* analysis) {
-    SEXP r_analysis =
-        PROTECT(R_MakeExternalPtr(analysis, R_NilValue, R_NilValue));
-    R_RegisterCFinalizerEx(r_analysis, r_destroy_analysis, TRUE);
-    UNPROTECT(1);
-    return r_analysis;
+template <typename T>
+T* unwrap(SEXP r_value) {
+    return (T*) (R_ExternalPtrAddr(r_value));
 }
 
 template <typename T>
-SEXP create_analysis() {
-    T* analysis = new T();
-    return wrap_analysis(analysis);
+void r_destroy_wrapped_value(SEXP r_value) {
+    T* value = unwrap<T>(r_value);
+    if (value != NULL) {
+        delete value;
+        R_SetExternalPtrAddr(r_value, NULL);
+    }
 }
 
-SEXP r_initialize_analyses(SEXP r_data) {
-    std::vector<SEXP> analyses = {create_analysis<ReflectionAnalysis>(),
-                                  create_analysis<CodeAnalysis>(),
-                                  create_analysis<SideEffectAnalysis>()};
+template <typename T>
+SEXP wrap(T* value) {
+    SEXP r_value = PROTECT(R_MakeExternalPtr(value, R_NilValue, R_NilValue));
+    R_RegisterCFinalizerEx(r_value, r_destroy_wrapped_value<T>, TRUE);
+    UNPROTECT(1);
+    return r_value;
+}
+
+void initialize_tracer_state(SEXP r_data) {
+    SEXP r_state = wrap(new TracerState());
+    defineVar(TracerStateSymbol, r_state, r_data);
+}
+
+void initialize_tracer_analyses(SEXP r_data) {
+    std::vector<SEXP> analyses = {wrap(new ReflectionAnalysis()),
+                                  wrap(new CodeAnalysis()),
+                                  wrap(new SideEffectAnalysis())};
 
     int count = analyses.size();
 
@@ -46,8 +47,17 @@ SEXP r_initialize_analyses(SEXP r_data) {
     UNPROTECT(1);
 
     defineVar(AnalysesSymbol, r_analysis_list, r_data);
+}
 
+SEXP r_tracer_data_initialize(SEXP r_data) {
+    initialize_tracer_state(r_data);
+    initialize_tracer_analyses(r_data);
     return R_NilValue;
+}
+
+TracerState* get_tracer_state(SEXP r_data) {
+    SEXP r_state = Rf_findVarInFrame(r_data, TracerStateSymbol);
+    return unwrap<TracerState>(r_state);
 }
 
 SEXP get_analysis_list(SEXP r_data) {
@@ -60,13 +70,13 @@ std::vector<Analysis*> get_analyses(SEXP r_data) {
     std::vector<Analysis*> analyses(analysis_count);
 
     for (int i = 0; i < analysis_count; ++i) {
-        analyses[i] = unwrap_analysis(VECTOR_ELT(r_analysis_list, i));
+        analyses[i] = unwrap<Analysis>(VECTOR_ELT(r_analysis_list, i));
     }
 
     return analyses;
 }
 
-SEXP r_get_tables(SEXP r_data) {
+SEXP r_tracer_data_finalize(SEXP r_data) {
     SEXP r_analysis_list = get_analysis_list(r_data);
     std::vector<std::vector<Table*>> tables;
     int table_count = 0;
@@ -75,7 +85,7 @@ SEXP r_get_tables(SEXP r_data) {
 
     for (int i = 0; i < analysis_count; ++i) {
         SEXP r_analysis = VECTOR_ELT(r_analysis_list, i);
-        Analysis* analysis = unwrap_analysis(r_analysis);
+        Analysis* analysis = unwrap<Analysis>(r_analysis);
         auto analysis_tables = analysis->get_tables();
         tables.push_back(analysis_tables);
         table_count += analysis_tables.size();
@@ -102,4 +112,20 @@ SEXP r_get_tables(SEXP r_data) {
     UNPROTECT(2);
 
     return r_table_list;
+}
+
+SEXP r_tracer_data_push_eval_call(SEXP r_data,
+                                  SEXP r_call_id,
+                                  SEXP r_env,
+                                  SEXP r_frame_depth) {
+    TracerState* state = get_tracer_state(r_data);
+    int call_id = asInteger(r_call_id);
+    int frame_depth = asInteger(r_frame_depth);
+
+    state->push_eval_call(call_id, r_env, frame_depth);
+}
+
+SEXP r_tracer_data_pop_eval_call(SEXP r_data) {
+    TracerState* state = get_tracer_state(r_data);
+    state->pop_eval_call();
 }

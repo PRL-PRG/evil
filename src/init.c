@@ -18,6 +18,7 @@ SEXP NSymbol = NULL;
 SEXP FileSymbol = NULL;
 SEXP LocalSymbol = NULL;
 SEXP AnalysesSymbol = NULL;
+SEXP TracerStateSymbol = NULL;
 
 static const R_CallMethodDef callMethods[] = {
     {"sexp_typeof", (DL_FUNC) &sexp_typeof, 1},
@@ -32,8 +33,10 @@ static const R_CallMethodDef callMethods[] = {
     {"get_variable_assignment_callback", (DL_FUNC) &r_get_variable_assignment_callback, 0},
     {"get_variable_removal_callback", (DL_FUNC) &r_get_variable_removal_callback, 0},
     {"get_variable_lookup_callback", (DL_FUNC) &r_get_variable_lookup_callback, 0},
-    {"initialize_analyses", (DL_FUNC) &r_initialize_analyses, 1},
-    {"get_tables", (DL_FUNC) &r_get_tables, 1},
+    {"tracer_data_initialize", (DL_FUNC) &r_tracer_data_initialize, 1},
+    {"tracer_data_finalize", (DL_FUNC) &r_tracer_data_finalize, 1},
+    {"tracer_data_push_eval_call", (DL_FUNC) &r_tracer_data_push_eval_call, 4},
+    {"tracer_data_pop_eval_call", (DL_FUNC) &r_tracer_data_pop_eval_call, 1},
     {NULL, NULL, 0}
 };
 
@@ -52,4 +55,5 @@ void R_init_evil(DllInfo* dll) {
     FileSymbol = Rf_install("file");
     LocalSymbol = Rf_install("local");
     AnalysesSymbol = Rf_install("tables");
+    TracerStateSymbol = Rf_install("tracer_state");
 }

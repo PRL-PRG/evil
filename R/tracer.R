@@ -31,8 +31,7 @@ create_tracer <- function(packages) {
 
     data <- new.env(parent = emptyenv())
     data$packages <- packages
-    data$counters <- list()
-    .Call(C_initialize_analyses, data)
+    .Call(C_tracer_data_initialize, data)
     data$calls <- new.env(parent = emptyenv())
     set_data(context, data)
 
@@ -46,10 +45,12 @@ application_load_callback <- function(context, application) {
     ## NOTE: this set of counters is the global count of all operations.
     ##       new entries on top of this will be specific to eval calls.
     data <- get_data(context)
-    push_counters(data,
-                  0,
-                  get_environment(application),
-                  get_frame_position(application))
+
+    .Call(C_tracer_data_push_eval_call,
+          data,
+          0L,
+          get_environment(application),
+          as.integer(get_frame_position(application)))
 }
 
 #' @importFrom instrumentr get_data
@@ -64,20 +65,13 @@ application_unload_callback <- function(context, application) {
     }
 
     data$calls <- NULL
-    ## at this point, there should be only one frame in the counter stack
-    ## because other frames are popped out as evals exit.
-    counters <- data$counters[[1]]
-    data$counters <- NULL
-    counters$call_id <- NULL
-    counters$eval_env <- NULL
-    program <- as.data.frame(counters)
 
     dependencies <- data.frame(package = loadedNamespaces())
 
-    data$tables <- c(list(program = program,
-                          dependencies = dependencies,
-                          calls = calls),
-                     .Call(C_get_tables, data))
+    .Call(C_tracer_data_pop_eval_call, data)
+    tables <- .Call(C_tracer_data_finalize, data)
+
+    data$tables <- c(list(dependencies = dependencies, calls = calls), tables)
 }
 
 #' @importFrom instrumentr get_frame_position get_name get_caller
@@ -110,7 +104,7 @@ call_entry_callback <- function(context, application, package, func, call) {
 
     eval_frame_depth <- get_frame_position(call)
 
-    push_counters(get_data(context), get_id(call), eval_env, eval_frame_depth)
+    .Call(C_tracer_data_push_eval_call, get_data(context), get_id(call), eval_env, eval_frame_depth)
 }
 
 #' @importFrom instrumentr get_data set_data get_id get_name get_parameters
@@ -349,12 +343,6 @@ call_exit_callback <- function(context, application, package, func, call) {
         expr_resolved_args_num <- length(expr_resolved) - 1
     }
 
-    counters <- if (call_name == "eval" || call_name == "evalq") {
-                    pop_counters(get_data(context))
-                } else {
-                    create_counters(eval_call_id, NULL, eval_call_frame_position)
-                }
-
     trace <- create_call_row(
         eval_call_id,
         eval_function=call_name,
@@ -398,32 +386,7 @@ call_exit_callback <- function(context, application, package, func, call) {
 
         enclos_expression=expr_to_string(enclos_expression),
         enclos_forced,
-        enclos_type=sexp_typeof(enclos_env),
-
-        direct_builtin = counters$direct_builtin,
-        indirect_builtin = counters$indirect_builtin,
-
-        direct_special = counters$direct_special,
-        indirect_special = counters$indirect_special,
-
-        direct_closure = counters$direct_closure,
-        indirect_closure = counters$indirect_closure,
-
-        direct_interpreter_eval = counters$direct_interpreter_eval,
-        indirect_interpreter_eval = counters$indirect_interpreter_eval,
-
-        direct_c_call = counters$direct_c_call,
-        indirect_c_call = counters$indirect_c_call,
-
-        direct_allocation = counters$direct_allocation,
-        indirect_allocation = counters$indirect_allocation,
-
-        direct_writes = counters$direct_writes,
-        indirect_writes = counters$indirect_writes,
-
-        library_packages = counters$library_packages,
-
-        require_packages = counters$require_packages
+        enclos_type=sexp_typeof(enclos_env)
     )
 
     assign(as.character(get_id(arg)), trace, envir=get_data(context)$calls)

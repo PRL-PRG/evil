@@ -12,29 +12,27 @@ class CodeAnalysis: public Analysis {
     CodeAnalysis(): Analysis(), code_table_(CodeTable()) {
     }
 
-    void analyze(CallState& call_state) override final {
-        if (call_state.get_event() != Event::ClosureCallEntry) {
+    void analyze(TracerState& tracer_state, Event& event) override final {
+        if (event.get_type() != Event::Type::ClosureCallEntry) {
             return;
         }
 
-        SEXP r_call = call_state.get_call();
-        SEXP r_rho = call_state.get_rho();
-        int eval_call_id = call_state.get_eval_call_id();
+        SEXP r_call = event.get_call();
+        SEXP r_rho = event.get_rho();
+        int eval_call_id = tracer_state.get_eval_call_id();
 
-        if (call_state.is_call_to("library")) {
+        if (event.is_call_to("library")) {
             std::string package_name = get_package_name_(r_call, r_rho);
             code_table_.record(eval_call_id, "library", package_name);
-        } else if (call_state.is_call_to("require")) {
+        } else if (event.is_call_to("require")) {
             std::string package_name = get_package_name_(r_call, r_rho);
             code_table_.record(eval_call_id, "require", package_name);
-        } else if (call_state.is_call_to("source")) {
-            std::string file_path =
-                call_state.get_character_argument(FileSymbol);
-            int local = call_state.get_logical_argument(LocalSymbol);
+        } else if (event.is_call_to("source")) {
+            std::string file_path = event.get_character_argument(FileSymbol);
+            int local = event.get_logical_argument(LocalSymbol);
             code_table_.record(eval_call_id, "source", file_path, local);
-        } else if (call_state.is_call_to("sys.source")) {
-            std::string file_path =
-                call_state.get_character_argument(FileSymbol);
+        } else if (event.is_call_to("sys.source")) {
+            std::string file_path = event.get_character_argument(FileSymbol);
             code_table_.record(eval_call_id, "sys.source", file_path);
         }
     }
