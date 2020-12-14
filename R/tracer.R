@@ -160,7 +160,7 @@ call_exit_callback <- function(context, application, package, func, call) {
 
 
     envir_from_arg <- NA_integer_
-    if (is.environment(eval_env)) {
+    if (is.environment(eval_env) && !is.null(caller$definition) &&!is.null(caller$environment)) {
         args_caller <- names(formals(caller$definition))
         for (arg_caller in args_caller) {
             arg_val <- NULL

@@ -45,7 +45,7 @@ expr_to_string <- function(e,
     return_symbol <-  "\u23CE" # unicode return symbol
     ellipsis <- "\u2026" # unicode horizontal ellipsis
 
-    if (is_empty(e)) {
+    if (is.null(e) || is_empty(e)) {
         NA_character_
     } else if (is.expression(e) && length(e) == 1) {
         expr_to_string(e[[1]])
@@ -107,7 +107,6 @@ get_loaded_package_environments <- function() {
     env_names <- c()
 
     env <- .GlobalEnv
-
     while (!identical(env, emptyenv())) {
         env <- parent.env(env)
         envs <- c(envs, env)
