@@ -20,6 +20,7 @@ create_tracer <- function(packages) {
         builtin_call_entry_callback = .Call(C_get_builtin_call_entry_callback),
         special_call_entry_callback = .Call(C_get_special_call_entry_callback),
         closure_call_entry_callback = .Call(C_get_closure_call_entry_callback),
+        closure_call_exit_callback = .Call(C_get_closure_call_exit_callback),
         eval_entry_callback = .Call(C_get_eval_entry_callback),
         gc_allocation_callback = .Call(C_get_gc_allocation_callback),
         variable_definition_callback = .Call(C_get_variable_definition_callback),

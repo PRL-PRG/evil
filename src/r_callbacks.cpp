@@ -16,6 +16,11 @@ SEXP r_get_closure_call_entry_callback() {
         (void*) (closure_call_entry_callback), R_NilValue, R_NilValue);
 }
 
+SEXP r_get_closure_call_exit_callback() {
+    return R_MakeExternalPtr(
+        (void*) (closure_call_exit_callback), R_NilValue, R_NilValue);
+}
+
 SEXP r_get_eval_entry_callback() {
     return R_MakeExternalPtr(
         (void*) (eval_entry_callback), R_NilValue, R_NilValue);

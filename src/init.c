@@ -27,6 +27,7 @@ static const R_CallMethodDef callMethods[] = {
     {"get_builtin_call_entry_callback", (DL_FUNC) &r_get_builtin_call_entry_callback, 0},
     {"get_special_call_entry_callback", (DL_FUNC) &r_get_special_call_entry_callback, 0},
     {"get_closure_call_entry_callback", (DL_FUNC) &r_get_closure_call_entry_callback, 0},
+    {"get_closure_call_exit_callback", (DL_FUNC) &r_get_closure_call_exit_callback, 0},
     {"get_eval_entry_callback", (DL_FUNC) &r_get_eval_entry_callback, 0},
     {"get_gc_allocation_callback", (DL_FUNC) &r_get_gc_allocation_callback, 0},
     {"get_variable_definition_callback", (DL_FUNC) &r_get_variable_definition_callback, 0},

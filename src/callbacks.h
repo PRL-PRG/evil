@@ -28,6 +28,14 @@ void closure_call_entry_callback(ContextSPtr context,
                                  SEXP r_args,
                                  SEXP r_rho);
 
+void closure_call_exit_callback(ContextSPtr context,
+                                ApplicationSPtr application,
+                                SEXP r_call,
+                                SEXP r_op,
+                                SEXP r_args,
+                                SEXP r_rho,
+                                SEXP r_result);
+
 void eval_entry_callback(ContextSPtr context,
                          ApplicationSPtr application,
                          SEXP r_expression,

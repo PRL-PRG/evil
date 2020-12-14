@@ -37,6 +37,24 @@ void closure_call_entry_callback(ContextSPtr context,
     }
 }
 
+void closure_call_exit_callback(ContextSPtr context,
+                                ApplicationSPtr application,
+                                SEXP r_call,
+                                SEXP r_op,
+                                SEXP r_args,
+                                SEXP r_rho,
+                                SEXP r_result) {
+    SEXP r_data = context->get_data();
+    TracerState& tracer_state = *get_tracer_state(r_data);
+    Event event = Event::closure_call_exit(r_call, r_rho, r_result);
+
+    tracer_state.analyze(event);
+
+    for (Analysis* analysis: get_analyses(r_data)) {
+        analysis->analyze(tracer_state, event);
+    }
+}
+
 void eval_entry_callback(ContextSPtr context,
                          ApplicationSPtr application,
                          SEXP r_expression,
