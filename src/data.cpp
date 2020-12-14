@@ -123,9 +123,13 @@ SEXP r_tracer_data_push_eval_call(SEXP r_data,
     int frame_depth = asInteger(r_frame_depth);
 
     state->push_eval_call(call_id, r_env, frame_depth);
+
+    return R_NilValue;
 }
 
 SEXP r_tracer_data_pop_eval_call(SEXP r_data) {
     TracerState* state = get_tracer_state(r_data);
     state->pop_eval_call();
+
+    return R_NilValue;
 }
