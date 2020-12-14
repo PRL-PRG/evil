@@ -10,12 +10,12 @@ class SideEffectTable: public Table {
                 const std::string& category,
                 const char* variable,
                 int local = NA_LOGICAL,
-                const std::string& environment_class = MissingStringValue) {
+                const std::string& envkind = MissingStringValue) {
         eval_call_ids_.push_back(eval_call_id);
         category_.push_back(category);
         variable_.push_back(variable);
         local_.push_back(local);
-        environment_class_.push_back(environment_class);
+        envkind_.push_back(envkind);
     }
 
     SEXP as_data_frame() override {
@@ -24,8 +24,7 @@ class SideEffectTable: public Table {
              {"category", PROTECT(create_character_vector(category_))},
              {"variable", PROTECT(create_character_vector(variable_))},
              {"local", PROTECT(create_logical_vector(local_))},
-             {"environment_class",
-              PROTECT(create_character_vector(environment_class_))}});
+             {"envkind", PROTECT(create_character_vector(envkind_))}});
 
         UNPROTECT(5);
 
@@ -37,7 +36,7 @@ class SideEffectTable: public Table {
     std::vector<std::string> category_;
     std::vector<std::string> variable_;
     std::vector<int> local_;
-    std::vector<std::string> environment_class_;
+    std::vector<std::string> envkind_;
 };
 
 #endif /* EVIL_CODE_TABLE_H */

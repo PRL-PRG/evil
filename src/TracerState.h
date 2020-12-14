@@ -55,11 +55,11 @@ class TracerState {
     }
 
     std::string get_envkind(SEXP r_env) {
-        auto result = add_environment_(r_env, "uninitialized");
+        auto result = add_environment_(r_env, MissingStringValue);
 
         env_info_t& env_info(result->second);
 
-        if (env_info.envkind != "uninitialized") {
+        if (env_info.envkind != MissingStringValue) {
             return env_info.envkind;
         }
 

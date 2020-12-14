@@ -26,12 +26,20 @@ class SideEffectAnalysis: public Analysis {
             return;
         }
 
+        SEXP r_rho = event.get_rho();
+        std::string envkind = tracer_state.get_envkind(r_rho);
+
+        /* if envkind is uninitialized, it means this environment is being
+         * prepared by the implementation.  */
+        if (envkind == MissingStringValue) {
+            return;
+        }
+
         int eval_call_id = tracer_state.get_eval_call_id();
         SEXP r_variable = event.get_variable();
         const char* variable = CHAR(STRING_ELT(r_variable, 0));
-        SEXP r_rho = event.get_rho();
+
         int local = tracer_state.is_local_environment(r_rho);
-        std::string envkind = tracer_state.get_envkind(r_rho);
 
         if (event_type == Event::Type::VariableLookup) {
             std::string valuetype = Rf_type2char(TYPEOF(event.get_value()));
