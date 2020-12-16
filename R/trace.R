@@ -67,7 +67,7 @@ write_trace <- function(traces, writer) {
         }
     }
 
-    invisible(NULL)
+    traces
 }
 
 #' @export
