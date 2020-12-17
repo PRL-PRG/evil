@@ -1,12 +1,36 @@
+parse_evals_to_trace <- function(evals_to_trace) {
+    if (is.null(evals_to_trace)) {
+      return(NULL)
+    }
 
+    evals_to_trace <- strsplit(evals_to_trace, "::", fixed=TRUE)
+    evals_to_trace <- lapply(evals_to_trace, function(x) if (length(x) == 1) c(x, NA) else x)
+    evals_to_trace <- do.call(rbind, evals_to_trace)
+    evals_to_trace <- as.data.frame(evals_to_trace)
+    colnames(evals_to_trace) <- c("package", "fun")
+
+    evals_to_trace
+}
+
+#' @param eval_to_trace - a vector of <package> or <package>::<function> to
+#'   trace, or "global" or NULL
 #' @export
 #' @importFrom methods is
-#' @importFrom instrumentr set_application_load_callback set_application_unload_callback
+#' @importFrom instrumentr set_application_load_callback
+#'   set_application_unload_callback
 #' @importFrom instrumentr set_data get_data trace_code get_frame_position
 trace_code <- function(code,
                        envir = parent.frame(),
                        quote=TRUE,
-                       packages = read_system_file("corpus.txt")) {
+                       evals_to_trace=NULL) {
+
+    evals_to_trace <- parse_evals_to_trace(evals_to_trace)
+    packages <- NULL
+
+    if (!is.null(evals_to_trace)) {
+        packages <- unique(evals_to_trace$package)
+        evals_to_trace <- subset(evals_to_trace, package != "global")
+    }
 
     context <- create_tracer(packages)
 
@@ -21,6 +45,9 @@ trace_code <- function(code,
     if (quote) {
         code <- substitute(code)
     }
+
+    code <- wrap_evals(code, create_csid_prefix("global", "main"))
+    setup_eval_wrapping_hook(evals_to_trace)
 
     result <- instrumentr::trace_code(context, code, envir, quote = FALSE)
     data <- instrumentr::get_data(context)
@@ -70,17 +97,3 @@ write_trace <- function(traces, writer) {
     traces
 }
 
-#' @export
-trace_to_file <- function(code,
-                          envir = parent.frame(),
-                          quote = TRUE,
-                          packages = read_system_file("corpus.txt"),
-                          writer) {
-
-    if (quote) {
-        code <- substitute(code)
-    }
-
-    traces <- trace_code(code, envir, quote = FALSE, packages)
-    write_trace(traces, writer)
-}

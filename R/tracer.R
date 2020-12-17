@@ -126,7 +126,14 @@ call_exit_callback <- function(context, application, package, func, call) {
     eval_function <- get_name(func)
     eval_call_env <- get_environment(call)
     eval_call_expression <- get_expression(call)
-    eval_call_srcref <- get_call_srcref(eval_call_expression)
+    eval_call_srcref <- {
+      csid <- attr(eval_call_expression, "csid")
+      if (!is.null(csid)) {
+        csid
+      } else {
+        get_call_srcref(eval_call_expression)
+      }
+    }
     eval_call_frame_position <- get_frame_position(call)
 
     caller <- get_caller(call)
