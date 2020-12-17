@@ -12,6 +12,7 @@ extern "C" {
 SEXP sexp_typeof(SEXP x);
 SEXP mark_parsed_expression(SEXP x, SEXP parse_fun_name);
 SEXP r_get_ast_size(SEXP ast);
+int get_sexp_type(SEXP r_value, int follow_symbol);
 
 #ifdef __cplusplus
 }

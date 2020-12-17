@@ -61,23 +61,38 @@ class LookupTable: public Table {
     void record(int eval_call_id,
                 bool direct,
                 int local,
-                const std::string& envkind,
-                const std::string& variable,
-                const std::string& valuetype) {
-        /* we only care about summaries of transitive lookups  */
-        if (!direct) {
-            eval_call_id = NA_INTEGER;
+                std::string envkind,
+                std::string variable,
+                std::string valuetype) {
+
+        /* There are 4 cases:
+         * - non-eval lookups (summarized)
+         * - local eval lookups (summarized)
+         * - non-local eval lookups
+         * -     package functions (summarized)
+         * -     others
+         */
+
+        /* non-eval lookups are summarized */
+        if (eval_call_id == 0) {
+            direct = NA_LOGICAL;
+            local = NA_INTEGER;
+            variable = MissingStringValue;
+            envkind = MissingStringValue;
+            valuetype = MissingStringValue;
         }
-        /* function lookups from packages are to be expected, so we summarize
-         * those */
+        /* local eval lookups are summarized */
+        else if (local == 1) {
+            direct = NA_LOGICAL;
+            variable = MissingStringValue;
+            envkind = MissingStringValue;
+            valuetype = MissingStringValue;
+        }
+        /* non-local */
         else if (is_package_environment_(envkind) &&
-                 (valuetype == "closure" || valuetype == "builtin" ||
-                  valuetype == "special")) {
-            eval_call_id = NA_INTEGER;
-        }
-        /* local lookups of any kind are also expected, so we summarize them */
-        else if (local) {
-            eval_call_id = NA_INTEGER;
+                   (valuetype == "closure" || valuetype == "builtin" ||
+                    valuetype == "special")) {
+            variable = MissingStringValue;
         }
 
         LookupTableKey key(
@@ -105,8 +120,8 @@ class LookupTable: public Table {
             eval_call_ids.push_back(key.eval_call_id);
             directs.push_back(key.direct);
             locals.push_back(key.local);
-            envkinds.push_back(key.envkind);
             variables.push_back(key.variable);
+            envkinds.push_back(key.envkind);
             valuetypes.push_back(key.valuetype);
             counts.push_back(it.second);
         }
@@ -115,8 +130,8 @@ class LookupTable: public Table {
             {{"eval_call_id", PROTECT(create_integer_vector(eval_call_ids))},
              {"direct", PROTECT(create_logical_vector(directs))},
              {"local", PROTECT(create_integer_vector(locals))},
-             {"envkind", PROTECT(create_character_vector(envkinds))},
              {"variable", PROTECT(create_character_vector(variables))},
+             {"envkind", PROTECT(create_character_vector(envkinds))},
              {"valuetype", PROTECT(create_character_vector(valuetypes))},
              {"count", PROTECT(create_integer_vector(counts))}});
 

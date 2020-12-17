@@ -42,7 +42,8 @@ class SideEffectAnalysis: public Analysis {
         int local = tracer_state.is_local_environment(r_rho);
 
         if (event_type == Event::Type::VariableLookup) {
-            std::string valuetype = Rf_type2char(TYPEOF(event.get_value()));
+            SEXP r_value = event.get_value();
+            std::string valuetype = Rf_type2char(get_sexp_type(r_value, true));
             lookup_table_.record(
                 eval_call_id, true, local, envkind, variable, valuetype);
         } else {

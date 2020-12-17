@@ -50,3 +50,31 @@ SEXP r_get_ast_size(SEXP ast) {
     int size = get_ast_size(ast, 1);
     return ScalarInteger(size);
 }
+
+int get_sexp_type(SEXP r_value, int follow_symbol) {
+    int value_type = TYPEOF(r_value);
+
+    if (value_type == PROMSXP) {
+        SEXP r_promval = dyntrace_get_promise_value(r_value);
+
+        if (r_promval == R_UnboundValue) {
+            SEXP r_promexpr = dyntrace_get_promise_expression(r_value);
+            int expr_value_type = TYPEOF(r_promexpr);
+
+            if (expr_value_type == SYMSXP && follow_symbol) {
+                SEXP r_env = dyntrace_get_promise_environment(r_value);
+                SEXP r_binding_value = Rf_findVarInFrame(r_env, r_promexpr);
+                return get_sexp_type(r_binding_value, 1);
+            }
+
+            if (TYPEOF(r_promexpr) != LANGSXP) {
+                return get_sexp_type(r_promexpr, 1);
+            }
+        } else {
+            return get_sexp_type(r_promval, 0);
+        }
+    }
+
+    return value_type;
+}
+
