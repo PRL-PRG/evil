@@ -93,7 +93,4 @@ write_trace <- function(traces, writer) {
             writer(filename, error_df)
         }
     }
-
-    traces
 }
-
