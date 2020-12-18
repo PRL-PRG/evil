@@ -1,9 +1,9 @@
-#ifndef EVIL_SIDE_EFFECT_TABLE_H
-#define EVIL_SIDE_EFFECT_TABLE_H
+#ifndef EVIL_WRITES_TABLE_H
+#define EVIL_WRITES_TABLE_H
 
-class SideEffectTable: public Table {
+class WritesTable: public Table {
   public:
-    SideEffectTable(): Table("side_effect") {
+    WritesTable(): Table("writes") {
     }
 
     void record(int eval_call_id,
@@ -39,4 +39,4 @@ class SideEffectTable: public Table {
     std::vector<std::string> envkind_;
 };
 
-#endif /* EVIL_CODE_TABLE_H */
+#endif /* EVIL_WRITES_TABLE_H */

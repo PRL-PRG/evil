@@ -18,8 +18,8 @@ class ReflectionAnalysis: public Analysis {
         }
         SEXP r_call = event.get_call();
         SEXP r_rho = event.get_rho();
-        int eval_call_id = tracer_state.get_eval_call_id();
-        int eval_frame_depth = tracer_state.get_eval_frame_depth();
+        int eval_call_id = tracer_state.get_last_eval_call_id();
+        int eval_frame_depth = tracer_state.get_last_eval_frame_depth();
         int current_frame_depth = tracer_state.get_current_frame_depth();
 
         if (event.is_call_to("sys.calls")) {
