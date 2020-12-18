@@ -1,5 +1,5 @@
 do_trace_eval <- function(expr) {
-  r <- trace_eval(expr)
+  r <- trace_code(expr)
 
   if(is_error(r$result)) stop(r$result$error$message)
 

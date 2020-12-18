@@ -191,67 +191,6 @@ call_exit_callback <- function(context, application, package, func, call) {
         }
     }
 
-    ## drop the first one - the call to this function
-    caller_stack_expression <- NA
-    caller_stack_expression_raw <- NA
-    caller_stack_expression_srcref <- NA
-
-    caller_stack <- rev(sys.calls())[-1]
-
-    ## FIXME: this is wrong, cuts too much
-    ## caller_stack_instrumentr_idx <- purrr::detect_index(
-    ##   caller_stack,
-    ##   ~is.symbol(.[[1]]) && .[[1]] == "trace_code.instrumentr_context"
-    ## )
-
-    ## if (caller_stack_instrumentr_idx > 1) {
-    ##   caller_stack <- caller_stack[1:caller_stack_instrumentr_idx-1]
-    ## }
-
-    caller_stack <- Filter(
-        function(frame) {
-            result <- is.symbol(frame[[1]]) && as.character(frame[[1]]) %in% c(
-                                                                                 "tryCatch",
-                                                                                 "tryCatchList",
-                                                                                 "tryCatchOne",
-                                                                                 "doTryCatch",
-                                                                                 "doWithOneRestart",
-                                                                                 "withRestarts",
-                                                                                 "withOneRestart",
-                                                                                 "withCallingHandlers"
-                                                                             )
-            !result
-        },
-        caller_stack)
-
-    caller_stack_expression <- paste(
-        unlist(
-            unname(
-                Map(function(frame) expr_to_string(frame, max_length=80, one_line=TRUE),
-                    caller_stack)
-            )
-        ),
-        collapse="\n"
-    )
-
-
-
-    caller_stack_expression_raw <- paste(
-        unlist(
-            unname(
-                Map(function(frame) expr_to_string(frame, max_length=80, raw=TRUE, one_line=TRUE),
-                    caller_stack)
-            )
-        ),
-        collapse="\n"
-    )
-
-    caller_stack_expression_srcref <- paste(
-        unlist(unname(Map(get_call_srcref, caller_stack))),
-        collapse="\n"
-    )
-    ## }
-
                                         #browser()
 
                                         # eval: expr, envir, enclos
@@ -360,12 +299,8 @@ call_exit_callback <- function(context, application, package, func, call) {
         caller_function,
         caller_expression=expr_to_string(caller_expression),
         caller_srcref,
-        caller_stack_expression,
-        caller_stack_expression_raw,
-        caller_stack_expression_srcref,
         environment_class,
         successful=is_successful(call),
-
         expr_expression         = expr_expression_repr$text,
         expr_expression_hash    = expr_expression_repr$hash,
         expr_expression_length  = expr_expression_repr$length,
