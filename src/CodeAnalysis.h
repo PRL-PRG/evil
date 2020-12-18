@@ -19,7 +19,7 @@ class CodeAnalysis: public Analysis {
 
         SEXP r_call = event.get_call();
         SEXP r_rho = event.get_rho();
-        int eval_call_id = tracer_state.get_eval_call_id();
+        int eval_call_id = tracer_state.get_last_eval_call_id();
 
         if (event.is_call_to("library")) {
             std::string package_name = get_package_name_(r_call, r_rho);

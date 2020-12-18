@@ -25,25 +25,39 @@ class TracerState {
         add_environment_(R_BaseNamespace, "package:base", 0);
     }
 
-    int get_eval_call_id() {
-        return eval_calls_.back().call_id;
+    int get_eval_call_id(int index) {
+        return eval_calls_[index].call_id;
     }
 
-    SEXP get_eval_env() {
-        return eval_calls_.back().r_env;
+    int get_last_eval_call_id() {
+        return get_eval_call_id(get_eval_call_count() - 1);
     }
 
-    int get_eval_frame_depth() {
-        return eval_calls_.back().frame_depth;
+    SEXP get_eval_env(int index) {
+        return eval_calls_[index].r_env;
+    }
+
+    SEXP get_last_eval_env() {
+        return get_eval_env(get_eval_call_count() - 1);
+    }
+
+    int get_eval_frame_depth(int index) {
+        return eval_calls_[index].frame_depth;
+    }
+
+    int get_last_eval_frame_depth() {
+        return get_eval_frame_depth(get_eval_call_count() - 1);
     }
 
     int get_current_frame_depth() {
         return dyntrace_get_frame_depth();
     }
 
-    bool is_local_environment(SEXP r_rho) {
-        int eval_call_id = get_eval_call_id();
+    int get_eval_call_count() {
+        return eval_calls_.size();
+    }
 
+    bool is_local_environment(SEXP r_rho, int eval_call_id) {
         auto result = environments_.find(r_rho);
         /* NOTE: if environment is not present in the map, then it means that it
          * was created before all calls on the stack. Setting it to -1 will have
@@ -113,17 +127,17 @@ class TracerState {
     add_environment_(SEXP r_env,
                      const std::string& envkind,
                      int eval_call_id = -1) {
-        eval_call_id = eval_call_id == -1 ? get_eval_call_id() : eval_call_id;
+        eval_call_id = eval_call_id == -1 ? get_last_eval_call_id() : eval_call_id;
         env_info_t env_info{eval_call_id, envkind};
         auto result = environments_.insert({r_env, env_info});
         return result.first;
     }
 
     void set_envkind_(SEXP r_env, const std::string& envkind) {
-        env_info_t env_info{get_eval_call_id(), envkind};
+        env_info_t env_info{get_last_eval_call_id(), envkind};
         auto result = environments_.insert({r_env, env_info});
         if (!result.second) {
-            result.first -> second.envkind = envkind;
+            result.first->second.envkind = envkind;
         }
     }
 };

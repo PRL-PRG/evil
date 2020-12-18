@@ -1,11 +1,11 @@
-#ifndef EVIL_LOOKUP_TABLE_H
-#define EVIL_LOOKUP_TABLE_H
+#ifndef EVIL_READS_TABLE_H
+#define EVIL_READS_TABLE_H
 
 #include "Table.h"
 #include <string>
 #include <unordered_map>
 
-struct LookupTableKey {
+struct ReadsTableKey {
     int eval_call_id;
     bool direct;
     bool local;
@@ -13,12 +13,12 @@ struct LookupTableKey {
     std::string variable;
     std::string valuetype;
 
-    LookupTableKey(int eval_call_id,
-                   bool direct,
-                   bool local,
-                   const std::string& envkind,
-                   const std::string& variable,
-                   const std::string& valuetype) {
+    ReadsTableKey(int eval_call_id,
+                  bool direct,
+                  bool local,
+                  const std::string& envkind,
+                  const std::string& variable,
+                  const std::string& valuetype) {
         this->eval_call_id = eval_call_id;
         this->direct = direct;
         this->local = local;
@@ -27,7 +27,7 @@ struct LookupTableKey {
         this->valuetype = valuetype;
     }
 
-    bool operator==(const LookupTableKey& other) const {
+    bool operator==(const ReadsTableKey& other) const {
         return (other.eval_call_id == eval_call_id) &&
                (other.direct == direct) && (other.local == local) &&
                (other.envkind == envkind) && (other.variable == variable);
@@ -41,7 +41,7 @@ inline void hash_combine(std::size_t& s, const T& v) {
 }
 
 struct hash_fn {
-    std::size_t operator()(const LookupTableKey& key) const {
+    std::size_t operator()(const ReadsTableKey& key) const {
         std::size_t hash = 0;
         hash_combine(hash, key.eval_call_id);
         hash_combine(hash, key.direct);
@@ -53,9 +53,9 @@ struct hash_fn {
     }
 };
 
-class LookupTable: public Table {
+class ReadsTable: public Table {
   public:
-    LookupTable(): Table("lookups") {
+    ReadsTable(): Table("reads") {
     }
 
     void record(int eval_call_id,
@@ -64,16 +64,15 @@ class LookupTable: public Table {
                 std::string envkind,
                 std::string variable,
                 std::string valuetype) {
-
         /* There are 4 cases:
-         * - non-eval lookups (summarized)
-         * - local eval lookups (summarized)
-         * - non-local eval lookups
+         * - non-eval readss (summarized)
+         * - local eval readss (summarized)
+         * - non-local eval readss
          * -     package functions (summarized)
          * -     others
          */
 
-        /* non-eval lookups are summarized */
+        /* non-eval readss are summarized */
         if (eval_call_id == 0) {
             direct = NA_LOGICAL;
             local = NA_INTEGER;
@@ -81,7 +80,7 @@ class LookupTable: public Table {
             envkind = MissingStringValue;
             valuetype = MissingStringValue;
         }
-        /* local eval lookups are summarized */
+        /* local eval readss are summarized */
         else if (local == 1) {
             direct = NA_LOGICAL;
             variable = MissingStringValue;
@@ -90,12 +89,12 @@ class LookupTable: public Table {
         }
         /* non-local */
         else if (is_package_environment_(envkind) &&
-                   (valuetype == "closure" || valuetype == "builtin" ||
-                    valuetype == "special")) {
+                 (valuetype == "closure" || valuetype == "builtin" ||
+                  valuetype == "special")) {
             variable = MissingStringValue;
         }
 
-        LookupTableKey key(
+        ReadsTableKey key(
             eval_call_id, direct, local, envkind, variable, valuetype);
 
         auto result = summary_.find(key);
@@ -116,7 +115,7 @@ class LookupTable: public Table {
         std::vector<int> counts;
 
         for (const auto& it: summary_) {
-            const LookupTableKey& key = it.first;
+            const ReadsTableKey& key = it.first;
             eval_call_ids.push_back(key.eval_call_id);
             directs.push_back(key.direct);
             locals.push_back(key.local);
@@ -141,11 +140,11 @@ class LookupTable: public Table {
     }
 
   private:
-    std::unordered_map<LookupTableKey, int, hash_fn> summary_;
+    std::unordered_map<ReadsTableKey, int, hash_fn> summary_;
 
     bool is_package_environment_(const std::string& envkind) {
         return !envkind.empty() && envkind[0] != '<';
     }
 };
 
-#endif /* EVIL_LOOKUP_TABLE_H */
+#endif /* EVIL_READS_TABLE_H */
