@@ -23,12 +23,17 @@ setup_eval_wrapping_hook <- function(evals_to_trace) {
          entry$fun
       }
 
+      wrapped <- 0
       for (fun_name in funs_names) {
         fun <- get0(fun_name, envir=package_env, mode="function")
-        if (!is.null(fun)) {
+        if (can_be_wrapped(fun)) {
+          ## cat("*** wrapping function", package_name, "::", fun_name, "\n")
           wrap_function_evals(fun, create_csid_prefix(package_name, fun_name))
+          wrapped <- wrapped + 1
         }
       }
+
+      cat("Wrapped", wrapped, "/", length(funs_names), "functions from", package_name, "\n")
 
       setHook(packageEvent(package_name, "onLoad"), NULL, "replace")
     }
@@ -43,6 +48,10 @@ setup_eval_wrapping_hook <- function(evals_to_trace) {
     for (package in setdiff(traced_packages, loaded_packages)) {
         setHook(packageEvent(package, "onLoad"), handle_package)
     }
+}
+
+can_be_wrapped <- function(f) {
+  is.function(f) && !is.primitive(f)
 }
 
 wrap_function_evals <- function(fun, csid_prefix) {
