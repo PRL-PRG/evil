@@ -53,7 +53,7 @@ expr_to_string <- function(e,
         s <- if (raw) {
                  capture.output(print(e))
              } else {
-                 deparse(e, width.cutoff = 120L)
+                 deparse(e, width.cutoff = 120L, nlines=3)
              }
 
         s <- paste(s, collapse = "\n")
