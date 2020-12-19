@@ -1,6 +1,6 @@
 parse_evals_to_trace <- function(evals_to_trace) {
     if (is.null(evals_to_trace)) {
-      return(NULL)
+        return(NULL)
     }
 
     evals_to_trace <- strsplit(evals_to_trace, "::", fixed=TRUE)
