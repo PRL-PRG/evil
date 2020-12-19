@@ -37,14 +37,13 @@ class SideEffectAnalysis: public Analysis {
         SEXP r_variable = event.get_variable();
         const char* variable = CHAR(STRING_ELT(r_variable, 0));
 
-
         if (event_type == Event::Type::VariableLookup) {
             SEXP r_value = event.get_value();
             std::string valuetype = Rf_type2char(get_sexp_type(r_value, true));
             reads_table_.record(
                 eval_call_id, true, false, envkind, variable, valuetype);
         } else {
-            int nonlocal_count = 0;
+            int write_count = 0;
             int eval_env_depth = NA_INTEGER;
             /* loop ignores first eval call because that is a dummy call
              * representing top-level  */
@@ -61,13 +60,13 @@ class SideEffectAnalysis: public Analysis {
                     eval_env_depth = tracer_state.get_eval_call_count() - 1 - i;
                 }
 
-                ++nonlocal_count;
+                ++write_count;
             }
 
-            if (nonlocal_count != 0) {
+            if (write_count != 0) {
                 writes_table_.record(eval_call_id,
                                      event_type_to_string(event_type),
-                                     nonlocal_count - 1,
+                                     write_count - 1,
                                      variable,
                                      eval_env_depth,
                                      envkind);
