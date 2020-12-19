@@ -89,9 +89,9 @@ class TracerState {
     void analyze(Event& event) {
         if (event.get_type() == Event::Type::ClosureCallEntry) {
             SEXP r_rho = event.get_rho();
-            SEXP r_name = event.get_call();
-            std::string name = TYPEOF(CAR(r_name)) == SYMSXP
-                                   ? CHAR(PRINTNAME(CAR(r_name)))
+            SEXP r_call = event.get_call();
+            std::string name = TYPEOF(CAR(r_call)) == SYMSXP
+                                   ? CHAR(PRINTNAME(CAR(r_call)))
                                    : "<object>";
             add_environment_(r_rho, std::string("function:") + name);
         }
@@ -130,6 +130,9 @@ class TracerState {
         eval_call_id = eval_call_id == -1 ? get_last_eval_call_id() : eval_call_id;
         env_info_t env_info{eval_call_id, envkind};
         auto result = environments_.insert({r_env, env_info});
+        if(result.first->second.envkind == MissingStringValue) {
+            result.first->second.envkind = envkind;
+        }
         return result.first;
     }
 
