@@ -16,6 +16,7 @@ class TracerState {
         int call_id;
         SEXP r_env;
         int frame_depth;
+        int interp_eval;
     };
 
   public:
@@ -87,15 +88,16 @@ class TracerState {
     }
 
     void analyze(Event& event) {
-        if (event.get_type() == Event::Type::ClosureCallEntry) {
+        if (event.get_type() == Event::Type::EvalEntry) {
+            ++eval_calls_.back().interp_eval;
+        } else if (event.get_type() == Event::Type::ClosureCallEntry) {
             SEXP r_rho = event.get_rho();
             SEXP r_call = event.get_call();
             std::string name = TYPEOF(CAR(r_call)) == SYMSXP
                                    ? CHAR(PRINTNAME(CAR(r_call)))
                                    : "<object>";
             add_environment_(r_rho, std::string("function:") + name);
-        }
-        if (event.get_type() == Event::Type::ClosureCallExit) {
+        } else if (event.get_type() == Event::Type::ClosureCallExit) {
             if (event.is_call_to("new.env")) {
                 SEXP r_result = event.get_result();
                 set_envkind_(r_result, "explicit:new.env");
@@ -107,11 +109,13 @@ class TracerState {
     }
 
     void push_eval_call(int call_id, SEXP r_env, int frame_depth) {
-        eval_calls_.push_back({call_id, r_env, frame_depth});
+        eval_calls_.push_back({call_id, r_env, frame_depth, 0});
     }
 
-    void pop_eval_call() {
+    int pop_eval_call() {
+        eval_call_info_t info = eval_calls_.back();
         eval_calls_.pop_back();
+        return info.interp_eval;
     }
 
   private:
@@ -127,10 +131,11 @@ class TracerState {
     add_environment_(SEXP r_env,
                      const std::string& envkind,
                      int eval_call_id = -1) {
-        eval_call_id = eval_call_id == -1 ? get_last_eval_call_id() : eval_call_id;
+        eval_call_id =
+            eval_call_id == -1 ? get_last_eval_call_id() : eval_call_id;
         env_info_t env_info{eval_call_id, envkind};
         auto result = environments_.insert({r_env, env_info});
-        if(result.first->second.envkind == MissingStringValue) {
+        if (result.first->second.envkind == MissingStringValue) {
             result.first->second.envkind = envkind;
         }
         return result.first;

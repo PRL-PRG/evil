@@ -149,6 +149,12 @@ call_exit_callback <- function(context, application, package, func, call) {
 
     application_frame_position <- get_frame_position(application)
 
+    interp_eval <- if((call_name %in% c("eval", "evalq"))) {
+                       .Call(C_tracer_data_pop_eval_call, data)
+                   } else {
+                       NA_integer_
+                   }
+
     ## eval, evalq and local use `envir` parameter name to denote environment
     ## eval.parent uses `p` to denote evaluation environment
     envir_name <- if (eval_function == "eval.parent") "p" else "envir"
@@ -329,7 +335,8 @@ call_exit_callback <- function(context, application, package, func, call) {
 
         enclos_expression=expr_to_string(enclos_expression),
         enclos_forced,
-        enclos_type=sexp_typeof(enclos_env)
+        enclos_type=sexp_typeof(enclos_env),
+        interp_eval = interp_eval
     )
 
     assign(as.character(get_id(arg)), trace, envir=get_data(context)$calls)

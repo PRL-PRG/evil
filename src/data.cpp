@@ -129,7 +129,7 @@ SEXP r_tracer_data_push_eval_call(SEXP r_data,
 
 SEXP r_tracer_data_pop_eval_call(SEXP r_data) {
     TracerState* state = get_tracer_state(r_data);
-    state->pop_eval_call();
+    int interp_eval = state->pop_eval_call();
 
-    return R_NilValue;
+    return ScalarInteger(interp_eval);
 }

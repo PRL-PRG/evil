@@ -8,6 +8,7 @@
 class Event {
   public:
     enum class Type {
+        EvalEntry,
         ClosureCallEntry,
         ClosureCallExit,
         VariableDefinition,
@@ -102,6 +103,8 @@ class Event {
         return library;
     }
 
+    static Event eval_entry(SEXP r_expression, SEXP r_rho);
+
     static Event closure_call_entry(SEXP r_call, SEXP r_rho);
 
     static Event closure_call_exit(SEXP r_call, SEXP r_rho, SEXP r_result);
@@ -157,6 +160,11 @@ class Event {
         return *this;
     }
 
+    Event& set_expression(SEXP r_expression) {
+        r_expression_ = r_expression;
+        return *this;
+    }
+
     Type type_;
     SEXP r_call_;
     SEXP r_rho_;
@@ -164,6 +172,7 @@ class Event {
     SEXP r_value_;
     SEXP r_result_;
     SEXP r_object_;
+    SEXP r_expression_;
 };
 
 std::string event_type_to_string(const Event::Type& event_type);

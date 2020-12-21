@@ -2,6 +2,8 @@
 
 std::string event_type_to_string(const Event::Type& event_type) {
     switch (event_type) {
+    case Event::Type::EvalEntry:
+        return "eval_entry";
     case Event::Type::ClosureCallEntry:
         return "closure_call_entry";
     case Event::Type::ClosureCallExit:
@@ -32,7 +34,7 @@ Event Event::closure_call_exit(SEXP r_call, SEXP r_rho, SEXP r_result) {
         .set_result(r_result);
 }
 
-Event Event::gc_allocation(SEXP r_object){
+Event Event::gc_allocation(SEXP r_object) {
     return Event(Event::Type::GcAllocation).set_object(r_object);
 }
 
@@ -60,5 +62,11 @@ Event Event::variable_lookup(SEXP r_variable, SEXP r_value, SEXP r_rho) {
     return Event(Event::Type::VariableLookup)
         .set_variable(r_variable)
         .set_value(r_value)
+        .set_rho(r_rho);
+}
+
+Event Event::eval_entry(SEXP r_expression, SEXP r_rho) {
+    return Event(Event::Type::EvalEntry)
+        .set_expression(r_expression)
         .set_rho(r_rho);
 }

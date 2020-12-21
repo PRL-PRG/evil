@@ -33,7 +33,8 @@ create_call_row <- function(eval_call_id = integer(0),
                             envir_from_arg = integer(0),
                             enclos_expression = character(0),
                             enclos_forced = logical(0),
-                            enclos_type = character(0)) {
+                            enclos_type = character(0),
+                            interp_eval = integer(0)) {
     data.frame(eval_call_id                   = eval_call_id,
                eval_function                  = eval_function,
                eval_call_expression           = eval_call_expression,
@@ -68,5 +69,6 @@ create_call_row <- function(eval_call_id = integer(0),
                envir_from_arg                 = envir_from_arg,
                enclos_expression              = enclos_expression,
                enclos_forced                  = enclos_forced,
-               enclos_type                    = enclos_type)
+               enclos_type                    = enclos_type,
+               interp_eval                    = interp_eval)
 }
