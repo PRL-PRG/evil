@@ -30,32 +30,47 @@ class ReflectionAnalysis: public Analysis {
             reflection_table_.record(eval_call_id, "sys.parents");
         } else if (event.is_call_to("sys.frame")) {
             int reverse_frame_index = event.get_integer_argument(WhichSymbol);
+            int leaks = is_leaky_which(eval_frame_depth, current_frame_depth, which);
             reflection_table_.record(eval_call_id,
                                      "sys.frame",
                                      eval_frame_depth,
                                      current_frame_depth,
-                                     reverse_frame_index);
+                                     which = which,
+                                     n = NA_INTEGER,
+                                     leaks = leaks);
         } else if (event.is_call_to("sys.call")) {
             int reverse_frame_index = event.get_integer_argument(WhichSymbol);
+            int leaks =
+                is_leaky_which(eval_frame_depth, current_frame_depth, which);
             reflection_table_.record(eval_call_id,
                                      "sys.call",
                                      eval_frame_depth,
                                      current_frame_depth,
-                                     reverse_frame_index);
+                                     which = which,
+                                     n = NA_INTEGER,
+                                     leaks = leaks);
         } else if (event.is_call_to("sys.function")) {
             int reverse_frame_index = event.get_integer_argument(WhichSymbol);
+            int leaks =
+                is_leaky_which(eval_frame_depth, current_frame_depth, which);
             reflection_table_.record(eval_call_id,
                                      "sys.function",
                                      eval_frame_depth,
                                      current_frame_depth,
-                                     reverse_frame_index);
+                                     which = which,
+                                     n = NA_INTEGER,
+                                     leaks = leaks);
         } else if (event.is_call_to("parent.frame")) {
             int reverse_frame_index = event.get_integer_argument(NSymbol);
+            int leaks =
+                is_leaky_n(eval_frame_depth, current_frame_depth, n);
             reflection_table_.record(eval_call_id,
                                      "parent.frame",
                                      eval_frame_depth,
                                      current_frame_depth,
-                                     reverse_frame_index);
+                                     which = which,
+                                     n = NA_INTEGER,
+                                     leaks = leaks);
         }
     }
 
