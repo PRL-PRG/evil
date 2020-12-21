@@ -8,8 +8,8 @@ void builtin_call_entry_callback(ContextSPtr context,
                                  SEXP r_op,
                                  SEXP r_args,
                                  SEXP r_rho) {
-    /* check if builtin is .Call and separately count that */
-    const char* name = dyntrace_get_c_function_name(r_op);
+    /* check if builtin is .Call and separately count that
+       const char* name = dyntrace_get_c_function_name(r_op); */
 }
 
 void special_call_entry_callback(ContextSPtr context,

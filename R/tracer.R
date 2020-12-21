@@ -17,8 +17,8 @@ create_tracer <- function(packages) {
         application_unload_callback = application_unload_callback,
         call_entry_callback = call_entry_callback,
         call_exit_callback = call_exit_callback,
-        builtin_call_entry_callback = .Call(C_get_builtin_call_entry_callback),
-        special_call_entry_callback = .Call(C_get_special_call_entry_callback),
+        #builtin_call_entry_callback = .Call(C_get_builtin_call_entry_callback),
+        #special_call_entry_callback = .Call(C_get_special_call_entry_callback),
         closure_call_entry_callback = .Call(C_get_closure_call_entry_callback),
         closure_call_exit_callback = .Call(C_get_closure_call_exit_callback),
         eval_entry_callback = .Call(C_get_eval_entry_callback),
@@ -39,6 +39,25 @@ create_tracer <- function(packages) {
     context
 }
 
+
+#' @importFrom instrumentr get_variable_definition_callback
+#' @importFrom instrumentr get_variable_assignment_callback
+#' @importFrom instrumentr get_variable_removal_callback
+#' @importFrom instrumentr get_variable_lookup_callback
+#' @importFrom instrumentr activate deactivate reinstate
+set_variable_callback_status <- function(context, status) {
+
+    fun <- if(status == "activate") activate
+           else if(status == "deactivate") deactivate
+           else if(status == "reinstate") reinstate
+           else stop("invalid callback status")
+
+    fun(get_variable_definition_callback(context))
+    fun(get_variable_assignment_callback(context))
+    fun(get_variable_removal_callback(context))
+    fun(get_variable_lookup_callback(context))
+}
+
 #' @importFrom instrumentr get_data get_environment
 #' @importFrom instrumentr get_id get_frame_position
 application_load_callback <- function(context, application) {
@@ -52,10 +71,14 @@ application_load_callback <- function(context, application) {
           0L,
           get_environment(application),
           as.integer(get_frame_position(application)))
+
+    set_variable_callback_status(context, "deactivate")
 }
 
 #' @importFrom instrumentr get_data
 application_unload_callback <- function(context, application) {
+    set_variable_callback_status(context, "reinstate")
+
     data <- get_data(context)
     calls <- do.call(rbind, as.list(data$calls))
 
@@ -106,6 +129,8 @@ call_entry_callback <- function(context, application, package, func, call) {
     eval_frame_depth <- get_frame_position(call)
 
     .Call(C_tracer_data_push_eval_call, get_data(context), get_id(call), eval_env, eval_frame_depth)
+
+    set_variable_callback_status(context, "activate")
 }
 
 #' @importFrom instrumentr get_data set_data get_id get_name get_parameters
@@ -114,6 +139,9 @@ call_entry_callback <- function(context, application, package, func, call) {
 #' @importFrom instrumentr get_caller is_successful
 #' @importFrom digest sha1
 call_exit_callback <- function(context, application, package, func, call) {
+
+    set_variable_callback_status(context, "reinstate")
+
     call_name <- get_name(func)
     if (call_name %in% c("parse", "str2expression", "str2lang")) {
         expression <- get_expression(call)
