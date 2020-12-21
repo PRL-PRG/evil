@@ -18,7 +18,7 @@ class CodeTable: public Table {
 
     SEXP as_data_frame() override {
         SEXP r_data_frame = create_data_frame(
-            {{"call_id", PROTECT(create_integer_vector(call_ids_))},
+            {{"eval_call_id", PROTECT(create_integer_vector(call_ids_))},
              {"function", PROTECT(create_character_vector(functions_))},
              {"description", PROTECT(create_character_vector(descriptions_))},
              {"local", PROTECT(create_logical_vector(locals_))}});
