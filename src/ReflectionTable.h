@@ -8,23 +8,20 @@ class ReflectionTable: public Table {
 
     void record(int eval_call_id,
                 const char* function,
-                int eval_frame_depth = NA_INTEGER,
-                int call_frame_depth = NA_INTEGER,
-                int reverse_frame_depth = NA_INTEGER) {
+                int eval_frame_depth,
+                int current_frame_depth,
+                int accessed_frame_depth,
+                int external) {
+        /* do not record internal reflection calls  */
+        if (external == 0) {
+            return;
+        }
+
         eval_call_ids_.push_back(eval_call_id);
         functions_.push_back(function);
         eval_frame_depths_.push_back(eval_frame_depth);
-        call_frame_depths_.push_back(call_frame_depth);
-        int accessed_frame_depth = reverse_frame_depth == NA_INTEGER
-                                       ? NA_INTEGER
-                                       : call_frame_depth - reverse_frame_depth;
+        current_frame_depths_.push_back(current_frame_depth);
         accessed_frame_depths_.push_back(accessed_frame_depth);
-        int leak = NA_LOGICAL;
-        if (eval_frame_depth != NA_INTEGER && call_frame_depth != NA_INTEGER &&
-            accessed_frame_depth != NA_INTEGER) {
-            leak = accessed_frame_depth <= eval_frame_depth;
-        }
-        leaks_.push_back(leak);
     }
 
     SEXP as_data_frame() override {
@@ -33,13 +30,12 @@ class ReflectionTable: public Table {
              {"function", PROTECT(create_character_vector(functions_))},
              {"eval_frame_depth",
               PROTECT(create_integer_vector(eval_frame_depths_))},
-             {"call_frame_depth",
-              PROTECT(create_integer_vector(call_frame_depths_))},
+             {"current_frame_depth",
+              PROTECT(create_integer_vector(current_frame_depths_))},
              {"accessed_frame_depth",
-              PROTECT(create_integer_vector(accessed_frame_depths_))},
-             {"leak", PROTECT(create_logical_vector(leaks_))}});
+              PROTECT(create_integer_vector(accessed_frame_depths_))}});
 
-        UNPROTECT(6);
+        UNPROTECT(5);
 
         return r_data_frame;
     }
@@ -48,9 +44,8 @@ class ReflectionTable: public Table {
     std::vector<int> eval_call_ids_;
     std::vector<std::string> functions_;
     std::vector<int> eval_frame_depths_;
-    std::vector<int> call_frame_depths_;
+    std::vector<int> current_frame_depths_;
     std::vector<int> accessed_frame_depths_;
-    std::vector<int> leaks_;
 };
 
 #endif /* EVIL_REFLECTION_TABLE_H */
