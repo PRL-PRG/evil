@@ -132,6 +132,9 @@ call_entry_callback <- function(context, application, package, func, call) {
 
     eval_env <- get("envir", envir = eval_call_env)
 
+    ## NOTE: this is done to force enclose env
+    enclose_env <- get("enclos", envir = eval_call_env)
+
     eval_frame_depth <- get_frame_position(call)
 
     .Call(C_tracer_data_push_eval_call, get_data(context), get_id(call), eval_env, eval_frame_depth)
