@@ -10,12 +10,7 @@ class ReflectionTable: public Table {
                 const char* function,
                 int eval_frame_depth,
                 int current_frame_depth,
-                int accessed_frame_depth,
-                int external) {
-        /* do not record internal reflection calls  */
-        if (external == 0) {
-            return;
-        }
+                int accessed_frame_depth) {
 
         eval_call_ids_.push_back(eval_call_id);
         functions_.push_back(function);
