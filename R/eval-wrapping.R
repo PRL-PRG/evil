@@ -59,24 +59,27 @@ wrap_function_evals <- function(fun, csid_prefix) {
     injectr:::reassign_function_body(fun, body)
 }
 
-wrap_evals <- function(expr, csid_prefix, id=1L) {
-    if (typeof(expr) == "language") {
-        fun_name <- as.character(expr[[1L]])
-        if (fun_name %in% .EvalFunctions ||
-            (fun_name == "::" &&
-             length(expr) == 3L &&
-             as.character(expr[[2L]]) == "base" &&
-             as.character(expr[[3L]]) %in% .EvalFunctions)) {
-            csid <- paste0(csid_prefix, id)
-            attr(expr, "csid") <- csid
-            id <- id + 1L
-        } else {
-            for (i in seq(length(expr))) {
-                if (typeof(expr[[i]]) == "language") {
-                    expr[[i]] <- wrap_evals(expr[[i]], csid_prefix, id)
+wrap_evals <- function(top_expr, csid_prefix, id=1L) {
+    wrap <- function(expr) {
+        if (typeof(expr) == "language") {
+            fun_name <- as.character(expr[[1L]])
+            if (fun_name %in% .EvalFunctions ||
+                (fun_name == "::" &&
+                length(expr) == 3L &&
+                as.character(expr[[2L]]) == "base" &&
+                as.character(expr[[3L]]) %in% .EvalFunctions)) {
+                csid <- paste0(csid_prefix, id)
+                attr(expr, "csid") <- csid
+                id <<- id + 1L
+            } else {
+                for (i in seq(length(expr))) {
+                    if (typeof(expr[[i]]) == "language") {
+                        expr[[i]] <- wrap(expr[[i]])
+                    }
                 }
             }
         }
+        expr
     }
-    expr
+    wrap(top_expr)
 }

@@ -1,6 +1,9 @@
 parse_evals_to_trace <- function(evals_to_trace) {
-    if (is.null(evals_to_trace)) {
+    if (is.null(evals_to_trace) || length(evals_to_trace) == 0) {
         return(NULL)
+    }
+    if (evals_to_trace == "") {
+        stop("evals_to_trace should not be an empty string")
     }
 
     evals_to_trace <- strsplit(evals_to_trace, "::", fixed=TRUE)
