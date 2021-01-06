@@ -34,6 +34,7 @@ create_tracer <- function(packages) {
     data$packages <- packages
     .Call(C_tracer_data_initialize, data)
     data$calls <- new.env(parent = emptyenv())
+    data$match.call <- new.env(parent = emptyenv())
     set_data(context, data)
 
     context
@@ -152,10 +153,18 @@ call_exit_callback <- function(context, application, package, func, call) {
     set_variable_callback_status(context, "reinstate")
 
     call_name <- get_name(func)
+    data <- get_data(context)
+
     if (call_name %in% c("parse", "str2expression", "str2lang")) {
         expression <- get_expression(call)
         retval <- returnValue()
         mark_parsed_expression(retval, expression)
+        return()
+    }
+    else if (call_name == "match.call") {
+        retval <- returnValue()
+        addresses <- map(retval, injectr::sexp_address)
+        data$match.call[[get_id(call)]] <- addresses
         return()
     }
 
@@ -175,7 +184,6 @@ call_exit_callback <- function(context, application, package, func, call) {
 
     caller <- get_caller(call)
     caller_package <- caller$package_name
-    data <- get_data(context)
     if(!is.null(data$packages) && !(caller_package %in% data$packages)) {
         return()
     }
@@ -253,12 +261,25 @@ call_exit_callback <- function(context, application, package, func, call) {
                          .Empty
                      }
 
+    # Argument used parse/str2lanf/str2expression?
     expr_parsed_expression <- attr(expr_resolved, "._evil_parsed_expression")
 
     ##browser(expr=eval_function==caller_function && !is.null(expr_parsed_expression))
 
     if (is.null(expr_parsed_expression)) {
         expr_parsed_expression <- .Empty
+    }
+
+    # Argument results from a match.call?
+    expr_match_call <- NA
+    if(is.call(expr_resolved)) {
+        addresses <- map(expr_resolved, injectr::sexp_address)
+        for(v in ls(data$match.call)) {
+            if(addresses %in% data$match.call[[v]]) {
+                expr_match_call <- expr_resolved[[1]] # get the name of the function called
+                break
+            }
+        }
     }
 
     envir_expression <- .Empty
@@ -369,6 +390,8 @@ call_exit_callback <- function(context, application, package, func, call) {
         envir_forced,
         envir_type=sexp_typeof(eval_env),
         envir_from_arg,
+
+        expr_match_call,
 
         enclos_expression=expr_to_string(enclos_expression),
         enclos_forced,
