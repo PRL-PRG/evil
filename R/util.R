@@ -245,7 +245,7 @@ from_match.call <- function(expr_resolved, addresses_map) {
     addresses <- map(expr_resolved, injectr::sexp_address)
     for (v in ls(addresses_map)) {
       if (addresses %in% addresses_map[[v]]) {
-        # We do'nt remove the set of addresses from the hashmap; It could be used
+        # We don't remove the set of addresses from the hashmap; It could be used
         # by another eval
 
         return(expr_resolved[[1]]) # get the name of the function called

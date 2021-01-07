@@ -2,6 +2,20 @@ test_that("sexp_typeof works for NULL", {
   expect_equal(sexp_typeof(NULL), "NULL")
 })
 
+testthat("adresses are well detected", {
+  ca <- call("f", quote(x), 1)
+  addr_map <- new.env(parent = emptyenv())
+  addresses <- map(ca, injectr::sexp_address)
+  
+  # transform a bit
+  ca[[1]] <- "g"
+  
+  from_addr <- from_match.call(ca, addr_map)
+  
+  expect(!is.na(from_addr))
+  expect_equal(from_addr, "g")
+})
+
 test_that("get_ast_size", {
     expect_equal(get_ast_size(NULL), 1)
 
