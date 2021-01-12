@@ -240,11 +240,11 @@ classify_environment <- function(application_frame_position,
   return("unhandled")
 }
 
-from_match.call <- function(expr_resolved, addresses_map) {
+from_match.call <- function(expr_resolved, addresses_set) {
   if (is.call(expr_resolved)) {
     addresses <- map(expr_resolved, injectr::sexp_address)
-    for (v in ls(addresses_map)) {
-      if (addresses %in% addresses_map[[v]]) {
+    for (k in addresses) {
+      if (exists(k, where = addresses_set)) {
         # We don't remove the set of addresses from the hashmap; It could be used
         # by another eval
 
