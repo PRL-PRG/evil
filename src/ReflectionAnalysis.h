@@ -85,8 +85,7 @@ class ReflectionAnalysis: public Analysis {
                                "sys.call",
                                eval_frame_depth,
                                current_frame_depth,
-                               accessed_frame_depth,
-                               external);
+                               accessed_frame_depth);
         }
 
         else if (event.is_call_to("sys.frame")) {
@@ -98,8 +97,7 @@ class ReflectionAnalysis: public Analysis {
                                "sys.frame",
                                eval_frame_depth,
                                current_frame_depth,
-                               accessed_frame_depth,
-                               external);
+                               accessed_frame_depth);
         }
 
         else if (event.is_call_to("sys.function")) {
