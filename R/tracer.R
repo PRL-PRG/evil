@@ -9,7 +9,9 @@ create_tracer <- function(packages) {
 
     "base::parse",
     "base::str2expression",
-    "base::str2lang"
+    "base::str2lang",
+
+    "base::match.call"
   )
 
   context <- create_context(
@@ -167,8 +169,10 @@ call_exit_callback <- function(context, application, package, func, call) {
   }
   else if (call_name == "match.call") {
     retval <- returnValue()
-    addresses <- map(retval, injectr::sexp_address)
-    data$match.call[[get_id(call)]] <- addresses
+    # data$match.call is rather used as a set than a hashmap
+    walk(retval, function(res) {
+      data$match.call[[injectr::sexp_address(res)]] <- TRUE
+    })
     return()
   }
 
