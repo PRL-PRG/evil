@@ -16,7 +16,7 @@ test_that("adresses are well detected", {
 
   from_addr <- from_match.call(ca, addr_map)
 
-  expect(!is.na(from_addr))
+  expect(!is.na(from_addr), "Not detected: NA")
   expect_equal(from_addr, "g")
 })
 
