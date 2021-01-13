@@ -2,7 +2,7 @@ test_that("sexp_typeof works for NULL", {
   expect_equal(sexp_typeof(NULL), "NULL")
 })
 
-testthat("adresses are well detected", {
+test_that("adresses are well detected", {
   ca <- call("f", quote(x), 1)
   addr_map <- new.env(parent = emptyenv())
   addresses <- map(ca, injectr::sexp_address)
