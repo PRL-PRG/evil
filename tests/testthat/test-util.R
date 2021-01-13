@@ -5,13 +5,17 @@ test_that("sexp_typeof works for NULL", {
 test_that("adresses are well detected", {
   ca <- call("f", quote(x), 1)
   addr_map <- new.env(parent = emptyenv())
-  addresses <- map(ca, injectr::sexp_address)
-  
+  addresses <- vapply(ca, injectr::sexp_address, "")
+  # add addresses to the map
+  for(k in addresses) {
+    addr_map[[k]] <- TRUE
+  }
+
   # transform a bit
   ca[[1]] <- "g"
-  
+
   from_addr <- from_match.call(ca, addr_map)
-  
+
   expect(!is.na(from_addr))
   expect_equal(from_addr, "g")
 })
