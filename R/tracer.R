@@ -170,8 +170,8 @@ call_exit_callback <- function(context, application, package, func, call) {
   else if (call_name == "match.call") {
     retval <- returnValue()
     # data$match.call is rather used as a set than a hashmap
-    for (k in retval) {
-      data$match.call[[injectr::sexp_address(k)]] <- TRUE
+    for (k in 1:length(retval)) { # cannot directly iterate a call list
+      data$match.call[[injectr::sexp_address(retval[[k]])]] <- TRUE
     }
     return()
   }
