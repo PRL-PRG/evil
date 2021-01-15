@@ -247,10 +247,9 @@ from_match.call <- function(expr_resolved, addresses_set) {
       if (exists(k, where = addresses_set)) {
         # We don't remove the set of addresses from the hashmap; It could be used
         # by another eval
-
-        return(expr_resolved[[1]]) # get the name of the function called
+        return(as.character(expr_resolved[[1]])) # get the name of the function called
       }
     }
   }
-  return(NA)
+  return(NA_character_)
 }
