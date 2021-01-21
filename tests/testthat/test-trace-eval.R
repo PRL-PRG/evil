@@ -48,17 +48,17 @@ test_that("match.call is well detected", {
 #     x <- 32
 #     evalq(x <<- 332)
 #   })
-# 
+#
 #   expect_equal(calls$direct_writes, 1)
-# 
-# 
+#
+#
 #   calls <- do_trace_eval({
 #     evalq(x <- 34)
 #   })
-# 
+#
 #   expect_equal(calls$direct_writes, 0)
-# 
-# 
+#
+#
 #   calls <- do_trace_eval({
 #     me <- 34
 #     f <- function(x) {
@@ -66,10 +66,10 @@ test_that("match.call is well detected", {
 #     }
 #     evalq(f(32))
 #   })
-# 
+#
 #   expect_equal(calls$direct_writes, 0)
-# 
-# 
+#
+#
 #   calls <- do_trace_eval({
 #     me <- 34
 #     f <- function(x) {
@@ -77,7 +77,7 @@ test_that("match.call is well detected", {
 #     }
 #     evalq(evalq(f(32)), new.env())
 #   })
-# 
+#
 #   expect_equal(calls$direct_writes, c(1, 0))
 #   expect_equal(calls$indirect_writes, c(0, 1))
 # })
@@ -126,27 +126,27 @@ test_that("function and function arity", {
 #   f <- function(x = c("A")) {
 #     match.arg(x)
 #   }
-# 
+#
 #   d <- do_trace_eval(f())
 #   expect_equal(d$eval_function, "eval")
 #   expect_equal(d$eval_call_expression, "eval(formal.args[[as.character(substitute(arg))]], envir = sys.frame(sysP))")
 #   expect_equal(d$caller_expression, "match.arg(x)")
 #   expect_equal(d$caller_function, "match.arg")
 #   expect_equal(d$caller_package, "base")
-# 
+#
 #   expect_equal(d$expr_expression, "formal.args[[as.character(substitute(arg))]]")
 #   expect_equal(d$expr_expression_type, 6)
 #   expect_equal(d$expr_expression_function, "[[")
 #   expect_equal(d$expr_expression_args_num, 2)
-# 
+#
 #   expect_equal(d$expr_resolved, "c(\"A\")")
 #   expect_equal(d$expr_resolved_type, 6)
 #   expect_equal(d$expr_resolved_function, "c")
 #   expect_equal(d$expr_resolved_args_num, 1)
-# 
+#
 #   expect_equal(d$envir_expression, "sys.frame(sysP)")
 #   expect_equal(d$envir_type, 4)
-# 
+#
 #   expect_equal(d$enclos_expression, NA)
 #   expect_equal(d$enclos_type, 4)
 # })
@@ -154,7 +154,7 @@ test_that("function and function arity", {
 # test_that("long expression is cut off", {
 #   f <- function(x) g(x)
 #   g <- function(x) eval(x)
-# 
+#
 #   d <- do_trace_eval({
 #     f(quote({
 #       x <- 1
@@ -177,31 +177,31 @@ test_that("function and function arity", {
 
 # test_that("expr_resolve captures only language expression", {
 #   withr::local_options(list(keep.source = TRUE, keep.parse.data = TRUE))
-# 
+#
 #   f <- function(a, x = 1, y = x, z = sin) {
 #     eval(substitute(a))
 #   }
-# 
+#
 #   d <- do_trace_eval(f(x))
 #   expect_true(is.na(d$expr_resolved))
 #   expect_equal(d$expr_resolved_type, 14)
-# 
+#
 #   d1 <- do_trace_eval(f(x))
 #   d2 <- do_trace_eval(f(1))
 #   expect_equal(d1$expr_resolved_hash, d2$expr_resolved_hash)
-# 
+#
 #   d <- do_trace_eval(f(y))
 #   expect_true(is.na(d$expr_resolved))
 #   expect_equal(d$expr_resolved_type, 14)
-# 
+#
 #   d <- do_trace_eval(f(z))
 #   expect_true(is.na(d$expr_resolved))
 #   expect_equal(d$expr_resolved_type, 8)
-# 
+#
 #   d <- do_trace_eval(f(x + y))
 #   expect_equal(d$expr_resolved, "x + y")
 #   expect_equal(d$expr_resolved_type, 6)
-# 
+#
 #   r <- trace_eval(f(non_existing))
 #   expect_false(r$data$calls$successful)
 #   expect_true(is.na(r$data$calls$expr_resolved))
@@ -210,11 +210,11 @@ test_that("function and function arity", {
 
 # test_that("resolve parse", {
 #   withr::local_options(list(keep.source = TRUE, keep.parse.data = TRUE))
-# 
+#
 #   f <- function(g, x) {
 #     eval(g(x))
 #   }
-# 
+#
 #   g1 <- function(y) {
 #     parse(text = paste0("identity(", y, ")"))
 #   }
@@ -224,19 +224,19 @@ test_that("function and function arity", {
 #   g3 <- function(y) {
 #     str2lang(paste0("identity(", y, ")"))
 #   }
-# 
+#
 #   d <- do_trace_eval(f(g1, 1))
 #   expect_equal(d$expr_resolved, "identity(1)")
 #   expect_starts_with(d$expr_parsed_expression, "parse(text")
-# 
+#
 #   d <- do_trace_eval(f(g2, 2))
 #   expect_equal(d$expr_resolved, "identity(2)")
 #   expect_starts_with(d$expr_parsed_expression, "str2expression(")
-# 
+#
 #   d <- do_trace_eval(f(g3, 3))
 #   expect_equal(d$expr_resolved, "identity(3)")
 #   expect_starts_with(d$expr_parsed_expression, "str2lang(")
-# 
+#
 #   1
 # })
 
@@ -265,10 +265,10 @@ test_that("basic eval", {
   d <- do_trace_eval(g(expr))
 
   expect_equal(d$expr_resolved, "identity(list(sin(a), cos(b)))")
-  
+
   #TODO: add other assertions!
 })
- 
+
 test_that("capture eval.parent", {
   withr::local_options(list(keep.source = TRUE, keep.parse.data = TRUE))
 
@@ -286,5 +286,5 @@ test_that("capture eval.parent", {
 
   expect_equal(nrow(d), 2) #There is eval and eval.parent
   expect_equal(d[2, "expr_resolved"], "var + var")
-  expect_true(dplyr::all_equal(d["eval_function"], tribble(~eval_function, "eval", "eval.parent")))
+  expect_true(dplyr::all_equal(d["eval_function"], dplyr::tribble(~eval_function, "eval", "eval.parent")))
 })
