@@ -43,7 +43,6 @@ env_type_to_string <- function(env) {
 #' @importFrom utils capture.output
 expr_to_string <- function(e,
                            max_length = Inf,
-                           raw = FALSE,
                            one_line = FALSE) {
   return_symbol <- "\u23CE" # unicode return symbol
   ellipsis <- "\u2026" # unicode horizontal ellipsis
@@ -53,29 +52,23 @@ expr_to_string <- function(e,
   } else if (is.expression(e) && length(e) == 1) {
     expr_to_string(e[[1]])
   } else {
-    s <- if (raw) {
-      capture.output(print(e))
-    } else {
-      deparse(e, width.cutoff = 120L, nlines = 3)
+    cuttof <- 500L
+    nlines <- -1L
+    if (!is.infinite(max_length)) {
+      cuttof <- 120L
+      nlines <- 1 + max_length %/% cuttof
     }
 
-    s <- paste(s, collapse = "\n")
+    s <- deparse1(e, width.cutoff = cuttof, nlines = nlines, collapse = "\n")
+
 
     if (one_line) {
       s <- gsub("\n", return_symbol, s)
     }
-
-    if (!is.infinite(max_length)) {
-      sn <- nchar(s)
-      s <- substr(s, 1, min(max_length, sn))
-      if (sn > max_length) {
-        s <- paste0(s, ellipsis)
-      }
-    }
-
     s
   }
 }
+
 
 #' @importFrom utils getSrcDirectory getSrcFilename
 get_call_srcref <- function(call) {

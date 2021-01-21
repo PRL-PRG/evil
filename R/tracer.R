@@ -37,6 +37,7 @@ create_tracer <- function(packages) {
   .Call(C_tracer_data_initialize, data)
   data$calls <- new.env(parent = emptyenv())
   data$match.call <- new.env(parent = emptyenv())
+  data$unique_resolved_expressions <- new.env(parent = emptyenv())
   set_data(context, data)
 
   context
@@ -319,11 +320,13 @@ call_exit_callback <- function(context, application, package, func, call) {
   expr_repr <- function(e) {
     if (!is_empty(e)) {
       s <- expr_to_string(e)
+      full_text <- if (is.language(e)) s else NA_character_
 
       list(
-        text = if (is.language(e)) s else NA_character_,
-        hash = sha1(s),
-        length = nchar(s),
+        fulltext = full_text,
+        text = strtrim(full_text, 360),
+        hash = sha1(full_text),
+        length = nchar(full_text),
         type = sexp_typeof(e),
         tag = sexp_typeof(e, tag = TRUE)
       )
@@ -349,6 +352,10 @@ call_exit_callback <- function(context, application, package, func, call) {
   if (is.call(expr_resolved)) {
     expr_resolved_function <- expr_to_string(expr_resolved[[1]])
     expr_resolved_args_num <- length(expr_resolved) - 1
+  }
+
+  if (!exists(expr_resolved_repr$hash, data$unique_resolved_expressions)) {
+    data$unique_resolved_expressions[[expr_resolved_repr$hash]] <- expr_resolved_repr$fulltext # should not be truncated
   }
 
   trace <- create_call_row(
