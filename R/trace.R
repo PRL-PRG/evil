@@ -51,7 +51,7 @@ trace_code <- function(code,
 
     result <- instrumentr::trace_code(context, code, envir, quote = FALSE)
     data <- instrumentr::get_data(context)
-    list(result = result, tables = data$tables, resolved_expressions = data$unique_resolved_expressions)
+    list(result = result, tables = data$tables)
 }
 
 read_system_file <- function(filename) {
@@ -93,16 +93,5 @@ write_trace <- function(traces, writer) {
             writer(filename, error_df)
         }
     }
-
-    n_rows <- length(traces$resolved_expressions)
-    expr_df <- as.data.frame(matrix("", ncol = 2, nrow = n_rows))
-    names(expr_df) <- c("expr_resolved_hash", "expr_resolved")
-    i <- 0
-    for(hash in ls(traces$resolved_expressions)) {
-        expr_df[[i]]$expr_resolved_hash <- hash
-        expr_df[[i]]$expr_resolved <- treaces$resolved_expression[[hash]]
-        i <- i + 1
-    }
-    writer("resolved_expressions", expr_df)
 }
 

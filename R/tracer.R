@@ -1,46 +1,46 @@
 
 #' @importFrom instrumentr create_context set_data
 create_tracer <- function(packages) {
-  functions <- c(
-    "base::eval",
-    "base::evalq",
-    "base::eval.parent",
-    "base::local",
+    functions <- c(
+        "base::eval",
+        "base::evalq",
+        "base::eval.parent",
+        "base::local",
 
-    "base::parse",
-    "base::str2expression",
-    "base::str2lang",
+        "base::parse",
+        "base::str2expression",
+        "base::str2lang",
 
-    "base::match.call"
-  )
+        "base::match.call"
+    )
 
-  context <- create_context(
-    application_load_callback = application_load_callback,
-    application_unload_callback = application_unload_callback,
-    call_entry_callback = call_entry_callback,
-    call_exit_callback = call_exit_callback,
-    # builtin_call_entry_callback = .Call(C_get_builtin_call_entry_callback),
-    # special_call_entry_callback = .Call(C_get_special_call_entry_callback),
-    closure_call_entry_callback = .Call(C_get_closure_call_entry_callback),
-    closure_call_exit_callback = .Call(C_get_closure_call_exit_callback),
-    eval_entry_callback = .Call(C_get_eval_entry_callback),
-    gc_allocation_callback = .Call(C_get_gc_allocation_callback),
-    variable_definition_callback = .Call(C_get_variable_definition_callback),
-    variable_assignment_callback = .Call(C_get_variable_assignment_callback),
-    variable_removal_callback = .Call(C_get_variable_removal_callback),
-    variable_lookup_callback = .Call(C_get_variable_lookup_callback),
-    functions = functions
-  )
+    context <- create_context(
+        application_load_callback = application_load_callback,
+        application_unload_callback = application_unload_callback,
+        call_entry_callback = call_entry_callback,
+        call_exit_callback = call_exit_callback,
+        # builtin_call_entry_callback = .Call(C_get_builtin_call_entry_callback),
+        # special_call_entry_callback = .Call(C_get_special_call_entry_callback),
+        closure_call_entry_callback = .Call(C_get_closure_call_entry_callback),
+        closure_call_exit_callback = .Call(C_get_closure_call_exit_callback),
+        eval_entry_callback = .Call(C_get_eval_entry_callback),
+        gc_allocation_callback = .Call(C_get_gc_allocation_callback),
+        variable_definition_callback = .Call(C_get_variable_definition_callback),
+        variable_assignment_callback = .Call(C_get_variable_assignment_callback),
+        variable_removal_callback = .Call(C_get_variable_removal_callback),
+        variable_lookup_callback = .Call(C_get_variable_lookup_callback),
+        functions = functions
+    )
 
-  data <- new.env(parent = emptyenv())
-  data$packages <- packages
-  .Call(C_tracer_data_initialize, data)
-  data$calls <- new.env(parent = emptyenv())
-  data$match.call <- new.env(parent = emptyenv())
-  data$unique_resolved_expressions <- new.env(parent = emptyenv())
-  set_data(context, data)
+    data <- new.env(parent = emptyenv())
+    data$packages <- packages
+    .Call(C_tracer_data_initialize, data)
+    data$calls <- new.env(parent = emptyenv())
+    data$match.call <- new.env(parent = emptyenv())
+    data$unique_resolved_expressions <- new.env(parent = emptyenv())
+    set_data(context, data)
 
-  context
+    context
 }
 
 
@@ -89,29 +89,48 @@ application_load_callback <- function(context, application) {
 
 #' @importFrom instrumentr get_data
 application_unload_callback <- function(context, application) {
-  set_variable_callback_status(context, "reinstate")
+    set_variable_callback_status(context, "reinstate")
 
-  data <- get_data(context)
-  calls <- do.call(rbind, as.list(data$calls))
+    data <- get_data(context)
+    calls <- do.call(rbind, as.list(data$calls))
 
-  ## NOTE: if there are no eval calls, create an empty data frame
-  ## with correct number of and type of columns
-  if (is.null(calls)) {
-    calls <- create_call_row()
-  }
+    ## NOTE: if there are no eval calls, create an empty data frame
+    ## with correct number of and type of columns
+    if (is.null(calls)) {
+        calls <- create_call_row()
+    }
 
-  data$calls <- NULL
+    data$calls <- NULL
 
-  dependencies <- data.frame(package = loadedNamespaces())
+    cat("\n Resolved exprs: ", ls.str(data$unique_resolved_expressions, "\n"))
+    n_rows <- length(data$unique_resolved_expressions)
+    if (n_rows != 0) {
+        expr_df <- as.data.frame(matrix("", ncol = 2, nrow = n_rows))
+        names(expr_df) <- c("expr_resolved_hash", "expr_resolved")
+        i <- 1
+        for (hash in ls(data$unique_resolved_expressions)) {
+            cat("\nHash = ", hash, " and v =", data$unique_resolved_expression[[hash]], "\n")
+            expr_df[i, "expr_resolved_hash"] <- hash
+            expr_df[i, "expr_resolved"] <- data$unique_resolved_expression[[hash]]
+            i <- i + 1
+        }
+    }
+    else {
+        expr_df <- data.frame(expr_resolved_hash = character(0), expr_resolved = character(0))
+    }
 
-  .Call(C_tracer_data_pop_eval_call, data)
-  tables <- .Call(C_tracer_data_finalize, data)
+    data$unique_resolved_expressions <- NULL
 
-  tables$code <- merge(tables$code, calls, by = "eval_call_id")
+    dependencies <- data.frame(package = loadedNamespaces())
 
-  tables$reflection <- merge(tables$reflection, calls, by = "eval_call_id")
+    .Call(C_tracer_data_pop_eval_call, data)
+    tables <- .Call(C_tracer_data_finalize, data)
 
-  data$tables <- c(list(dependencies = dependencies, calls = calls), tables)
+    tables$code <- merge(tables$code, calls, by = "eval_call_id")
+
+    tables$reflection <- merge(tables$reflection, calls, by = "eval_call_id")
+
+    data$tables <- c(list(dependencies = dependencies, calls = calls, resolved_expressions = expr_df), tables)
 }
 
 #' @importFrom instrumentr get_frame_position get_name get_caller
@@ -157,251 +176,255 @@ call_entry_callback <- function(context, application, package, func, call) {
 #' @importFrom instrumentr get_caller is_successful
 #' @importFrom digest sha1
 call_exit_callback <- function(context, application, package, func, call) {
-  set_variable_callback_status(context, "reinstate")
+    set_variable_callback_status(context, "reinstate")
 
-  call_name <- get_name(func)
-  data <- get_data(context)
+    call_name <- get_name(func)
+    data <- get_data(context)
 
-  if (call_name %in% c("parse", "str2expression", "str2lang")) {
-    expression <- get_expression(call)
-    retval <- returnValue()
-    mark_parsed_expression(retval, expression)
-    return()
-  }
-  else if (call_name == "match.call") {
-    retval <- returnValue()
-    # data$match.call is rather used as a set than a hashmap
-    for (k in 1:length(retval)) { # cannot directly iterate a call list
-      data$match.call[[injectr::sexp_address(retval[[k]])]] <- TRUE
+    if (call_name %in% c("parse", "str2expression", "str2lang")) {
+        expression <- get_expression(call)
+        retval <- returnValue()
+        mark_parsed_expression(retval, expression)
+        return()
     }
-    return()
-  }
-
-  eval_call_id <- get_id(call)
-  eval_function <- get_name(func)
-  eval_call_env <- get_environment(call)
-  eval_call_expression <- get_expression(call)
-  eval_call_srcref <- {
-    csid <- attr(eval_call_expression, "csid")
-    if (!is.null(csid)) {
-      csid
-    } else {
-      get_call_srcref(eval_call_expression)
-    }
-  }
-  eval_call_frame_position <- get_frame_position(call)
-
-  caller <- get_caller(call)
-  caller_package <- caller$package_name
-  if (!is.null(data$packages) && !(caller_package %in% data$packages)) {
-    return()
-  }
-  caller_expression <- caller$call_expression
-  caller_function <- caller$function_name
-  caller_srcref <- get_call_srcref(caller_expression)
-
-
-  application_frame_position <- get_frame_position(application)
-
-  interp_eval <- if ((call_name %in% c("eval", "evalq"))) {
-    .Call(C_tracer_data_pop_eval_call, data)
-  } else {
-    NA_integer_
-  }
-
-  ## eval, evalq and local use `envir` parameter name to denote environment
-  ## eval.parent uses `p` to denote evaluation environment
-  envir_name <- if (eval_function == "eval.parent") "p" else "envir"
-
-  eval_env <- get(envir_name, envir = eval_call_env)
-  environment_class <- NA
-  # TODO resolve environments if it is an integer (sys.call)
-  if (is.environment(eval_env)) {
-    environment_class <- classify_environment(
-      application_frame_position,
-      eval_call_frame_position,
-      eval_call_env,
-      eval_env
-    )
-  }
-  enclos_env <- eval_call_env$enclos
-
-
-  envir_from_arg <- NA_integer_
-  if (is.environment(eval_env) && !is.null(caller$definition) && !is.null(caller$environment)) {
-    args_caller <- names(formals(caller$definition))
-    for (arg_caller in args_caller) {
-      arg_val <- NULL
-      arg_val <- try(get0(arg_caller, envir = caller$environment), silent = TRUE)
-      # if a caller arg is a parent  of envir
-      # (which would mean it was built with new.env probably )
-      # or is equal to envir
-      if (!is.null(arg_val) && is.environment(arg_val)) {
-        envir_from_arg <- 0L
-        cur_env <- eval_env
-        while (!identical(arg_val, cur_env)) {
-          if (identical(cur_env, emptyenv())) {
-            envir_from_arg <- NA_integer_
-            break
-          }
-          envir_from_arg <- envir_from_arg + 1L
-          cur_env <- parent.env(cur_env)
+    else if (call_name == "match.call") {
+        retval <- returnValue()
+        # data$match.call is rather used as a set than a hashmap
+        for (k in 1:length(retval)) { # cannot directly iterate a call list
+            data$match.call[[injectr::sexp_address(retval[[k]])]] <- TRUE
         }
-      }
+        return()
     }
-  }
 
-  # browser()
-
-  # eval: expr, envir, enclos
-  # evalq: expr, envir, enclos
-  # eval.parent: expr, n
-  # local: expr, envir
-  params <- get_parameters(call)
-  names(params) <- unlist(unname(Map(get_name, params)))
-
-  # all evals define expr
-  arg <- get_arguments(params$expr)[[1]]
-  expr_expression <- get_expression(arg)
-  expr_forced <- is_evaluated(arg)
-  expr_resolved <- if (expr_forced) {
-    expr_resolved <- eval_call_env$expr
-  } else {
-    .Empty
-  }
-
-  # Argument used parse/str2lanf/str2expression?
-  expr_parsed_expression <- attr(expr_resolved, "._evil_parsed_expression")
-  ## browser(expr=eval_function==caller_function && !is.null(expr_parsed_expression))
-  if (is.null(expr_parsed_expression)) {
-    expr_parsed_expression <- .Empty
-  }
-
-  # Argument results from a match.call?
-  expr_match_call <- from_match.call(expr_resolved, data$match.call)
-
-  envir_expression <- .Empty
-  envir_forced <- NA
-  enclos_expression <- .Empty
-  enclos_forced <- NA
-
-  if (eval_function == "eval.parent") {
-    arg <- get_arguments(params$n)[[1]]
-    expr <- get_expression(arg)
-
-    envir_forced <- is_evaluated(arg)
-    if (!identical(expr, .DefaultArgs[[eval_function]]$n)) {
-      envir_expression <- substitute(parent.frame(1 + N), list(N = expr))
+    eval_call_id <- get_id(call)
+    eval_function <- get_name(func)
+    eval_call_env <- get_environment(call)
+    eval_call_expression <- get_expression(call)
+    eval_call_srcref <- {
+        csid <- attr(eval_call_expression, "csid")
+        if (!is.null(csid)) {
+            csid
+        } else {
+            get_call_srcref(eval_call_expression)
+        }
     }
-    envir_default <- eval_call_env$n == 1
-  } else {
-    arg <- get_arguments(params$envir)[[1]]
-    expr <- get_expression(arg)
+    eval_call_frame_position <- get_frame_position(call)
 
-    envir_forced <- is_evaluated(arg)
-    if (!identical(expr, .DefaultArgs[[eval_function]]$envir)) {
-      envir_expression <- expr
+    caller <- get_caller(call)
+    caller_package <- caller$package_name
+    if (!is.null(data$packages) && !(caller_package %in% data$packages)) {
+        return()
     }
-    # TODO: check if the given environment is the same as the default one
-  }
+    caller_expression <- caller$call_expression
+    caller_function <- caller$function_name
+    caller_srcref <- get_call_srcref(caller_expression)
 
-  if (eval_function %in% c("eval", "evalq")) {
-    arg <- get_arguments(params$enclos)[[1]]
-    expr <- get_expression(arg)
 
-    enclos_forced <- is_evaluated(arg)
-    if (!identical(expr, .DefaultArgs[[call_name]]$enclos)) {
-      enclos_expression <- expr
-    }
-    # TODO: check if the given environment is the same as the default one
-  }
+    application_frame_position <- get_frame_position(application)
 
-  # TODO: move to S3
-  expr_repr <- function(e) {
-    if (!is_empty(e)) {
-      s <- expr_to_string(e)
-      full_text <- if (is.language(e)) s else NA_character_
-
-      list(
-        fulltext = full_text,
-        text = strtrim(full_text, 360),
-        hash = sha1(full_text),
-        length = nchar(full_text),
-        type = sexp_typeof(e),
-        tag = sexp_typeof(e, tag = TRUE)
-      )
+    interp_eval <- if ((call_name %in% c("eval", "evalq"))) {
+        .Call(C_tracer_data_pop_eval_call, data)
     } else {
-      list(text = NA_character_, hash = NA_character_, length = NA_integer_, type = NA_character_)
+        NA_integer_
     }
-  }
 
-  expr_expression_repr <- expr_repr(expr_expression)
-  expr_resolved_repr <- expr_repr(expr_resolved)
+    ## eval, evalq and local use `envir` parameter name to denote environment
+    ## eval.parent uses `p` to denote evaluation environment
+    envir_name <- if (eval_function == "eval.parent") "p" else "envir"
 
-  expr_expression_function <- NA_character_
-  expr_expression_args_num <- NA_integer_
+    eval_env <- get(envir_name, envir = eval_call_env)
+    environment_class <- NA
+    # TODO resolve environments if it is an integer (sys.call)
+    if (is.environment(eval_env)) {
+        environment_class <- classify_environment(
+            application_frame_position,
+            eval_call_frame_position,
+            eval_call_env,
+            eval_env
+        )
+    }
+    enclos_env <- eval_call_env$enclos
 
-  if (is.call(expr_expression)) {
-    expr_expression_function <- expr_to_string(expr_expression[[1]])
-    expr_expression_args_num <- as.integer(length(expr_expression) - 1)
-  }
 
-  expr_resolved_function <- NA_character_
-  expr_resolved_args_num <- NA_integer_
+    envir_from_arg <- NA_integer_
+    if (is.environment(eval_env) && !is.null(caller$definition) && !is.null(caller$environment)) {
+        args_caller <- names(formals(caller$definition))
+        for (arg_caller in args_caller) {
+            arg_val <- NULL
+            arg_val <- try(get0(arg_caller, envir = caller$environment), silent = TRUE)
+            # if a caller arg is a parent  of envir
+            # (which would mean it was built with new.env probably )
+            # or is equal to envir
+            if (!is.null(arg_val) && is.environment(arg_val)) {
+                envir_from_arg <- 0L
+                cur_env <- eval_env
+                while (!identical(arg_val, cur_env)) {
+                    if (identical(cur_env, emptyenv())) {
+                        envir_from_arg <- NA_integer_
+                        break
+                    }
+                    envir_from_arg <- envir_from_arg + 1L
+                    cur_env <- parent.env(cur_env)
+                }
+            }
+        }
+    }
 
-  if (is.call(expr_resolved)) {
-    expr_resolved_function <- expr_to_string(expr_resolved[[1]])
-    expr_resolved_args_num <- length(expr_resolved) - 1
-  }
+    # browser()
 
-  if (!exists(expr_resolved_repr$hash, data$unique_resolved_expressions)) {
-    data$unique_resolved_expressions[[expr_resolved_repr$hash]] <- expr_resolved_repr$fulltext # should not be truncated
-  }
+    # eval: expr, envir, enclos
+    # evalq: expr, envir, enclos
+    # eval.parent: expr, n
+    # local: expr, envir
+    params <- get_parameters(call)
+    names(params) <- unlist(unname(Map(get_name, params)))
 
-  trace <- create_call_row(
-    eval_call_id,
-    eval_function = call_name,
-    eval_call_expression = expr_to_string(eval_call_expression),
-    eval_call_srcref,
-    caller_package,
-    caller_function,
-    caller_expression = expr_to_string(caller_expression),
-    caller_srcref,
-    environment_class,
-    successful = is_successful(call),
-    expr_expression = expr_expression_repr$text,
-    expr_expression_hash = expr_expression_repr$hash,
-    expr_expression_length = expr_expression_repr$length,
-    expr_expression_type = expr_expression_repr$type,
-    expr_expression_type_tag = expr_expression_repr$tag,
-    expr_expression_nodes = get_ast_size(substitute(expr_expression)),
-    expr_expression_function,
-    expr_expression_args_num,
+    # all evals define expr
+    arg <- get_arguments(params$expr)[[1]]
+    expr_expression <- get_expression(arg)
+    expr_forced <- is_evaluated(arg)
+    expr_resolved <- if (expr_forced) {
+        expr_resolved <- eval_call_env$expr
+    } else {
+        .Empty
+    }
 
-    expr_resolved = expr_resolved_repr$text,
-    expr_resolved_hash = expr_resolved_repr$hash,
-    expr_resolved_length = expr_resolved_repr$length,
-    expr_resolved_type = expr_resolved_repr$type,
-    expr_resolved_type_tag = expr_resolved_repr$tag,
-    expr_resolved_nodes = get_ast_size(substitute(expr_resolved)),
-    expr_resolved_function,
-    expr_resolved_args_num = as.integer(expr_resolved_args_num),
+    # Argument used parse/str2lanf/str2expression?
+    expr_parsed_expression <- attr(expr_resolved, "._evil_parsed_expression")
+    ## browser(expr=eval_function==caller_function && !is.null(expr_parsed_expression))
+    if (is.null(expr_parsed_expression)) {
+        expr_parsed_expression <- .Empty
+    }
 
-    expr_parsed_expression = expr_to_string(expr_parsed_expression),
-    expr_forced,
+    # Argument results from a match.call?
+    expr_match_call <- from_match.call(expr_resolved, data$match.call)
 
-    envir_expression = expr_to_string(envir_expression),
-    envir_forced,
-    envir_type = sexp_typeof(eval_env),
-    envir_from_arg,
+    envir_expression <- .Empty
+    envir_forced <- NA
+    enclos_expression <- .Empty
+    enclos_forced <- NA
 
-    expr_match_call,
+    if (eval_function == "eval.parent") {
+        arg <- get_arguments(params$n)[[1]]
+        expr <- get_expression(arg)
 
-    enclos_expression = expr_to_string(enclos_expression),
-    enclos_forced,
-    enclos_type = sexp_typeof(enclos_env),
-    interp_eval = interp_eval
-  )
+        envir_forced <- is_evaluated(arg)
+        if (!identical(expr, .DefaultArgs[[eval_function]]$n)) {
+            envir_expression <- substitute(parent.frame(1 + N), list(N = expr))
+        }
+        envir_default <- eval_call_env$n == 1
+    } else {
+        arg <- get_arguments(params$envir)[[1]]
+        expr <- get_expression(arg)
 
-  assign(as.character(get_id(arg)), trace, envir = get_data(context)$calls)
+        envir_forced <- is_evaluated(arg)
+        if (!identical(expr, .DefaultArgs[[eval_function]]$envir)) {
+            envir_expression <- expr
+        }
+        # TODO: check if the given environment is the same as the default one
+    }
+
+    if (eval_function %in% c("eval", "evalq")) {
+        arg <- get_arguments(params$enclos)[[1]]
+        expr <- get_expression(arg)
+
+        enclos_forced <- is_evaluated(arg)
+        if (!identical(expr, .DefaultArgs[[call_name]]$enclos)) {
+            enclos_expression <- expr
+        }
+        # TODO: check if the given environment is the same as the default one
+    }
+
+    # TODO: move to S3
+    expr_repr <- function(e) {
+        if (!is_empty(e)) {
+            s <- expr_to_string(e)
+            full_text <- if (is.language(e)) s else NA_character_
+
+            list(
+                fulltext = full_text,
+                text = strtrim(full_text, 360),
+                hash = sha1(full_text),
+                length = nchar(full_text),
+                type = sexp_typeof(e),
+                tag = sexp_typeof(e, tag = TRUE)
+            )
+        } else {
+            list(text = NA_character_, hash = NA_character_, length = NA_integer_, type = NA_character_)
+        }
+    }
+
+    expr_expression_repr <- expr_repr(expr_expression)
+    expr_resolved_repr <- expr_repr(expr_resolved)
+
+    expr_expression_function <- NA_character_
+    expr_expression_args_num <- NA_integer_
+
+    if (is.call(expr_expression)) {
+        expr_expression_function <- expr_to_string(expr_expression[[1]])
+        expr_expression_args_num <- as.integer(length(expr_expression) - 1)
+    }
+
+    expr_resolved_function <- NA_character_
+    expr_resolved_args_num <- NA_integer_
+
+    if (is.call(expr_resolved)) {
+        expr_resolved_function <- expr_to_string(expr_resolved[[1]])
+        expr_resolved_args_num <- length(expr_resolved) - 1
+    }
+
+    if (!exists(expr_resolved_repr$hash, where = data$unique_resolved_expressions)) {
+        cat("\nAdd ", expr_resolved_repr$fulltext, " with hash = ", expr_resolved_repr$hash, "\n")
+        # data$unique_resolved_expressions[[expr_resolved_repr$hash]] <- expr_resolved_repr$fulltext # should not be truncated
+        #assign(expr_resolved_repr$hash, expr_resolved_repr$fulltext, pos = data$unique_resolved_expressions)
+      assign(expr_resolved_repr$hash, "salut", pos = get_data(context)$unique_resolved_expressions)
+      cat("\nResult: ", ls.str(get_data(context)$unique_resolved_expressions), "\n")
+    }
+
+    trace <- create_call_row(
+        eval_call_id,
+        eval_function = call_name,
+        eval_call_expression = expr_to_string(eval_call_expression),
+        eval_call_srcref,
+        caller_package,
+        caller_function,
+        caller_expression = expr_to_string(caller_expression),
+        caller_srcref,
+        environment_class,
+        successful = is_successful(call),
+        expr_expression = expr_expression_repr$text,
+        expr_expression_hash = expr_expression_repr$hash,
+        expr_expression_length = expr_expression_repr$length,
+        expr_expression_type = expr_expression_repr$type,
+        expr_expression_type_tag = expr_expression_repr$tag,
+        expr_expression_nodes = get_ast_size(substitute(expr_expression)),
+        expr_expression_function,
+        expr_expression_args_num,
+
+        expr_resolved = expr_resolved_repr$text,
+        expr_resolved_hash = expr_resolved_repr$hash,
+        expr_resolved_length = expr_resolved_repr$length,
+        expr_resolved_type = expr_resolved_repr$type,
+        expr_resolved_type_tag = expr_resolved_repr$tag,
+        expr_resolved_nodes = get_ast_size(substitute(expr_resolved)),
+        expr_resolved_function,
+        expr_resolved_args_num = as.integer(expr_resolved_args_num),
+
+        expr_parsed_expression = expr_to_string(expr_parsed_expression),
+        expr_forced,
+
+        envir_expression = expr_to_string(envir_expression),
+        envir_forced,
+        envir_type = sexp_typeof(eval_env),
+        envir_from_arg,
+
+        expr_match_call,
+
+        enclos_expression = expr_to_string(enclos_expression),
+        enclos_forced,
+        enclos_type = sexp_typeof(enclos_env),
+        interp_eval = interp_eval
+    )
+
+    assign(as.character(get_id(arg)), trace, envir = get_data(context)$calls)
 }
