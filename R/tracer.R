@@ -373,12 +373,13 @@ call_exit_callback <- function(context, application, package, func, call) {
         expr_resolved_args_num <- length(expr_resolved) - 1
     }
 
-    if (!exists(expr_resolved_repr$hash, where = data$unique_resolved_expressions)) {
+    if (!exists(expr_resolved_repr$hash, where = get_data(context)$unique_resolved_expressions)) {
         cat("\nAdd ", expr_resolved_repr$fulltext, " with hash = ", expr_resolved_repr$hash, "\n")
         # data$unique_resolved_expressions[[expr_resolved_repr$hash]] <- expr_resolved_repr$fulltext # should not be truncated
         #assign(expr_resolved_repr$hash, expr_resolved_repr$fulltext, pos = data$unique_resolved_expressions)
-      assign(expr_resolved_repr$hash, "salut", pos = get_data(context)$unique_resolved_expressions)
-      cat("\nResult: ", ls.str(get_data(context)$unique_resolved_expressions), "\n")
+      cat("With value 1\n")
+      assign(expr_resolved_repr$hash, 1, pos = get_data(context)$unique_resolved_expressions)
+      cat("\nResult: ", ls.str(get_data(context)$unique_resolved_expressions, all.names = TRUE), "\n")
     }
 
     trace <- create_call_row(
