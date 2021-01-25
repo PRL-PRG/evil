@@ -102,16 +102,15 @@ application_unload_callback <- function(context, application) {
 
     data$calls <- NULL
 
-    cat("\n Resolved exprs: ", ls.str(data$unique_resolved_expressions, "\n"))
     n_rows <- length(data$unique_resolved_expressions)
     if (n_rows != 0) {
         expr_df <- as.data.frame(matrix("", ncol = 2, nrow = n_rows))
         names(expr_df) <- c("expr_resolved_hash", "expr_resolved")
         i <- 1
         for (hash in ls(data$unique_resolved_expressions)) {
-            cat("\nHash = ", hash, " and v =", data$unique_resolved_expression[[hash]], "\n")
+            #cat("\nHash = ", hash, " and v =", data$unique_resolved_expressions[[hash]], "\n")
             expr_df[i, "expr_resolved_hash"] <- hash
-            expr_df[i, "expr_resolved"] <- data$unique_resolved_expression[[hash]]
+            expr_df[i, "expr_resolved"] <- data$unique_resolved_expressions[[hash]]
             i <- i + 1
         }
     }
@@ -373,13 +372,8 @@ call_exit_callback <- function(context, application, package, func, call) {
         expr_resolved_args_num <- length(expr_resolved) - 1
     }
 
-    if (!exists(expr_resolved_repr$hash, where = get_data(context)$unique_resolved_expressions)) {
-        cat("\nAdd ", expr_resolved_repr$fulltext, " with hash = ", expr_resolved_repr$hash, "\n")
-        # data$unique_resolved_expressions[[expr_resolved_repr$hash]] <- expr_resolved_repr$fulltext # should not be truncated
-        #assign(expr_resolved_repr$hash, expr_resolved_repr$fulltext, pos = data$unique_resolved_expressions)
-      cat("With value 1\n")
-      assign(expr_resolved_repr$hash, 1, pos = get_data(context)$unique_resolved_expressions)
-      cat("\nResult: ", ls.str(get_data(context)$unique_resolved_expressions, all.names = TRUE), "\n")
+    if (!exists(expr_resolved_repr$hash, where = data$unique_resolved_expressions)) {
+      data$unique_resolved_expressions[[expr_resolved_repr$hash]] <- expr_resolved_repr$fulltext
     }
 
     trace <- create_call_row(
