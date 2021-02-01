@@ -78,3 +78,171 @@ int get_sexp_type(SEXP r_value, int follow_symbol) {
     return value_type;
 }
 
+int in(const char* target, const char** array, int array_length) {
+    for (int i = 0; i < array_length; i++) {
+        if (strcmp(array[i], target) == 0) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+enum normalized_type to_normalized_type(const char* val) {
+    if (strcmp(val, "NUM")) {
+        return N_Num;
+    } else if (strcmp(val, "BOOL")) {
+        return N_Boolean;
+    } else if (strcmp(val, "STR")) {
+        return N_String;
+    } else {
+        return N_Other;
+    }
+}
+
+const char* from_normalized_type(enum normalized_type ntype) {
+    static const char* ntypes[] = {"NUM", "BOOL", "STR", "OTHER"};
+    return ntypes[ntype];
+}
+
+void write_buffer(char* buffer, int* max_size, int write_pos, const char* input) {
+    for(int i = 0; input[i] != '\0' ; i++) {
+        if(write_pos + i < *max_size) {
+            buffer[write_pos + i] = input[i];
+        }
+        else {
+            // Buffer needs to be reallocated!
+            // We use the usual exponential strategy
+            size_t old_max_size = *max_size;
+            *max_size = 2 * (*max_size);
+            buffer = realloc(buffer, max_size);
+            if(buffer != NULL) {
+                error("Could not reallocate memory for the normalized expression.\n");
+            }
+            // The content of the new part are undefined so we initialize them to 0
+            memset(buffer + old_max_size, '\0', old_max_size);
+        }
+    }
+}
+
+#define NB_ARITH_OP 15
+#define NB_STR_OP 3
+#define NB_COMP_OP 6
+#define NB_BOOL_OP 5
+
+const char* normalize_expr(SEXP ast, char* buffer, int max_size, int write_pos, int function_call) {
+    static const char* arith_op[NB_ARITH_OP] = {"/",
+                                                "-",
+                                                "*",
+                                                "+",
+                                                "^",
+                                                "log",
+                                                "sqrt",
+                                                "exp",
+                                                "max",
+                                                "min",
+                                                "cos",
+                                                "sin",
+                                                "abs",
+                                                "atan",
+                                                ":"};
+
+    static const char* str_op[NB_STR_OP] = {"paste", "paste0", "str_c"};
+
+    static const char* cmp_op[NB_COMP_OP] = {"<", ">", "<=", ">=", "==", "!="};
+
+    static const char* bool_op[NB_BOOL_OP] = {"&", "&&", "|", "||", "!"};
+
+    switch (TYPEOF(ast)) {
+    case INTSXP:
+    case REALSXP:
+    case CPLXSXP:
+        return "NUM";
+
+    case SYMSXP:
+        if (function_call) { // This is a symbol from a function call
+            if (in(CHAR(PRINTNAME(ast)), arith_op, NB_ARITH_OP)) {
+                return "OP";
+            } else if (in(CHAR(PRINTNAME(ast)), bool_op, NB_BOOL_OP)) {
+                return "LOGI";
+            } else if (in(CHAR(PRINTNAME(ast)), cmp_op, NB_COMP_OP)) {
+                return "COMP";
+            } else {
+                return (CHAR(PRINTNAME(ast)));
+            }
+        } else {
+            return "VAR";
+        }
+
+    case LGLSXP:
+        return "BOOL";
+
+    case STRSXP:
+        // Also deal with magic values for emv, weak ptr and so on
+        return "STR";
+
+    case LANGSXP: {
+        SEXP ptr = ast;
+        // Function name (or anonymous function)
+        const char* function_name = normalize_expr(CAR(ptr), 1);
+        enum normalized_type ntype = N_Other;
+        if (strcmp(function_name, "OP") == 0) {
+            ntype = N_Num;
+        } else if (in(function_name, str_op, NB_STR_OP)) {
+            ntype = N_String;
+        } else if (strcmp(function_name, "LOGI") == 0) {
+            ntype = N_Boolean;
+        } else if (strcmp(function_name, "COMP") == 0) {
+            ntype = N_Num;
+        }
+        // Arguments
+        ptr = CDR(ptr);
+        while (ptr != R_NilValue) {
+            const char* argument = normalize_expr(ptr, 0);
+            if (to_normalized_type(argument) != ntype) {
+                ntype = N_Other;
+            }
+            ptr = CDR(ptr);
+        }
+        if (ntype != N_Other) {
+            if (function_name == "COMP") {
+                return "BOOL";
+            } else {
+                return from_normalized_type(ntype);
+            }
+        }
+        return "PLOP";
+    }
+
+    case EXPRSXP: {
+        int size = Rf_length(ast);
+        for (int i = 0; i < size; i++) {
+            normalize_expr(VECTOR_ELT(ast, i), 0);
+        }
+    }
+
+    case LISTSXP:
+        return "";
+
+    default:
+        return "";
+    }
+
+    return "";
+}
+
+
+#define BUF_INIT_SIZE 100 
+SEXP r_normalize_expr(SEXP ast) {
+    // Allocate a buffer  to store the string expression
+    // No need to desallocate later because R will take it in charge?
+    // No need to initialize to zero after calloc. It's done by the function
+    char* buffer = (char*) calloc(BUF_INIT_SIZE, sizeof(char)); 
+    if(buffer == NULL) {
+        error("Could not allocate memory for the normalized expression.\n");
+    }
+
+    normalize_expr(ast, buffer, BUF_INIT_SIZE, 0, 0);
+    SEXP r_value = PROTECT(mkString(buffer));
+    UNPROTECT(1);
+    return r_value;
+}

@@ -13,6 +13,9 @@ SEXP sexp_typeof(SEXP x);
 SEXP mark_parsed_expression(SEXP x, SEXP parse_fun_name);
 SEXP r_get_ast_size(SEXP ast);
 int get_sexp_type(SEXP r_value, int follow_symbol);
+SEXP r_normalize_expr(SEXP ast);
+
+enum normalized_type{N_Num, N_Boolean, N_String, N_Other};
 
 #ifdef __cplusplus
 }

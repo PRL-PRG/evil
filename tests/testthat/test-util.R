@@ -43,6 +43,10 @@ test_that("get_ast_size", {
     expect_equal(get_ast_size(expression(x = 1 + 2, y = 8 + 9)), 7)
 })
 
+test_that("Normalization works",  {
+  expect_equal(normalize_expr(expression(1 + 1)), "NUM")
+})
+
 ## test_that("x", {
 ##   r <- trace_code({
 ##     g <- function(x) {
