@@ -7,7 +7,7 @@ test_that("adresses are well detected", {
   addr_map <- new.env(parent = emptyenv())
   addresses <- vapply(ca, injectr::sexp_address, "")
   # add addresses to the map
-  for(k in addresses) {
+  for (k in addresses) {
     addr_map[[k]] <- TRUE
   }
 
@@ -21,29 +21,29 @@ test_that("adresses are well detected", {
 })
 
 test_that("get_ast_size", {
-    expect_equal(get_ast_size(NULL), 1)
+  expect_equal(get_ast_size(NULL), 1)
 
-    expect_equal(get_ast_size(1), 1)
+  expect_equal(get_ast_size(1), 1)
 
-    expect_equal(get_ast_size(1L), 1)
+  expect_equal(get_ast_size(1L), 1)
 
-    expect_equal(get_ast_size(quote(f(1,2,3))), 4)
+  expect_equal(get_ast_size(quote(f(1, 2, 3))), 4)
 
-    expect_equal(get_ast_size(list(1,2,3)), 1)
+  expect_equal(get_ast_size(list(1, 2, 3)), 1)
 
-    x <- 1:1000000
-    expect_equal(get_ast_size(x), 1)
+  x <- 1:1000000
+  expect_equal(get_ast_size(x), 1)
 
-    expect_equal(get_ast_size(function(x) x + 1), 1)
+  expect_equal(get_ast_size(function(x) x + 1), 1)
 
-    ## NOTE: function asts contain a hidden 4th element that is being counted here
-    expect_equal(get_ast_size(quote(function(x) x + 1)), 6)
+  ## NOTE: function asts contain a hidden 4th element that is being counted here
+  expect_equal(get_ast_size(quote(function(x) x + 1)), 6)
 
-    ## TODO: function asts contain a hidden 4th element that is being counted here
-    expect_equal(get_ast_size(expression(x = 1 + 2, y = 8 + 9)), 7)
+  ## TODO: function asts contain a hidden 4th element that is being counted here
+  expect_equal(get_ast_size(expression(x = 1 + 2, y = 8 + 9)), 7)
 })
 
-test_that("Normalization works",  {
+test_that("Normalization works", {
   expect_equal(normalize_expr(expression(1 + 1)), "NUM")
   expect_equal(normalize_expr(quote(1 + 1)), "NUM")
   expect_equal(normalize_expr(quote(TRUE && FALSE)), "BOOL")
@@ -51,6 +51,20 @@ test_that("Normalization works",  {
   expect_equal(normalize_expr(quote(x)), "VAR")
   expect_equal(normalize_expr(quote(x + y)), "OP(VAR)")
   expect_equal(normalize_expr(quote(x + 1)), "OP(VAR)")
+
+  expect_equal(normalize_expr(quote(c(1, 2, 3, 4))), "c(NUM)")
+  expect_equal(normalize_expr(quote(list(1, 2, 3, 4))), "list(NUM)")
+  expect_equal(normalize_expr(quote(c(TRUE, FALSE, FALSE, TRUE))), "c(BOOL)")
+  expect_equal(normalize_expr(quote(c("a", "e", "i", "o"))), "c(STR)")
+  expect_equal(normalize_expr(quote(list(1, "hello"))), "list(NUM, STR)")
+  expect_equal(normalize_expr(quote(c(1, 2, x, 4))), "c(VAR)")
+
+  # Stress test: more than 100 characters to allocate
+  # 6 x pattern 1, 2, "test", 4
+  expect_equal(normalize_expr(quote(list(
+    1, 2, "test", 4, 1, 2, "test", 4, 1, 2,
+    "test", 4, 1, 2, "test", 4, 1, 2, "test", 4, 1, 2, "test", 4
+  ))), "list(NUM, NUM, STR, NUM, NUM, NUM, STR, NUM, NUM, NUM, STR, NUM, NUM, NUM, STR, NUM, NUM, NUM, STR, NUM, NUM, NUM, STR, NUM)")
 })
 
 ## test_that("x", {
