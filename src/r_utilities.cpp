@@ -87,41 +87,50 @@ int in(const char* target, const char** array, int array_length) {
     return 0;
 }
 
-enum normalized_type to_normalized_type(const char* val) {
-    if (strcmp(val, "NUM")) {
-        return N_Num;
-    } else if (strcmp(val, "BOOL")) {
-        return N_Boolean;
-    } else if (strcmp(val, "STR")) {
-        return N_String;
-    } else {
-        return N_Other;
-    }
-}
-
 const char* from_normalized_type(enum normalized_type ntype) {
-    static const char* ntypes[] = {"NUM", "BOOL", "STR", "OTHER"};
+    static const char* ntypes[] = {"NUM",
+                                   "BOOL",
+                                   "STR",
+                                   "OP",
+                                   "LOGI",
+                                   "COMP",
+                                   "VAR",
+                                   "ENV",
+                                   "WREF",
+                                   "PTR",
+                                   "NULL",
+                                   "STROP",
+                                   "OTHER"};
     return ntypes[ntype];
 }
 
-void write_buffer(char* buffer, int* max_size, int write_pos, const char* input) {
-    for(int i = 0; input[i] != '\0' ; i++) {
-        if(write_pos + i < *max_size) {
-            buffer[write_pos + i] = input[i];
-        }
-        else {
+void write_buffer(char* buffer,
+                  int* max_size,
+                  int* write_pos,
+                  const char* input) {
+    for (int i = 0; input[i] != '\0'; i++, (*write_pos)++) {
+        if (*write_pos >= *max_size) {
             // Buffer needs to be reallocated!
             // We use the usual exponential strategy
             size_t old_max_size = *max_size;
             *max_size = 2 * (*max_size);
-            buffer = realloc(buffer, max_size);
-            if(buffer != NULL) {
-                error("Could not reallocate memory for the normalized expression.\n");
+            buffer = (char*) realloc(buffer, *max_size);
+            if (buffer != NULL) {
+                error("Could not reallocate memory for the normalized "
+                      "expression.\n");
             }
-            // The content of the new part are undefined so we initialize them to 0
+            // The content of the new part are undefined so we initialize them
+            // to 0
             memset(buffer + old_max_size, '\0', old_max_size);
         }
+
+        buffer[*write_pos] = input[i];
     }
+}
+
+void rollback_writepos(char* buffer, int* write_pos, int old_write_pos) {
+    memset(buffer + old_write_pos, '\0', *write_pos - old_write_pos);
+    *write_pos = old_write_pos;
 }
 
 #define NB_ARITH_OP 15
@@ -129,11 +138,10 @@ void write_buffer(char* buffer, int* max_size, int write_pos, const char* input)
 #define NB_COMP_OP 6
 #define NB_BOOL_OP 5
 
-
 enum normalized_type normalize_expr(SEXP ast,
                                     char* buffer,
-                                    int *max_size,
-                                    int *write_pos,
+                                    int* max_size,
+                                    int* write_pos,
                                     int function_call) {
     static const char* arith_op[NB_ARITH_OP] = {"/",
                                                 "-",
@@ -158,87 +166,134 @@ enum normalized_type normalize_expr(SEXP ast,
     static const char* bool_op[NB_BOOL_OP] = {"&", "&&", "|", "||", "!"};
 
     switch (TYPEOF(ast)) {
+    case NILSXP:
+        write_buffer(buffer, max_size, write_pos, "NULL");
+        return N_Null;
     case INTSXP:
     case REALSXP:
     case CPLXSXP:
+        Rprintf("Seeing NUM\n");
+        write_buffer(buffer, max_size, write_pos, "NUM");
         return N_Num;
-
 
     case SYMSXP:
         if (function_call) { // This is a symbol from a function call
             if (in(CHAR(PRINTNAME(ast)), arith_op, NB_ARITH_OP)) {
-                return "OP";
+                write_buffer(buffer, max_size, write_pos, "OP");
+                return N_Op;
             } else if (in(CHAR(PRINTNAME(ast)), bool_op, NB_BOOL_OP)) {
-                return "LOGI";
+                write_buffer(buffer, max_size, write_pos, "LOGI");
+                return N_Logi;
             } else if (in(CHAR(PRINTNAME(ast)), cmp_op, NB_COMP_OP)) {
-                return "COMP";
+                write_buffer(buffer, max_size, write_pos, "COMP");
+                return N_Comp;
+              } else if (in(CHAR(PRINTNAME(ast)), str_op, NB_STR_OP)) {
+                write_buffer(buffer, max_size, write_pos, CHAR(PRINTNAME(ast)));
+                return N_StrOp;
             } else {
-                return (CHAR(PRINTNAME(ast)));
+                write_buffer(buffer, max_size, write_pos, CHAR(PRINTNAME(ast)));
+                return N_Other;
             }
         } else {
-            return "VAR";
+            write_buffer(buffer, max_size, write_pos, "VAR");
+            return N_Var;
         }
 
     case LGLSXP:
-        return "BOOL";
+        write_buffer(buffer, max_size, write_pos, "BOOL");
+        return N_Boolean;
 
-    case STRSXP:
-        // Also deal with magic values for emv, weak ptr and so on
-        return "STR";
+    case STRSXP: {
+        // Also deal with magic values for env, weak ptr and so on
+        const char* s = CHAR(STRING_ELT(ast, 0));
+
+        if (strcmp(s, "<.ENVIRONMENT>") == 0) {
+            write_buffer(buffer, max_size, write_pos, "ENV");
+            return N_Env;
+        } else if (strcmp(s, "<.WEAK REFERENCE>") == 0) {
+            write_buffer(buffer, max_size, write_pos, "WREF");
+            return N_WRef;
+        } else if (strcmp(s, "<.POINTER>") == 0) {
+            write_buffer(buffer, max_size, write_pos, "PTR");
+            return N_Ptr;
+        }
+        write_buffer(buffer, max_size, write_pos, "STR");
+        return N_String;
+    }
 
     case LANGSXP: {
         SEXP ptr = ast;
+        int old_write_pos =
+            *write_pos; // Save write pos in case we need to roll back
         // Function name (or anonymous function)
-        const char* function_name = normalize_expr(CAR(ptr), 1);
-        enum normalized_type ntype = N_Other;
-        if (strcmp(function_name, "OP") == 0) {
+        normalized_type ntype_function =
+            normalize_expr(CAR(ptr), buffer, max_size, write_pos, 1);
+        normalized_type ntype = N_Other;
+        if (ntype_function == N_Comp || ntype_function == N_Op) {
             ntype = N_Num;
-        } else if (in(function_name, str_op, NB_STR_OP)) {
-            ntype = N_String;
-        } else if (strcmp(function_name, "LOGI") == 0) {
+        } else if (ntype_function == N_Logi) {
             ntype = N_Boolean;
-        } else if (strcmp(function_name, "COMP") == 0) {
-            ntype = N_Num;
         }
+        else if (ntype_function == N_StrOp) {
+            ntype = N_String;
+        }
+        Rprintf("NType function: %s\n", from_normalized_type(ntype_function));
+
+        write_buffer(buffer, max_size, write_pos, "(");
+
         // Arguments
         ptr = CDR(ptr);
         while (ptr != R_NilValue) {
-            normalized_type ntype_arg = normalize_expr(ptr, 0);
-            if (ntype_arg != ntype) {
-
+            normalized_type ntype_arg =
+                normalize_expr(CAR(ptr), buffer, max_size, write_pos, 0);
+            Rprintf("NType argument: %s\n", from_normalized_type(ntype_arg));
+            if (ntype_arg != ntype) {// Rather write it to crush sequences of similar types.
                 ntype = N_Other;
             }
+            write_buffer(buffer, max_size, write_pos, ", ");
             ptr = CDR(ptr);
         }
-        if (ntype != N_Other) {
-            if (function_name == "COMP") {
-                return "BOOL";
-            } else {
-                return from_normalized_type(ntype);
+
+        write_buffer(buffer, max_size, write_pos, ")");
+
+        if (ntype != N_Other) { // Constant folded
+            // All the same type so we roll back to previous write position!
+            rollback_writepos(buffer, write_pos, old_write_pos);
+            if (ntype_function == N_Comp) {
+                write_buffer(buffer, max_size, write_pos, "BOOL");
+                return N_Boolean;
+            } else { // TODO: check if it is a type that makes sense
+                write_buffer(
+                    buffer, max_size, write_pos, from_normalized_type(ntype));
+                return ntype;
             }
         }
-        return "PLOP";
+        return N_Other;
     }
 
     case EXPRSXP: {
         int size = Rf_length(ast);
         for (int i = 0; i < size - 1; i++) {
             normalize_expr(VECTOR_ELT(ast, i), buffer, max_size, write_pos, 0);
-            write_buffer(buffer)
+            write_buffer(buffer, max_size, write_pos, "; ");
         }
-        normalize_expr(VECTOR_ELT(ast, i), 0);
+        normalize_expr(
+            VECTOR_ELT(ast, size - 1), buffer, max_size, write_pos, 0);
 
         return N_Other;
     }
 
     case LISTSXP:
-        return "";
+        Rprintf("Seeing LIST\n");
+        return N_Other;
 
     default:
-        return "";
+        Rprintf("Seeing Other\n");
+        return N_Other;
     }
 
-    return "";
+    error("Not supported");
+    return N_Other;
 }
 
 #define BUF_INIT_SIZE 100
@@ -246,12 +301,15 @@ SEXP r_normalize_expr(SEXP ast) {
     // Allocate a buffer  to store the string expression
     // No need to desallocate later because R will take it in charge?
     // No need to initialize to zero after calloc. It's done by the function
-    char* buffer = (char*) calloc(BUF_INIT_SIZE, sizeof(char)); 
-    if(buffer == NULL) {
+    char* buffer = (char*) calloc(BUF_INIT_SIZE, sizeof(char));
+    if (buffer == NULL) {
         error("Could not allocate memory for the normalized expression.\n");
     }
 
-    normalize_expr(ast, buffer, BUF_INIT_SIZE, 0, 0);
+    int max_size = BUF_INIT_SIZE;
+    int write_pos = 0;
+
+    normalize_expr(ast, buffer, &max_size, &write_pos, 0);
     SEXP r_value = PROTECT(mkString(buffer));
     UNPROTECT(1);
     free(buffer); // mkString copies
