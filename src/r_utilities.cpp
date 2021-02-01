@@ -104,10 +104,31 @@ const char* from_normalized_type(enum normalized_type ntype) {
     return ntypes[ntype];
 }
 
+void write_buffer(char* buffer, int* max_size, int write_pos, const char* input) {
+    for(int i = 0; input[i] != '\0' ; i++) {
+        if(write_pos + i < *max_size) {
+            buffer[write_pos + i] = input[i];
+        }
+        else {
+            // Buffer needs to be reallocated!
+            // We use the usual exponential strategy
+            size_t old_max_size = *max_size;
+            *max_size = 2 * (*max_size);
+            buffer = realloc(buffer, max_size);
+            if(buffer != NULL) {
+                error("Could not reallocate memory for the normalized expression.\n");
+            }
+            // The content of the new part are undefined so we initialize them to 0
+            memset(buffer + old_max_size, '\0', old_max_size);
+        }
+    }
+}
+
 #define NB_ARITH_OP 15
 #define NB_STR_OP 3
 #define NB_COMP_OP 6
 #define NB_BOOL_OP 5
+
 
 enum normalized_type normalize_expr(SEXP ast,
                                     char* buffer,
@@ -141,6 +162,7 @@ enum normalized_type normalize_expr(SEXP ast,
     case REALSXP:
     case CPLXSXP:
         return N_Num;
+
 
     case SYMSXP:
         if (function_call) { // This is a symbol from a function call
@@ -183,6 +205,7 @@ enum normalized_type normalize_expr(SEXP ast,
         while (ptr != R_NilValue) {
             normalized_type ntype_arg = normalize_expr(ptr, 0);
             if (ntype_arg != ntype) {
+
                 ntype = N_Other;
             }
             ptr = CDR(ptr);
@@ -223,7 +246,10 @@ SEXP r_normalize_expr(SEXP ast) {
     // Allocate a buffer  to store the string expression
     // No need to desallocate later because R will take it in charge?
     // No need to initialize to zero after calloc. It's done by the function
-    char* buffer = (char*) calloc(BUF_INIT_SIZE, sizeof(char));
+    char* buffer = (char*) calloc(BUF_INIT_SIZE, sizeof(char)); 
+    if(buffer == NULL) {
+        error("Could not allocate memory for the normalized expression.\n");
+    }
 
     normalize_expr(ast, buffer, BUF_INIT_SIZE, 0, 0);
     SEXP r_value = PROTECT(mkString(buffer));
