@@ -45,6 +45,12 @@ test_that("get_ast_size", {
 
 test_that("Normalization works",  {
   expect_equal(normalize_expr(expression(1 + 1)), "NUM")
+  expect_equal(normalize_expr(quote(1 + 1)), "NUM")
+  expect_equal(normalize_expr(quote(TRUE && FALSE)), "BOOL")
+  expect_equal(normalize_expr(quote(paste0("Hello, ", "World"))), "STR")
+  expect_equal(normalize_expr(quote(x)), "VAR")
+  expect_equal(normalize_expr(quote(x + y)), "OP(VAR)")
+  expect_equal(normalize_expr(quote(x + 1)), "OP(VAR)")
 })
 
 ## test_that("x", {

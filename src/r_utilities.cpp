@@ -187,7 +187,7 @@ enum normalized_type normalize_expr(SEXP ast,
             } else if (in(CHAR(PRINTNAME(ast)), cmp_op, NB_COMP_OP)) {
                 write_buffer(buffer, max_size, write_pos, "COMP");
                 return N_Comp;
-              } else if (in(CHAR(PRINTNAME(ast)), str_op, NB_STR_OP)) {
+            } else if (in(CHAR(PRINTNAME(ast)), str_op, NB_STR_OP)) {
                 write_buffer(buffer, max_size, write_pos, CHAR(PRINTNAME(ast)));
                 return N_StrOp;
             } else {
@@ -221,6 +221,7 @@ enum normalized_type normalize_expr(SEXP ast,
         return N_String;
     }
 
+    case LISTSXP:
     case LANGSXP: {
         SEXP ptr = ast;
         int old_write_pos =
@@ -233,8 +234,7 @@ enum normalized_type normalize_expr(SEXP ast,
             ntype = N_Num;
         } else if (ntype_function == N_Logi) {
             ntype = N_Boolean;
-        }
-        else if (ntype_function == N_StrOp) {
+        } else if (ntype_function == N_StrOp) {
             ntype = N_String;
         }
         Rprintf("NType function: %s\n", from_normalized_type(ntype_function));
@@ -243,20 +243,37 @@ enum normalized_type normalize_expr(SEXP ast,
 
         // Arguments
         ptr = CDR(ptr);
+        int i = 0;
+        int isVar = 0; //is there at least one Var?
+        int old_write_pos2 = *write_pos;
         while (ptr != R_NilValue) {
             normalized_type ntype_arg =
                 normalize_expr(CAR(ptr), buffer, max_size, write_pos, 0);
             Rprintf("NType argument: %s\n", from_normalized_type(ntype_arg));
-            if (ntype_arg != ntype) {// Rather write it to crush sequences of similar types.
+            if (ntype_arg != ntype && ntype_arg != N_Var) {
+                // Rather write it to crush sequences of similar types.
                 ntype = N_Other;
             }
-            write_buffer(buffer, max_size, write_pos, ", ");
+            if(ntype_arg == N_Var) {
+                isVar = 1;
+            }
             ptr = CDR(ptr);
+            i++;
+            // A bit ugly..., to not write that comma at the end
+            // Another solution would be to rollback the buffer by 2 characters
+            // after the loop But is it efficient? And it also feels hacky...
+            if (ptr != R_NilValue) {
+                write_buffer(buffer, max_size, write_pos, ", ");
+            }
         }
 
-        write_buffer(buffer, max_size, write_pos, ")");
 
-        if (ntype != N_Other) { // Constant folded
+        if (ntype != N_Other) { // Constant folded and VAR absorption
+            if(isVar) {
+                rollback_writepos(buffer, write_pos, old_write_pos2);
+                write_buffer(buffer, max_size, write_pos, "VAR");
+            }
+            else {
             // All the same type so we roll back to previous write position!
             rollback_writepos(buffer, write_pos, old_write_pos);
             if (ntype_function == N_Comp) {
@@ -267,7 +284,10 @@ enum normalized_type normalize_expr(SEXP ast,
                     buffer, max_size, write_pos, from_normalized_type(ntype));
                 return ntype;
             }
+            }
         }
+
+        write_buffer(buffer, max_size, write_pos, ")");
         return N_Other;
     }
 
@@ -282,10 +302,6 @@ enum normalized_type normalize_expr(SEXP ast,
 
         return N_Other;
     }
-
-    case LISTSXP:
-        Rprintf("Seeing LIST\n");
-        return N_Other;
 
     default:
         Rprintf("Seeing Other\n");
