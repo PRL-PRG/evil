@@ -178,7 +178,7 @@ enum normalized_type normalize_expr(SEXP ast,
     case INTSXP:
     case REALSXP:
     case CPLXSXP:
-        Rprintf("Seeing NUM\n");
+        //Rprintf("Seeing NUM\n");
         write_buffer(buffer, max_size, write_pos, "NUM");
         return N_Num;
 
@@ -246,7 +246,7 @@ enum normalized_type normalize_expr(SEXP ast,
         } else if (ntype_function == N_StrOp) {
             ntype = N_String;
         }
-        Rprintf("NType function: %s\n", from_normalized_type(ntype_function));
+        //Rprintf("NType function: %s\n", from_normalized_type(ntype_function));
 
         write_buffer(buffer, max_size, write_pos, "(");
 
@@ -258,7 +258,7 @@ enum normalized_type normalize_expr(SEXP ast,
         while (ptr != R_NilValue) {
             normalized_type ntype_arg =
                 normalize_expr(CAR(ptr), buffer, max_size, write_pos, 0);
-            Rprintf("NType argument: %s\n", from_normalized_type(ntype_arg));
+            //Rprintf("NType argument: %s\n", from_normalized_type(ntype_arg));
 
             // To merge all similar elements in a list or vector, or do VAR
             // absorption
@@ -324,7 +324,7 @@ enum normalized_type normalize_expr(SEXP ast,
     }
 
     default:
-        Rprintf("Seeing Other\n");
+        //Rprintf("Seeing Other\n");
         return N_Other;
     }
 
