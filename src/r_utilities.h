@@ -34,6 +34,7 @@ enum normalized_type {
     N_Function,
     N_FunctionArgs,
     N_Paren,
+    N_NA,
     N_Other
 };
 typedef enum normalized_type normalized_type;

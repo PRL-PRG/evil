@@ -99,9 +99,15 @@ test_that("Normalization works", {
   expect_equal(normalize_expr(quote((1) + 2)), "NUM")
   expect_equal(normalize_expr(quote(c(1, (2)))), "c(NUM)")
 
-  # Coercion of NA
+  # Coercion of NA. That can be tricky!
   expect_equal(normalize_expr(quote(c(1, NA))), "c(NUM)")
+  expect_equal(normalize_expr(quote(c(1, NA, NA))), "c(NUM)")
+  expect_equal(normalize_expr(quote(c(NA, 1))), "c(NUM)")
   expect_equal(normalize_expr(quote(1 + NA)), "NUM")
+  expect_equal(normalize_expr(quote(NA + 1)), "NUM")
+  expect_equal(normalize_expr(quote(NA + NA + 1)), "NUM")
+  expect_equal(normalize_expr(quote(c(NA))), "c(BOOL)")
+  expect_equal(normalize_expr(quote(NA)), "BOOL")
 
 })
 

@@ -106,6 +106,7 @@ const char* from_normalized_type(normalized_type ntype) {
                                    "FUNCTION",
                                    "FUNCTIONARG",
                                    "PAREN",
+                                   "NA",
                                    "OTHER"};
     return ntypes[ntype];
 }
@@ -179,7 +180,7 @@ normalized_type normalize_expr(SEXP ast,
 
     switch (TYPEOF(ast)) {
     case NILSXP: {
-        if (!merge || previous_ntype != N_Null) {
+        if (!merge || (previous_ntype != N_Null && previous_ntype != N_NA)) {
             write_buffer(buffer, max_size, write_pos, "NULL");
         }
 
@@ -189,7 +190,7 @@ normalized_type normalize_expr(SEXP ast,
     case INTSXP:
     case REALSXP:
     case CPLXSXP: {
-        if (!merge || previous_ntype != N_Num) {
+        if (!merge || (previous_ntype != N_Num && previous_ntype != N_NA)) {
             write_buffer(buffer, max_size, write_pos, "NUM");
         }
         return N_Num;
@@ -247,8 +248,11 @@ normalized_type normalize_expr(SEXP ast,
             (previous_ntype == N_Num || previous_ntype == N_String)) {
             return previous_ntype;
         }
-        else if (!merge || previous_ntype != N_Boolean) {
+        else if (!merge || (previous_ntype != N_Boolean && previous_ntype != N_NA)) {
             write_buffer(buffer, max_size, write_pos, "BOOL");
+        }
+        if(asLogical(ast) == NA_LOGICAL) {
+            return N_NA;// Will be coerced to what is needed with the next element
         }
         return N_Boolean;
     }
@@ -275,7 +279,7 @@ normalized_type normalize_expr(SEXP ast,
             return N_Ptr;
         }
 
-        if (!merge || previous_ntype != N_String) {
+        if (!merge || (previous_ntype != N_String && previous_ntype != N_NA)) {
             write_buffer(buffer, max_size, write_pos, "STR");
         }
         return N_String;
@@ -323,7 +327,8 @@ normalized_type normalize_expr(SEXP ast,
         }
 
         // Will be used for constant folding
-        normalized_type ntype = N_Other;
+        // This is the type we expect to see according to the following operators
+        normalized_type ntype = N_NA;
         if (ntype_function == N_Comp || ntype_function == N_Op) {
             ntype = N_Num;
         } else if (ntype_function == N_Logi) {
@@ -338,7 +343,6 @@ normalized_type normalize_expr(SEXP ast,
 
         // Arguments
         ptr = CDR(ptr);
-        int i = 0;
         int isVar = 0; // is there at least one Var?
         int old_write_pos2 = *write_pos;
         normalized_type ntype_arg = N_Other;
@@ -351,17 +355,18 @@ normalized_type normalize_expr(SEXP ast,
                                        ntype_arg,
                                        ntype_function == N_ListVec);
 
-            Rprintf("NType argument: %s\n", from_normalized_type(ntype_arg));
+            //Rprintf("NType argument: %s\n", from_normalized_type(ntype_arg));
 
             // To merge all similar elements in a list or vector, or do VAR
             // absorption
-            if (i == 0 && ntype_function == N_ListVec) {
+            // We are at the beginning of the list or the first elements were NAs
+            if (ntype == N_NA && ntype_function == N_ListVec) {
                 ntype = ntype_arg;
             }
 
             // Different ntypes, excluding VAR so no Constant Folding won't be
             // done
-            if (ntype_arg != ntype && ntype_arg != N_Var) {
+            if (ntype_arg != ntype && ntype_arg != N_Var && ntype_arg != N_NA) {
                 ntype = N_Other;
             }
             if (ntype_arg == N_Var) {
@@ -372,7 +377,6 @@ normalized_type normalize_expr(SEXP ast,
                 isVar = 1;
             }
             ptr = CDR(ptr);
-            i++;
             // A bit ugly..., to not write that comma at the end
             // Another solution would be to rollback the buffer by 2 characters
             // after the loop But is it efficient? And it also feels hacky...
@@ -389,6 +393,8 @@ normalized_type normalize_expr(SEXP ast,
                 write_buffer(buffer, max_size, write_pos, "VAR");
             } else if (ntype_function == N_ListVec) {
                 rollback_writepos(buffer, write_pos, old_write_pos2);
+                // If NA has not been coerced yet, it is by default a boolean
+                ntype = ntype == N_NA ? N_Boolean : ntype;
                 write_buffer(
                     buffer, max_size, write_pos, from_normalized_type(ntype));
             } else {
