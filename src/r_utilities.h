@@ -32,7 +32,6 @@ enum normalized_type {
     N_ModelFrame,
     N_Namespace,
     N_Function,
-    N_FunctionArgs,
     N_Paren,
     N_NA,
     N_Other

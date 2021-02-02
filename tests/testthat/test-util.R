@@ -109,6 +109,11 @@ test_that("Normalization works", {
   expect_equal(normalize_expr(quote(c(NA))), "c(BOOL)")
   expect_equal(normalize_expr(quote(NA)), "BOOL")
 
+  # Special treatment for model.frame
+  expect_equal(normalize_expr(quote(model.frame(x ~ y))), "model.frame(~(VAR, VAR), NULL, subset = NULL)")
+  expect_equal(normalize_expr(quote(model.frame(x ~ y, NULL))), "model.frame(~(VAR, VAR), NULL, subset = NULL)")
+  expect_equal(normalize_expr(quote(model.frame(x ~ y, subset = t))), "model.frame(~(VAR, VAR), NULL, subset = VAR)")
+
 })
 
 ## test_that("x", {

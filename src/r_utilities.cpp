@@ -104,7 +104,6 @@ const char* from_normalized_type(normalized_type ntype) {
                                    "MODEL.FRAME",
                                    "::",
                                    "FUNCTION",
-                                   "FUNCTIONARG",
                                    "PAREN",
                                    "NA",
                                    "OTHER"};
@@ -220,10 +219,6 @@ normalized_type normalize_expr(SEXP ast,
             } else if (ast == R_DoubleColonSymbol) {
                 // We want to get rid of the namespaces
                 return N_Namespace;
-            } else if (strcmp(CHAR(PRINTNAME(ast)), "function") == 0) {
-                // anonymous function
-                write_buffer(buffer, max_size, write_pos, "function");
-                return N_FunctionArgs; // to be able to print the function args
             } else if (strcmp(CHAR(PRINTNAME(ast)), "(") == 0) {
                 // We want to get rid of this parenthesis operator. (a) => a
                 return N_Paren;
@@ -247,19 +242,20 @@ normalized_type normalize_expr(SEXP ast,
         if (asLogical(ast) == NA_LOGICAL &&
             (previous_ntype == N_Num || previous_ntype == N_String)) {
             return previous_ntype;
-        }
-        else if (!merge || (previous_ntype != N_Boolean && previous_ntype != N_NA)) {
+        } else if (!merge ||
+                   (previous_ntype != N_Boolean && previous_ntype != N_NA)) {
             write_buffer(buffer, max_size, write_pos, "BOOL");
         }
-        if(asLogical(ast) == NA_LOGICAL) {
-            return N_NA;// Will be coerced to what is needed with the next element
+        if (asLogical(ast) == NA_LOGICAL) {
+            return N_NA; // Will be coerced to what is needed with the next
+                         // element
         }
         return N_Boolean;
     }
 
     case STRSXP: {
-        // This comes from the parser and so there is always only one CHARSXP in the
-        // character vector
+        // This comes from the parser and so there is always only one CHARSXP in
+        // the character vector
         const char* s = CHAR(STRING_ELT(ast, 0));
 
         if (strcmp(s, "<.ENVIRONMENT>") == 0) {
@@ -309,8 +305,8 @@ normalized_type normalize_expr(SEXP ast,
         int old_write_pos = *write_pos;
 
         // Function name (or anonymous function)
-        normalized_type ntype_function =
-            normalize_expr(CAR(ptr), buffer, max_size, write_pos, N_Function, 0);
+        normalized_type ntype_function = normalize_expr(
+            CAR(ptr), buffer, max_size, write_pos, N_Function, 0);
 
         if (ntype_function == N_Namespace) {
             // We skip the namespace name!
@@ -326,8 +322,56 @@ normalized_type normalize_expr(SEXP ast,
                 CAR(ptr), buffer, max_size, write_pos, previous_ntype, 0);
         }
 
+        if (ntype_function == N_ModelFrame) {
+            // We only look at the 1st two arguments and at whether there is the
+            // subset argument
+            ptr = CDR(ptr);
+            int i = 0;
+            int isSubset = 0;
+            write_buffer(buffer, max_size, write_pos, "(");
+            while (ptr != R_NilValue) {
+                int old_write_pos = *write_pos;
+                const char* argument_name =
+                    isNull(TAG(ptr)) ? "NULL" : CHAR(PRINTNAME(TAG(ptr)));
+                isSubset = strcmp(argument_name, "subset") == 0;
+                if (i < 2 || isSubset) {
+                    if (isSubset) {
+                        if (i < 2) {
+                            // One of the two first argument is missing (both is
+                            // not possible)
+                            write_buffer(buffer, max_size, write_pos, "NULL, ");
+                        }
+                        write_buffer(buffer, max_size, write_pos, "subset = ");
+                    }
+                    normalize_expr(
+                        CAR(ptr), buffer, max_size, write_pos, N_Other, 0);
+                }
+                ptr = CDR(ptr);
+                i++;
+                if (!isSubset ||
+                    (ptr != R_NilValue && old_write_pos != *write_pos)) {
+                    write_buffer(buffer, max_size, write_pos, ", ");
+                }
+            }
+
+            // It means that subset was not part of the arguments
+            if (!isSubset) {
+                if (i < 2) {
+                    // One of the two first argument is missing (both is
+                    // not possible)
+                    write_buffer(buffer, max_size, write_pos, "NULL, ");
+                }
+                write_buffer(buffer, max_size, write_pos, "subset = NULL");
+            }
+
+            write_buffer(buffer, max_size, write_pos, ")");
+
+            return N_Other;
+        }
+
         // Will be used for constant folding
-        // This is the type we expect to see according to the following operators
+        // This is the type we expect to see according to the following
+        // operators
         normalized_type ntype = N_NA;
         if (ntype_function == N_Comp || ntype_function == N_Op) {
             ntype = N_Num;
@@ -355,11 +399,12 @@ normalized_type normalize_expr(SEXP ast,
                                        ntype_arg,
                                        ntype_function == N_ListVec);
 
-            //Rprintf("NType argument: %s\n", from_normalized_type(ntype_arg));
+            // Rprintf("NType argument: %s\n", from_normalized_type(ntype_arg));
 
             // To merge all similar elements in a list or vector, or do VAR
             // absorption
-            // We are at the beginning of the list or the first elements were NAs
+            // We are at the beginning of the list or the first elements were
+            // NAs
             if (ntype == N_NA && ntype_function == N_ListVec) {
                 ntype = ntype_arg;
             }
@@ -387,7 +432,12 @@ normalized_type normalize_expr(SEXP ast,
             }
         }
 
-        if (ntype != N_Other) { // Constant folded and VAR absorption
+        // Constant folded and VAR absorption
+        // VAR absorption only for the special operators
+        if (ntype != N_Other &&
+            (ntype_function == N_Op || ntype_function == N_Logi ||
+             ntype_function == N_Comp || ntype_function == N_StrOp ||
+             ntype_function == N_ListVec)) {
             if (isVar) {
                 rollback_writepos(buffer, write_pos, old_write_pos2);
                 write_buffer(buffer, max_size, write_pos, "VAR");
