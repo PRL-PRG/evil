@@ -15,6 +15,7 @@ get_ast_size <- function(expr) {
   .Call(C_get_ast_size, expr)
 }
 
+#' @export
 normalize_expr <- function(expr) {
   .Call(C_normalize_expr, expr)
 }

@@ -87,6 +87,18 @@ test_that("Normalization works", {
   expect_equal(
     normalize_expr(quote(rgt::`+`(1, 2))), "NUM"
   )
+
+  # Anonymous functions
+  expect_equal(normalize_expr(quote((function() 1)(2))), "function(NULL, NUM, NUM)(NUM)")
+  expect_equal(normalize_expr(quote((function(a) a + 1)(2))), "function((a), OP(VAR), NUM)(NUM)")
+  expect_equal(normalize_expr(quote((function(a, b) a + b)(2))), "function((a, b), OP(VAR), NUM)(NUM)")
+
+
+  # Superfluous parenthesis
+  expect_equal(normalize_expr(quote((1))), "NUM")
+  expect_equal(normalize_expr(quote((1) + 2)), "NUM")
+  expect_equal(normalize_expr(quote(c(1, (2)))), "c(NUM)")
+
 })
 
 ## test_that("x", {

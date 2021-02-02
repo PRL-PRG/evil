@@ -104,6 +104,8 @@ const char* from_normalized_type(normalized_type ntype) {
                                    "MODEL.FRAME",
                                    "::",
                                    "FUNCTION",
+                                   "FUNCTIONARG",
+                                   "PAREN",
                                    "OTHER"};
     return ntypes[ntype];
 }
@@ -176,7 +178,7 @@ normalized_type normalize_expr(SEXP ast,
 
     switch (TYPEOF(ast)) {
     case NILSXP: {
-        if (previous_ntype != N_Num) {
+        if (previous_ntype != N_Null) {
             write_buffer(buffer, max_size, write_pos, "NULL");
         }
 
@@ -192,7 +194,7 @@ normalized_type normalize_expr(SEXP ast,
         return N_Num;
     }
 
-    case SYMSXP:
+    case SYMSXP: {
         if (previous_ntype ==
             N_Function) { // This is a symbol from a function call
             if (in(CHAR(PRINTNAME(ast)), arith_op, NB_ARITH_OP)) {
@@ -213,9 +215,16 @@ normalized_type normalize_expr(SEXP ast,
             } else if (strcmp(CHAR(PRINTNAME(ast)), "model.frame") == 0) {
                 write_buffer(buffer, max_size, write_pos, "model.frame");
                 return N_ModelFrame;
-            } else if (strcmp(CHAR(PRINTNAME(ast)), "::") == 0) {
+            } else if (ast == R_DoubleColonSymbol) {
                 // We want to get rid of the namespaces
                 return N_Namespace;
+            } else if (strcmp(CHAR(PRINTNAME(ast)), "function") == 0) {
+                // anonymous function
+                write_buffer(buffer, max_size, write_pos, "function");
+                return N_FunctionArgs; // to be able to print the function args
+            } else if (strcmp(CHAR(PRINTNAME(ast)), "(") == 0) {
+                // We want to get rid of this parenthesis operator. (a) => a
+                return N_Paren;
             } else {
                 write_buffer(buffer, max_size, write_pos, CHAR(PRINTNAME(ast)));
                 return N_Other;
@@ -226,8 +235,10 @@ normalized_type normalize_expr(SEXP ast,
             }
             return N_Var;
         }
+    }
 
     case LGLSXP: {
+        // TODO, special case for NA
         if (previous_ntype != N_Boolean) {
             write_buffer(buffer, max_size, write_pos, "BOOL");
         }
@@ -262,7 +273,23 @@ normalized_type normalize_expr(SEXP ast,
         return N_String;
     }
 
-    case LISTSXP:
+    case LISTSXP: {
+        // Function call arguments!
+        SEXP ptr = ast;
+        write_buffer(buffer, max_size, write_pos, "(");
+        while (ptr != R_NilValue) {
+                const char* argument_name =
+                    isNull(TAG(ptr)) ? "NULL" : CHAR(PRINTNAME(TAG(ptr)));
+
+                write_buffer(buffer, max_size, write_pos, argument_name);
+                ptr = CDR(ptr);
+                if (ptr != R_NilValue) {
+                    write_buffer(buffer, max_size, write_pos, ", ");
+                }
+            }
+        write_buffer(buffer, max_size, write_pos, ")");
+        return N_Other;
+    }
     case LANGSXP: {
         SEXP ptr = ast;
         int old_write_pos =
@@ -276,6 +303,13 @@ normalized_type normalize_expr(SEXP ast,
             ptr = CDDR(ptr);
             return normalize_expr(
                 CAR(ptr), buffer, max_size, write_pos, N_Function);
+        }
+
+        if (ntype_function == N_Paren) {
+            // Ignore the superfluous parenthesis
+            ptr = CDR(ptr);
+            return normalize_expr(
+                CAR(ptr), buffer, max_size, write_pos, previous_ntype);
         }
 
         normalized_type ntype = N_Other;
@@ -406,7 +440,7 @@ normalized_type normalize_expr(SEXP ast,
     }
 
     default:
-        Rprintf("Seeing Unexpected SEXP.\n");
+        warning("Seeing Unexpected SEXP!\n");
         return N_Other;
     }
 
