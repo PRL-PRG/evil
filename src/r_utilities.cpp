@@ -142,11 +142,13 @@ void rollback_writepos(char** buffer, int* write_pos, int old_write_pos) {
 #define NB_BOOL_OP 5
 #define NB_LISTVEC 2
 
-enum normalized_type normalize_expr(SEXP ast,
-                                    char** buffer,
-                                    int* max_size,
-                                    int* write_pos,
-                                    int function_call) {
+// TODO: merge previous_ntype and function_call?
+normalized_type normalize_expr(SEXP ast,
+                               char** buffer,
+                               int* max_size,
+                               int* write_pos,
+                               int function_call,
+                               normalized_type previous_ntype) {
     static const char* arith_op[NB_ARITH_OP] = {"/",
                                                 "-",
                                                 "*",
@@ -172,15 +174,22 @@ enum normalized_type normalize_expr(SEXP ast,
     static const char* listvec[NB_LISTVEC] = {"list", "c"};
 
     switch (TYPEOF(ast)) {
-    case NILSXP:
-        write_buffer(buffer, max_size, write_pos, "NULL");
+    case NILSXP: {
+        if (previous_ntype != N_Num) {
+            write_buffer(buffer, max_size, write_pos, "NULL");
+        }
+
         return N_Null;
+    }
+
     case INTSXP:
     case REALSXP:
-    case CPLXSXP:
-        //Rprintf("Seeing NUM\n");
-        write_buffer(buffer, max_size, write_pos, "NUM");
+    case CPLXSXP: {
+        if (previous_ntype != N_Num) {
+            write_buffer(buffer, max_size, write_pos, "NUM");
+        }
         return N_Num;
+    }
 
     case SYMSXP:
         if (function_call) { // This is a symbol from a function call
@@ -204,29 +213,43 @@ enum normalized_type normalize_expr(SEXP ast,
                 return N_Other;
             }
         } else {
-            write_buffer(buffer, max_size, write_pos, "VAR");
+            if (previous_ntype != N_Var) {
+                write_buffer(buffer, max_size, write_pos, "VAR");
+            }
             return N_Var;
         }
 
-    case LGLSXP:
-        write_buffer(buffer, max_size, write_pos, "BOOL");
+    case LGLSXP: {
+        if (previous_ntype != N_Boolean) {
+            write_buffer(buffer, max_size, write_pos, "BOOL");
+        }
         return N_Boolean;
+    }
 
     case STRSXP: {
         // Also deal with magic values for env, weak ptr and so on
         const char* s = CHAR(STRING_ELT(ast, 0));
 
         if (strcmp(s, "<.ENVIRONMENT>") == 0) {
-            write_buffer(buffer, max_size, write_pos, "ENV");
+            if (previous_ntype != N_Env) {
+                write_buffer(buffer, max_size, write_pos, "ENV");
+            }
             return N_Env;
         } else if (strcmp(s, "<.WEAK REFERENCE>") == 0) {
-            write_buffer(buffer, max_size, write_pos, "WREF");
+            if (previous_ntype != N_WRef) {
+                write_buffer(buffer, max_size, write_pos, "WREF");
+            }
             return N_WRef;
         } else if (strcmp(s, "<.POINTER>") == 0) {
-            write_buffer(buffer, max_size, write_pos, "PTR");
+            if (previous_ntype != N_Ptr) {
+                write_buffer(buffer, max_size, write_pos, "PTR");
+            }
             return N_Ptr;
         }
-        write_buffer(buffer, max_size, write_pos, "STR");
+
+        if (previous_ntype != N_String) {
+            write_buffer(buffer, max_size, write_pos, "STR");
+        }
         return N_String;
     }
 
@@ -237,7 +260,7 @@ enum normalized_type normalize_expr(SEXP ast,
             *write_pos; // Save write pos in case we need to roll back
         // Function name (or anonymous function)
         normalized_type ntype_function =
-            normalize_expr(CAR(ptr), buffer, max_size, write_pos, 1);
+            normalize_expr(CAR(ptr), buffer, max_size, write_pos, 1, N_Other);
         normalized_type ntype = N_Other;
         if (ntype_function == N_Comp || ntype_function == N_Op) {
             ntype = N_Num;
@@ -246,7 +269,8 @@ enum normalized_type normalize_expr(SEXP ast,
         } else if (ntype_function == N_StrOp) {
             ntype = N_String;
         }
-        //Rprintf("NType function: %s\n", from_normalized_type(ntype_function));
+        // Rprintf("NType function: %s\n",
+        // from_normalized_type(ntype_function));
 
         write_buffer(buffer, max_size, write_pos, "(");
 
@@ -255,10 +279,17 @@ enum normalized_type normalize_expr(SEXP ast,
         int i = 0;
         int isVar = 0; // is there at least one Var?
         int old_write_pos2 = *write_pos;
+        normalized_type ntype_arg = N_Other;
         while (ptr != R_NilValue) {
-            normalized_type ntype_arg =
-                normalize_expr(CAR(ptr), buffer, max_size, write_pos, 0);
-            //Rprintf("NType argument: %s\n", from_normalized_type(ntype_arg));
+            int old_write_pos3 = *write_pos;
+            ntype_arg = normalize_expr(
+                CAR(ptr),
+                buffer,
+                max_size,
+                write_pos,
+                0,
+                (ntype_function == N_ListVec) ? ntype_arg : N_Other);
+            // Rprintf("NType argument: %s\n", from_normalized_type(ntype_arg));
 
             // To merge all similar elements in a list or vector, or do VAR
             // absorption
@@ -278,7 +309,9 @@ enum normalized_type normalize_expr(SEXP ast,
             // A bit ugly..., to not write that comma at the end
             // Another solution would be to rollback the buffer by 2 characters
             // after the loop But is it efficient? And it also feels hacky...
-            if (ptr != R_NilValue) {
+            // And we put a comma only if we wrote something after the previous
+            // comma...
+            if (ptr != R_NilValue && old_write_pos3 != *write_pos) {
                 write_buffer(buffer, max_size, write_pos, ", ");
             }
         }
@@ -314,17 +347,17 @@ enum normalized_type normalize_expr(SEXP ast,
     case EXPRSXP: {
         int size = Rf_length(ast);
         for (int i = 0; i < size - 1; i++) {
-            normalize_expr(VECTOR_ELT(ast, i), buffer, max_size, write_pos, 0);
+            normalize_expr(VECTOR_ELT(ast, i), buffer, max_size, write_pos, 0, N_Other);
             write_buffer(buffer, max_size, write_pos, "; ");
         }
         normalize_expr(
-            VECTOR_ELT(ast, size - 1), buffer, max_size, write_pos, 0);
+            VECTOR_ELT(ast, size - 1), buffer, max_size, write_pos, 0, N_Other);
 
         return N_Other;
     }
 
     default:
-        //Rprintf("Seeing Other\n");
+        // Rprintf("Seeing Other\n");
         return N_Other;
     }
 
@@ -336,7 +369,7 @@ enum normalized_type normalize_expr(SEXP ast,
 SEXP r_normalize_expr(SEXP ast) {
     // Allocate a buffer  to store the string expression
     // No need to initialize to zero after calloc. It's done by the function
-    char* buffer =  (char*) calloc(BUF_INIT_SIZE, sizeof(char));
+    char* buffer = (char*) calloc(BUF_INIT_SIZE, sizeof(char));
     if (buffer == NULL) {
         error("Could not allocate memory for the normalized expression.\n");
     }
@@ -344,10 +377,10 @@ SEXP r_normalize_expr(SEXP ast) {
     int max_size = BUF_INIT_SIZE;
     int write_pos = 0;
 
-    //The address pointing to buffer will be changed by realloc! 
+    // The address pointing to buffer will be changed by realloc!
     // So the initial buffer will be invalidated and we need to keep track of it
-    normalize_expr(ast, &buffer, &max_size, &write_pos, 0);
-    SEXP r_value = PROTECT(mkString(buffer)); 
+    normalize_expr(ast, &buffer, &max_size, &write_pos, 0, N_Other);
+    SEXP r_value = PROTECT(mkString(buffer));
     UNPROTECT(1);
     free(buffer); // mkString copies
     return r_value;

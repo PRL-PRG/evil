@@ -60,11 +60,24 @@ test_that("Normalization works", {
   expect_equal(normalize_expr(quote(c(1, 2, x, 4))), "c(VAR)")
 
   # Stress test: more than 100 characters to allocate
-  # 6 x pattern 1, 2, "test", 4
-  expect_equal(normalize_expr(quote(list(
-    1, 2, "test", 4, 1, 2, "test", 4, 1, 2,
-    "test", 4, 1, 2, "test", 4, 1, 2, "test", 4, 1, 2, "test", 4
-  ))), "list(NUM, NUM, STR, NUM, NUM, NUM, STR, NUM, NUM, NUM, STR, NUM, NUM, NUM, STR, NUM, NUM, NUM, STR, NUM, NUM, NUM, STR, NUM)")
+  # 6 x pattern 1,  "test", TRUE, "test2",
+  expect_equal(
+    normalize_expr(quote(list(
+      1,  "test", TRUE, "test2",
+      1,  "test", TRUE, "test2",
+      1,  "test", TRUE, "test2",
+      1,  "test", TRUE, "test2",
+      1,  "test", TRUE, "test2",
+      1,  "test", TRUE, "test2"
+    ))),
+    "list(NUM, STR, BOOL, STR, NUM, STR, BOOL, STR, NUM, STR, BOOL, STR, NUM, STR, BOOL, STR, NUM, STR, BOOL, STR, NUM, STR, BOOL, STR)"
+  )
+
+  # Crushing consecutive same types in c and list
+  expect_equal(
+    normalize_expr(quote(c(1, 2, 3, "hi", "test", 4, "true"))),
+    "c(NUM, STR, NUM, STR)"
+  )
 })
 
 ## test_that("x", {
