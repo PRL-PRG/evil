@@ -8,6 +8,7 @@
 #include "r_utilities.h"
 #include "r_init.h"
 #include "r_data.h"
+#include "normalization.h"
 
 SEXP R_ParsedExpressionAttrib = NULL;
 SEXP CountersSymbol = NULL;
