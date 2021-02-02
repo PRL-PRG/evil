@@ -103,6 +103,7 @@ const char* from_normalized_type(normalized_type ntype) {
                                    "LISTVEC",
                                    "MODEL.FRAME",
                                    "::",
+                                   "FUNCTION",
                                    "OTHER"};
     return ntypes[ntype];
 }
@@ -144,12 +145,10 @@ void rollback_writepos(char** buffer, int* write_pos, int old_write_pos) {
 #define NB_BOOL_OP 5
 #define NB_LISTVEC 2
 
-// TODO: merge previous_ntype and function_call?
 normalized_type normalize_expr(SEXP ast,
                                char** buffer,
                                int* max_size,
                                int* write_pos,
-                               int function_call,
                                normalized_type previous_ntype) {
     static const char* arith_op[NB_ARITH_OP] = {"/",
                                                 "-",
@@ -194,7 +193,8 @@ normalized_type normalize_expr(SEXP ast,
     }
 
     case SYMSXP:
-        if (function_call) { // This is a symbol from a function call
+        if (previous_ntype ==
+            N_Function) { // This is a symbol from a function call
             if (in(CHAR(PRINTNAME(ast)), arith_op, NB_ARITH_OP)) {
                 write_buffer(buffer, max_size, write_pos, "OP");
                 return N_Op;
@@ -213,12 +213,10 @@ normalized_type normalize_expr(SEXP ast,
             } else if (strcmp(CHAR(PRINTNAME(ast)), "model.frame") == 0) {
                 write_buffer(buffer, max_size, write_pos, "model.frame");
                 return N_ModelFrame;
-            } 
-            else if (strcmp(CHAR(PRINTNAME(ast)), "::") == 0) {
+            } else if (strcmp(CHAR(PRINTNAME(ast)), "::") == 0) {
                 // We want to get rid of the namespaces
                 return N_Namespace;
-            }
-            else {
+            } else {
                 write_buffer(buffer, max_size, write_pos, CHAR(PRINTNAME(ast)));
                 return N_Other;
             }
@@ -271,14 +269,15 @@ normalized_type normalize_expr(SEXP ast,
             *write_pos; // Save write pos in case we need to roll back
         // Function name (or anonymous function)
         normalized_type ntype_function =
-            normalize_expr(CAR(ptr), buffer, max_size, write_pos, 1, N_Other);
+            normalize_expr(CAR(ptr), buffer, max_size, write_pos, N_Function);
 
-        if(ntype_function == N_Namespace) {
+        if (ntype_function == N_Namespace) {
             // We skip the namespace name!
             ptr = CDDR(ptr);
-            return normalize_expr(CAR(ptr), buffer, max_size, write_pos, 1, N_Other);
+            return normalize_expr(
+                CAR(ptr), buffer, max_size, write_pos, N_Function);
         }
-        
+
         normalized_type ntype = N_Other;
         if (ntype_function == N_Comp || ntype_function == N_Op) {
             ntype = N_Num;
@@ -304,7 +303,6 @@ normalized_type normalize_expr(SEXP ast,
                                        buffer,
                                        max_size,
                                        write_pos,
-                                       0,
                                        (ntype_function == N_ListVec) ? ntype_arg
                                                                      : N_Other);
             // Rprintf("NType argument: %s\n", from_normalized_type(ntype_arg));
@@ -366,11 +364,11 @@ normalized_type normalize_expr(SEXP ast,
         int size = Rf_length(ast);
         for (int i = 0; i < size - 1; i++) {
             normalize_expr(
-                VECTOR_ELT(ast, i), buffer, max_size, write_pos, 0, N_Other);
+                VECTOR_ELT(ast, i), buffer, max_size, write_pos, N_Other);
             write_buffer(buffer, max_size, write_pos, "; ");
         }
         normalize_expr(
-            VECTOR_ELT(ast, size - 1), buffer, max_size, write_pos, 0, N_Other);
+            VECTOR_ELT(ast, size - 1), buffer, max_size, write_pos, N_Other);
 
         return N_Other;
     }
@@ -430,7 +428,7 @@ SEXP r_normalize_expr(SEXP ast) {
 
     // The address pointing to buffer will be changed by realloc!
     // So the initial buffer will be invalidated and we need to keep track of it
-    normalize_expr(ast, &buffer, &max_size, &write_pos, 0, N_Other);
+    normalize_expr(ast, &buffer, &max_size, &write_pos, N_Other);
     SEXP r_value = PROTECT(mkString(buffer));
     UNPROTECT(1);
     free(buffer); // mkString copies
