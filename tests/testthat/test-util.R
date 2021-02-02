@@ -73,7 +73,7 @@ test_that("Normalization works", {
     "list(NUM, STR, BOOL, STR, NUM, STR, BOOL, STR, NUM, STR, BOOL, STR, NUM, STR, BOOL, STR, NUM, STR, BOOL, STR, NUM, STR, BOOL, STR)"
   )
 
-  # Crushing consecutive same types in c and list
+  # Crushing consecutive same types in c and list1
   expect_equal(
     normalize_expr(quote(c(1, 2, 3, "hi", "test", 4, "true"))),
     "c(NUM, STR, NUM, STR)"
@@ -98,6 +98,10 @@ test_that("Normalization works", {
   expect_equal(normalize_expr(quote((1))), "NUM")
   expect_equal(normalize_expr(quote((1) + 2)), "NUM")
   expect_equal(normalize_expr(quote(c(1, (2)))), "c(NUM)")
+
+  # Coercion of NA
+  expect_equal(normalize_expr(quote(c(1, NA))), "c(NUM)")
+  expect_equal(normalize_expr(quote(1 + NA)), "NUM")
 
 })
 

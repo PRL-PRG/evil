@@ -151,7 +151,8 @@ normalized_type normalize_expr(SEXP ast,
                                char** buffer,
                                int* max_size,
                                int* write_pos,
-                               normalized_type previous_ntype) {
+                               normalized_type previous_ntype,
+                               int merge) {
     static const char* arith_op[NB_ARITH_OP] = {"/",
                                                 "-",
                                                 "*",
@@ -178,7 +179,7 @@ normalized_type normalize_expr(SEXP ast,
 
     switch (TYPEOF(ast)) {
     case NILSXP: {
-        if (previous_ntype != N_Null) {
+        if (!merge || previous_ntype != N_Null) {
             write_buffer(buffer, max_size, write_pos, "NULL");
         }
 
@@ -188,7 +189,7 @@ normalized_type normalize_expr(SEXP ast,
     case INTSXP:
     case REALSXP:
     case CPLXSXP: {
-        if (previous_ntype != N_Num) {
+        if (!merge || previous_ntype != N_Num) {
             write_buffer(buffer, max_size, write_pos, "NUM");
         }
         return N_Num;
@@ -230,7 +231,7 @@ normalized_type normalize_expr(SEXP ast,
                 return N_Other;
             }
         } else {
-            if (previous_ntype != N_Var) {
+            if (!merge || previous_ntype != N_Var) {
                 write_buffer(buffer, max_size, write_pos, "VAR");
             }
             return N_Var;
@@ -238,15 +239,22 @@ normalized_type normalize_expr(SEXP ast,
     }
 
     case LGLSXP: {
-        // TODO, special case for NA
-        if (previous_ntype != N_Boolean) {
+        // NA by default is boolean, but people write if for other types.
+        // So we coerce it to the previous ntype
+        // TODO: handle the case when NA is the first element
+        // Probably just emit a new nytpe N_NA
+        if (asLogical(ast) == NA_LOGICAL &&
+            (previous_ntype == N_Num || previous_ntype == N_String)) {
+            return previous_ntype;
+        }
+        else if (!merge || previous_ntype != N_Boolean) {
             write_buffer(buffer, max_size, write_pos, "BOOL");
         }
         return N_Boolean;
     }
 
     case STRSXP: {
-        // This comes from the parser and so there is always one CHARSXP in the
+        // This comes from the parser and so there is always only one CHARSXP in the
         // character vector
         const char* s = CHAR(STRING_ELT(ast, 0));
 
@@ -267,7 +275,7 @@ normalized_type normalize_expr(SEXP ast,
             return N_Ptr;
         }
 
-        if (previous_ntype != N_String) {
+        if (!merge || previous_ntype != N_String) {
             write_buffer(buffer, max_size, write_pos, "STR");
         }
         return N_String;
@@ -278,40 +286,43 @@ normalized_type normalize_expr(SEXP ast,
         SEXP ptr = ast;
         write_buffer(buffer, max_size, write_pos, "(");
         while (ptr != R_NilValue) {
-                const char* argument_name =
-                    isNull(TAG(ptr)) ? "NULL" : CHAR(PRINTNAME(TAG(ptr)));
+            const char* argument_name =
+                isNull(TAG(ptr)) ? "NULL" : CHAR(PRINTNAME(TAG(ptr)));
 
-                write_buffer(buffer, max_size, write_pos, argument_name);
-                ptr = CDR(ptr);
-                if (ptr != R_NilValue) {
-                    write_buffer(buffer, max_size, write_pos, ", ");
-                }
+            write_buffer(buffer, max_size, write_pos, argument_name);
+            ptr = CDR(ptr);
+            if (ptr != R_NilValue) {
+                write_buffer(buffer, max_size, write_pos, ", ");
             }
+        }
         write_buffer(buffer, max_size, write_pos, ")");
         return N_Other;
     }
+
     case LANGSXP: {
         SEXP ptr = ast;
-        int old_write_pos =
-            *write_pos; // Save write pos in case we need to roll back
+        // Save write pos in case we need to roll back
+        int old_write_pos = *write_pos;
+
         // Function name (or anonymous function)
         normalized_type ntype_function =
-            normalize_expr(CAR(ptr), buffer, max_size, write_pos, N_Function);
+            normalize_expr(CAR(ptr), buffer, max_size, write_pos, N_Function, 0);
 
         if (ntype_function == N_Namespace) {
             // We skip the namespace name!
             ptr = CDDR(ptr);
             return normalize_expr(
-                CAR(ptr), buffer, max_size, write_pos, N_Function);
+                CAR(ptr), buffer, max_size, write_pos, N_Function, 0);
         }
 
         if (ntype_function == N_Paren) {
             // Ignore the superfluous parenthesis
             ptr = CDR(ptr);
             return normalize_expr(
-                CAR(ptr), buffer, max_size, write_pos, previous_ntype);
+                CAR(ptr), buffer, max_size, write_pos, previous_ntype, 0);
         }
 
+        // Will be used for constant folding
         normalized_type ntype = N_Other;
         if (ntype_function == N_Comp || ntype_function == N_Op) {
             ntype = N_Num;
@@ -337,9 +348,10 @@ normalized_type normalize_expr(SEXP ast,
                                        buffer,
                                        max_size,
                                        write_pos,
-                                       (ntype_function == N_ListVec) ? ntype_arg
-                                                                     : N_Other);
-            // Rprintf("NType argument: %s\n", from_normalized_type(ntype_arg));
+                                       ntype_arg,
+                                       ntype_function == N_ListVec);
+
+            Rprintf("NType argument: %s\n", from_normalized_type(ntype_arg));
 
             // To merge all similar elements in a list or vector, or do VAR
             // absorption
@@ -347,11 +359,16 @@ normalized_type normalize_expr(SEXP ast,
                 ntype = ntype_arg;
             }
 
+            // Different ntypes, excluding VAR so no Constant Folding won't be
+            // done
             if (ntype_arg != ntype && ntype_arg != N_Var) {
-                // Rather write it to crush sequences of similar types.
                 ntype = N_Other;
             }
             if (ntype_arg == N_Var) {
+                // We cannot break out of the loop
+                // VAR will absorb only if all other arguments are scalar types
+                // or VAR (Or constant folded to scalar types) But we want to
+                // keep more elaborated sub-AST
                 isVar = 1;
             }
             ptr = CDR(ptr);
@@ -398,11 +415,11 @@ normalized_type normalize_expr(SEXP ast,
         int size = Rf_length(ast);
         for (int i = 0; i < size - 1; i++) {
             normalize_expr(
-                VECTOR_ELT(ast, i), buffer, max_size, write_pos, N_Other);
+                VECTOR_ELT(ast, i), buffer, max_size, write_pos, N_Other, 0);
             write_buffer(buffer, max_size, write_pos, "; ");
         }
         normalize_expr(
-            VECTOR_ELT(ast, size - 1), buffer, max_size, write_pos, N_Other);
+            VECTOR_ELT(ast, size - 1), buffer, max_size, write_pos, N_Other, 0);
 
         return N_Other;
     }
@@ -440,7 +457,7 @@ normalized_type normalize_expr(SEXP ast,
     }
 
     default:
-        warning("Seeing Unexpected SEXP!\n");
+        warning("Seeing Unexpected SEXP: %s!\n", type2char(TYPEOF(ast)));
         return N_Other;
     }
 
@@ -462,7 +479,7 @@ SEXP r_normalize_expr(SEXP ast) {
 
     // The address pointing to buffer will be changed by realloc!
     // So the initial buffer will be invalidated and we need to keep track of it
-    normalize_expr(ast, &buffer, &max_size, &write_pos, N_Other);
+    normalize_expr(ast, &buffer, &max_size, &write_pos, N_Other, 0);
     SEXP r_value = PROTECT(mkString(buffer));
     UNPROTECT(1);
     free(buffer); // mkString copies
