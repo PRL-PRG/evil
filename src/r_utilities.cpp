@@ -101,6 +101,8 @@ const char* from_normalized_type(normalized_type ntype) {
                                    "NULL",
                                    "STROP",
                                    "LISTVEC",
+                                   "MODEL.FRAME",
+                                   "::",
                                    "OTHER"};
     return ntypes[ntype];
 }
@@ -208,7 +210,15 @@ normalized_type normalize_expr(SEXP ast,
             } else if (in(CHAR(PRINTNAME(ast)), listvec, NB_LISTVEC)) {
                 write_buffer(buffer, max_size, write_pos, CHAR(PRINTNAME(ast)));
                 return N_ListVec;
-            } else {
+            } else if (strcmp(CHAR(PRINTNAME(ast)), "model.frame") == 0) {
+                write_buffer(buffer, max_size, write_pos, "model.frame");
+                return N_ModelFrame;
+            } 
+            else if (strcmp(CHAR(PRINTNAME(ast)), "::") == 0) {
+                // We want to get rid of the namespaces
+                return N_Namespace;
+            }
+            else {
                 write_buffer(buffer, max_size, write_pos, CHAR(PRINTNAME(ast)));
                 return N_Other;
             }
@@ -227,7 +237,8 @@ normalized_type normalize_expr(SEXP ast,
     }
 
     case STRSXP: {
-        // Also deal with magic values for env, weak ptr and so on
+        // This comes from the parser and so there is always one CHARSXP in the
+        // character vector
         const char* s = CHAR(STRING_ELT(ast, 0));
 
         if (strcmp(s, "<.ENVIRONMENT>") == 0) {
@@ -261,6 +272,13 @@ normalized_type normalize_expr(SEXP ast,
         // Function name (or anonymous function)
         normalized_type ntype_function =
             normalize_expr(CAR(ptr), buffer, max_size, write_pos, 1, N_Other);
+
+        if(ntype_function == N_Namespace) {
+            // We skip the namespace name!
+            ptr = CDDR(ptr);
+            return normalize_expr(CAR(ptr), buffer, max_size, write_pos, 1, N_Other);
+        }
+        
         normalized_type ntype = N_Other;
         if (ntype_function == N_Comp || ntype_function == N_Op) {
             ntype = N_Num;
@@ -282,13 +300,13 @@ normalized_type normalize_expr(SEXP ast,
         normalized_type ntype_arg = N_Other;
         while (ptr != R_NilValue) {
             int old_write_pos3 = *write_pos;
-            ntype_arg = normalize_expr(
-                CAR(ptr),
-                buffer,
-                max_size,
-                write_pos,
-                0,
-                (ntype_function == N_ListVec) ? ntype_arg : N_Other);
+            ntype_arg = normalize_expr(CAR(ptr),
+                                       buffer,
+                                       max_size,
+                                       write_pos,
+                                       0,
+                                       (ntype_function == N_ListVec) ? ntype_arg
+                                                                     : N_Other);
             // Rprintf("NType argument: %s\n", from_normalized_type(ntype_arg));
 
             // To merge all similar elements in a list or vector, or do VAR
@@ -347,7 +365,8 @@ normalized_type normalize_expr(SEXP ast,
     case EXPRSXP: {
         int size = Rf_length(ast);
         for (int i = 0; i < size - 1; i++) {
-            normalize_expr(VECTOR_ELT(ast, i), buffer, max_size, write_pos, 0, N_Other);
+            normalize_expr(
+                VECTOR_ELT(ast, i), buffer, max_size, write_pos, 0, N_Other);
             write_buffer(buffer, max_size, write_pos, "; ");
         }
         normalize_expr(
@@ -356,8 +375,40 @@ normalized_type normalize_expr(SEXP ast,
         return N_Other;
     }
 
+    case DOTSXP: {
+        write_buffer(buffer, max_size, write_pos, "...");
+        return N_Other;
+    }
+
+    // The following cases should not happen ars they are not deparsable
+    // The yare handled by magic values in STRSXP
+    case BCODESXP: {
+        write_buffer(buffer, max_size, write_pos, "BYTECODE");
+        return N_Other;
+    }
+
+    case RAWSXP: {
+        write_buffer(buffer, max_size, write_pos, "RAWVEC");
+        return N_Other;
+    }
+
+    case EXTPTRSXP: {
+        write_buffer(buffer, max_size, write_pos, "PRT");
+        return N_Other;
+    }
+
+    case WEAKREFSXP: {
+        write_buffer(buffer, max_size, write_pos, "WREF");
+        return N_Other;
+    }
+
+    case ENVSXP: {
+        write_buffer(buffer, max_size, write_pos, "ENV");
+        return N_Other;
+    }
+
     default:
-        // Rprintf("Seeing Other\n");
+        Rprintf("Seeing Unexpected SEXP.\n");
         return N_Other;
     }
 

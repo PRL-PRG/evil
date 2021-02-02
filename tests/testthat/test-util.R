@@ -78,6 +78,15 @@ test_that("Normalization works", {
     normalize_expr(quote(c(1, 2, 3, "hi", "test", 4, "true"))),
     "c(NUM, STR, NUM, STR)"
   )
+
+  # Namespace name is ignored
+  expect_equal(
+    normalize_expr(quote(a::b(4))), "b(NUM)"
+  )
+
+  expect_equal(
+    normalize_expr(quote(rgt::`+`(1, 2))), "NUM"
+  )
 })
 
 ## test_that("x", {

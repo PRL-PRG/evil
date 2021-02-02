@@ -29,6 +29,8 @@ enum normalized_type {
     N_Null,
     N_StrOp,
     N_ListVec,
+    N_ModelFrame,
+    N_Namespace,
     N_Other
 };
 typedef enum normalized_type normalized_type;
