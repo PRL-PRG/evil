@@ -9,7 +9,7 @@ extern "C" {
 
 SEXP r_normalize_expr(SEXP ast);
 
-enum normalized_type {
+enum NTYPE {
     N_Num,
     N_Boolean,
     N_String,
@@ -30,7 +30,8 @@ enum normalized_type {
     N_NA,
     N_Other
 };
-typedef enum normalized_type normalized_type;
+
+  typedef enum NTYPE NTYPE;
 
 #ifdef __cplusplus
 }
