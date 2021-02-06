@@ -26,12 +26,12 @@ int in(const char* target, const char** array, int array_length) {
 #define NB_BOOL_OP 5
 #define NB_LISTVEC 2
 
-const char* arith_op[NB_ARITH_OP] = {"/",  "-",  "*", "+", "^",
+static const char* arith_op[NB_ARITH_OP] = {"/",  "-",  "*", "+", "^",
    "log", "sqrt", "exp", "max", "min", "cos", "sin", "abs", "atan", ":"};
-const char* str_op[NB_STR_OP] = {"paste", "paste0", "str_c"};
-const char* cmp_op[NB_COMP_OP] = {"<", ">", "<=", ">=", "==", "!="};
-const char* bool_op[NB_BOOL_OP] = {"&", "&&", "|", "||", "!"};
-const char* listvec[NB_LISTVEC] = {"list", "c"};
+static const char* str_op[NB_STR_OP] = {"paste", "paste0", "str_c"};
+static const char* cmp_op[NB_COMP_OP] = {"<", ">", "<=", ">=", "==", "!="};
+static const char* bool_op[NB_BOOL_OP] = {"&", "&&", "|", "||", "!"};
+static const char* listvec[NB_LISTVEC] = {"list", "c"};
 
 /* Hold a sequence of characters. */
 class CharBuff  {
@@ -186,7 +186,7 @@ public:
 class Call : public Exp{
   Sym* name; // name without namespace, could be null
   Exp* anon; // Expression giving a function (for anon)
-  int opkind; // 0=Unknown, 1=model.frame, 2=arith, 3=logic, 4=named, 5=c list
+  OpKind opkind; // 0=Unknown, 1=model.frame, 2=arith, 3=logic, 4=named, 5=c list
   Vec args;
 
 public:
@@ -194,16 +194,16 @@ public:
    *  expression that yields a function value. If it has a name we try to assign
    *  it a kind. */
   Call(Sym* nm, Exp* anon) : name(nm), anon(anon) {
-    if (!name) opkind = 0;
+    if (!name) opkind = UnknownOp;
     else {
       const char* str = name->get_name(); // real name
-      if (in(str, arith_op, NB_ARITH_OP))    opkind = 2;
-      else if (in(str, bool_op, NB_BOOL_OP)) opkind = 3;
-      else if (in(str, cmp_op, NB_COMP_OP))  opkind = 3;
-      else if (in(str, str_op, NB_STR_OP))   opkind = 3;
-      else if (in(str, listvec, NB_LISTVEC)) opkind = 5;
-      else if (eq(str, "model.frame"))       opkind = 1;
-      else                                   opkind = 4;
+      if (in(str, arith_op, NB_ARITH_OP))    opkind = ArithOp;
+      else if (in(str, bool_op, NB_BOOL_OP)) opkind = LogicOp;
+      else if (in(str, cmp_op, NB_COMP_OP))  opkind = LogicOp;
+      else if (in(str, str_op, NB_STR_OP))   opkind = LogicOp;
+      else if (in(str, listvec, NB_LISTVEC)) opkind = ListVecOp;
+      else if (eq(str, "model.frame"))       opkind = ModelFrameOp;
+      else                                   opkind = NamedOp;
     }
   }
 
@@ -224,7 +224,7 @@ public:
 
   Vec get_args() { return args; }
 
-  int kind() { return opkind; }
+  OpKind kind() { return opkind; }
 
   bool is_call() { return true; }
 
@@ -521,19 +521,19 @@ public:
     for(Exp* t : x->get_args()) args.push_back(simplify(t));
     args = subsume(args);
 
-    if (x->kind() == 0) { // anon function
+    if (x->kind() == UnknownOp) { // anon function
       Exp* anon = simplify(x->get_anon());
       return new Call(nullptr, anon, args);
-    } else if (x->kind() == 1) { // model.frame
+    } else if (x->kind() == ModelFrameOp) { // model.frame
       return new Call(x, args);
-    } else if  (x->kind() == 2||x->kind() == 3) { // arith | logic
+    } else if  (x->kind() == ArithOp ||x->kind() == LogicOp) { // arith | logic
       if (args.size() == 1) return args[0];
       Sym* op = new Sym("OP");
       return new Call(op, op, args);
-    } else if  (x->kind() == 4) { // named function
+    } else if  (x->kind() == NamedOp) { // named function
       if (x->eq_name("(") && args.size() == 1) return args[0];
       return new Call(x, args);
-    } else if  (x->kind() == 5) { // c() or list()
+    } else if  (x->kind() == ListVecOp) { // c() or list()
       if (args.size() == 1) return args[0];
       else return new Call(x, args);
     }
@@ -541,7 +541,7 @@ public:
 
   /* Subsume takes a vector of simplified Exp and removes all entries that are
   *  subsumed by other entries. */
-  std::vector<Exp*> subsume(std::vector<Exp*> v) {
+Vec subsume(std::vector<Exp*> v) {
     std::vector<Exp*> r;
     int len = v.size();
     for (int i=0; i<len; i++) {
@@ -581,4 +581,50 @@ SEXP r_normalize_expr(SEXP ast) {
   SEXP r_value = PROTECT(mkString(buf.get()));
   UNPROTECT(1);
   return r_value;
+}
+
+
+
+/* Directly play with our custom expr tree in R */
+
+void finalize_tree(SEXP tree) {
+    Exp* t = static_cast<Exp*>(R_ExternalPtrAddr(tree));
+
+    delete t;
+}
+
+
+SEXP r_build_tree(SEXP ast) {
+    Builder builder;
+    Exp* t = builder.build(ast);
+
+    SEXP tree = R_MakeExternalPtr(t, install("tree"), R_NilValue);
+    PROTECT(tree);
+
+    R_RegisterCFinalizerEx(tree, finalize_tree, TRUE);
+
+    UNPROTECT(1);
+    return tree;
+}
+
+SEXP r_simplify(SEXP tree) {
+    Exp* t = static_cast<Exp*>(R_ExternalPtrAddr(tree));
+    Simplifier s;
+    Exp* t2 = s.simplify(t);
+
+    SEXP res = R_MakeExternalPtr(t2, install("tree"), R_NilValue);
+    PROTECT(res);
+
+    R_RegisterCFinalizerEx(res, finalize_tree, TRUE);
+
+    return res;
+}
+
+SEXP r_tree_to_string(SEXP tree) {
+    Exp* t = static_cast<Exp*>(R_ExternalPtrAddr(tree));
+    CharBuff buf;
+    t->write(&buf);
+     SEXP r_value = PROTECT(mkString(buf.get()));
+    UNPROTECT(1);
+    return r_value;
 }
