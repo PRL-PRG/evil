@@ -71,6 +71,11 @@ public:
   char* get() { buf[len] = '\0'; return buf; }
 };
 
+class Call;           // forward declarations
+class Statements;
+class Other;
+
+
 
 /////////////////// Exp /////////////////////
 class Exp {
@@ -94,6 +99,10 @@ public:
   virtual bool is_str() { return false; }
   virtual bool is_other() { return false; }
 
+  virtual bool eq_call(Call* c) { return false;  }
+  virtual bool eq_statements(Statements* s) { return false;  }
+  virtual bool eq_other(Other* o) { return false;  }
+
   /* Is this more general than that? For example, Num subsumes NA. */
   virtual bool subsumes(Exp* that) { return false; }
 
@@ -105,6 +114,9 @@ public:
 
   /* Deep copy of the tree. */
   Exp* dup(Exp* t);
+
+  /* Two exps are equal */
+  bool equals(Exp* t);
 };
 
 using Vec = std::vector<Exp*>;
@@ -216,8 +228,30 @@ public:
 
   bool is_call() { return true; }
 
-  // A function is different from all other functions and values.
-  bool subsumes(Exp* t) { return false; }
+  bool eq_call(Call* c) {
+    if (name && c->name) {
+      if (!eq(name->get_name(),c->name->get_name())) return false;
+    } else if (!name && !c->name) {
+      //ok
+    } else return false;
+
+    if (!anon->equals(c->anon)) return false;
+
+    int len = args.size();
+    int len2 = c->args.size();
+    if (len != len2) return false;
+
+    for(int i=0; i<len; i++)
+      if (!args[i]->equals(c->args[i]))
+        return false;
+    return true;
+  }
+
+  // A Call susbsumes structurally equal calls.
+  bool subsumes(Exp* t) {
+    if (t->is_call()) return equals(t);
+    else return false;
+  }
 
   Exp* get_anon() { return anon; }
 
@@ -227,18 +261,45 @@ public:
 
   const char* print() {
     if (string_rep) return string_rep;
+    int len = args.size();
     CharBuff buf;
-    if(name) buf.write(name->get_name());
-    else anon->write(&buf);
-    buf.write("(");
-    int pos = -1;
-    for(Exp* x : args) {
-      buf.write(x->print());
-      pos = buf.pos();
-      buf.write(", ");
+    const char* op = nullptr;
+    if (eq_name("<-")) {
+      buf.write(args[0]->print());
+      buf.write(" <- ");
+      if (len == 2) buf.write(args[1]->print());
+    } else if (eq_name("$")) {
+      buf.write(args[0]->print());
+      buf.write("$");
+      if (len == 2) buf.write(args[1]->print());
+    } else if (eq_name("[")) {
+      buf.write(args[0]->print());
+      buf.write("[$");
+      int pos = -1;
+      for(int i=1; i<len; i++) {
+        buf.write(args[i]->print());
+        pos = buf.pos();
+        buf.write(", ");
+      }
+      if (pos!=-1) buf.rollback(pos);
+      buf.write("]");
+    } else if (eq_name("OP")) {
+      buf.write(args[0]->print());
+      buf.write(" OP ");
+      if (len == 2) buf.write(args[1]->print());
+    } else {
+      if(name) buf.write(name->get_name());
+      else anon->write(&buf);
+      buf.write("(");
+      int pos = -1;
+      for(Exp* x : args) {
+        buf.write(x->print());
+        pos = buf.pos();
+        buf.write(", ");
+      }
+      if (pos!=-1) buf.rollback(pos);
+      buf.write(")");
     }
-    if (pos!=-1) buf.rollback(pos);
-    buf.write(")");
     return string_rep = copy(buf.get()); // buf deletes its string, so must copy
   }
 
@@ -251,7 +312,7 @@ public:
 class Str : public Exp{
 
 public:
-  const char* print() { return "\"C\""; }
+  const char* print() { return "S"; }
 
   bool is_str() { return true; }
 
@@ -280,6 +341,16 @@ public:
   void add(Exp* x) { elems.push_back(x); }
 
   bool is_statements() { return true; }
+
+  bool eq_statements(Statements* s) {
+    int len = elems.size();
+    int len2 = s->elems.size();
+    if (len != len2) return false;
+    for (int i=0; i<len; i++)
+      if (!elems[i]->equals(s->elems[i]))
+        return false;
+    return true;
+  }
 
   // Statements do not subsume
   bool subsumes(Exp* t) { return false;  }
@@ -311,6 +382,12 @@ public:
   bool is_other() { return true; }
 
   const char* print() { return string_rep; }
+
+  bool eq_other(Other* o) {
+    if ( string_rep && o->string_rep)
+      return eq(string_rep, o->string_rep);
+    else return false;
+  }
 };
 //////////////////////////////////////////
 
@@ -323,6 +400,18 @@ Exp* Exp::dup(Exp* t) {
   else if (t->is_num()) return new Num();
   else if (t->is_str()) return new Str();
   else if (t->is_other()) return new Other(dynamic_cast<Other*>(t));
+}
+
+
+bool Exp::equals(Exp* t) {
+  if (t->is_sym()) return is_sym();
+  else if (t->is_call()) eq_call(dynamic_cast<Call*>(t));
+  else if (t->is_null()) return is_null();
+  else if (t->is_na()) return is_na();
+  else if (t->is_statements()) eq_statements(dynamic_cast<Statements*>(t));
+  else if (t->is_num()) return is_num();
+  else if (t->is_str()) return is_str();
+  else if (t->is_other()) return eq_other(dynamic_cast<Other*>(t));
 }
 
 ////////////// Builder /////////////////////

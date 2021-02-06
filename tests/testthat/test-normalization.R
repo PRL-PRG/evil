@@ -2,18 +2,23 @@ test_that("Constant folding", {
   expect_equal(normalize_expr(expression(1 + 1)), "0")
   expect_equal(normalize_expr(quote(1 + 1)), "0")
   expect_equal(normalize_expr(quote(TRUE && FALSE)), "0")
-  expect_equal(normalize_expr(quote(paste0("Hello, ", "World"))), "\"C\"")
+  expect_equal(normalize_expr(quote(paste0("Hello, ", "World"))), "S")
   expect_equal(normalize_expr(quote(x)), "X")
   expect_equal(normalize_expr(quote(x + y)), "X")
   expect_equal(normalize_expr(quote(x + 1)), "X")
 })
 
 test_that("List simplification", {
+  expect_equal(normalize_expr(quote(f(g(1),g(1)))), "f(g(0))")
+  expect_equal(normalize_expr(quote((g()+h()-y()))), "g() OP h() OP y()")
+  expect_equal(normalize_expr(quote(x$y)), "X$")
+  expect_equal(normalize_expr(quote(x<-f(y))), "X <- f(X)")
+  expect_equal(normalize_expr(quote(x$y$z)), "X$$X") # Yuck!!!!
   expect_equal(normalize_expr(quote(c(1, 2, 3, 4))), "0")
   expect_equal(normalize_expr(quote(list(1, 2, 3, 4))), "0")
   expect_equal(normalize_expr(quote(c(TRUE, FALSE, FALSE, TRUE))), "0")
-  expect_equal(normalize_expr(quote(c("a", "e", "i", "o"))), "\"C\"")
-  expect_equal(normalize_expr(quote(list(1, "hello"))), "\"C\"")
+  expect_equal(normalize_expr(quote(c("a", "e", "i", "o"))), "S")
+  expect_equal(normalize_expr(quote(list(1, "hello"))), "S")
   expect_equal(normalize_expr(quote(c(1, 2, x, 4))), "X")
 })
 
@@ -30,7 +35,7 @@ test_that("Stress test", {
       1,  "test", TRUE, "test2",
       1,  "test", TRUE, "test2"
     ))),
-    "\"C\""
+    "S"
   )
 })
 
@@ -69,7 +74,7 @@ test_that("Various normalization", {
   # Crushing consecutive same types in c and list1
   expect_equal(
     normalize_expr(quote(c(1, 2, 3, "hi", "test", 4, "true"))),
-    "\"C\""
+    "S"
   )
 
   # Namespace name is ignored
