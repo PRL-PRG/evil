@@ -3,19 +3,22 @@
 #include "normalization.h"
 #include "r_init.h"
 
-/* Is the target string in the array of strings? */
-int in(const char* target, const char** array, int array_length) {
-    for (int i = 0; i < array_length; i++) {
-        if (strcmp(array[i], target) == 0) {
-            return 1;
-        }
-    }
-    return 0;
+
+const char* copy(const char* str) {
+  int len = strlen(str) + 1;
+  char* cpstr = (char*) malloc(len * sizeof(char));
+  strcpy(cpstr, str);
+  return cpstr;
 }
 
-const char* ntypes[] = {"NUM", "BOOL", "STR", "OP", "LOGI", "COMP",
-  "VAR", "ENV", "WREF", "PTR", "NULL", "STROP", "LISTVEC", "MODEL.FRAME",
-  "::", "FUNCTION", "PAREN", "NA", "OTHER"};
+bool eq(const char* str, const char* str2) { return strcmp(str, str2) == 0; }
+
+/* Is the target string in the array of strings? */
+int in(const char* target, const char** array, int array_length) {
+    for (int i = 0; i < array_length; i++)
+        if (eq(array[i], target)) return 1;
+    return 0;
+}
 
 #define NB_ARITH_OP 15
 #define NB_STR_OP 3
@@ -30,22 +33,16 @@ const char* cmp_op[NB_COMP_OP] = {"<", ">", "<=", ">=", "==", "!="};
 const char* bool_op[NB_BOOL_OP] = {"&", "&&", "|", "||", "!"};
 const char* listvec[NB_LISTVEC] = {"list", "c"};
 
-const char* from_normalized_type(NTYPE ntype) { return ntypes[ntype]; }
-
 /* Hold a sequence of characters. */
 class CharBuff  {
-  char* buf; // character buffer, no 0 terminated
-  int   len; // number of valid characters
-  int   size; // number of allocated chars
+  char* buf;        // character buffer, not 0 terminated
+  int   len = 0;    // number of valid characters
+  int   size = 100; // number of allocated chars
 public:
 
-  CharBuff() {
-    len = 0;
-    size = 100;
-    buf = (char*) malloc(size * sizeof(char));
-  }
+  CharBuff() { buf = (char*) malloc(size * sizeof(char)); }
 
-  // ~CharBuff() { free(buf); }
+  ~CharBuff() { free(buf); }
 
   /* Check if the buffer can take increment new elements, realloc if needed. */
   void growIfNeeded(int increment) {
@@ -71,24 +68,23 @@ public:
   int pos() { return len; }
 
   /* Returns a zero terminated char buffer. Do not write after calling get. */
-  char* get() {
-    buf[len] = '\0';
-    return buf;
-  }
+  char* get() { buf[len] = '\0'; return buf; }
 };
 
 
-const char* copy(const char* str) {
-  int len = strlen(str) + 1;
-  char* cpstr = (char*) malloc(len * sizeof(char));
-  strcpy(cpstr, str);
-  return cpstr;
-}
-
-/////////////////// Tree /////////////////////
-class Tree {
+/////////////////// Exp /////////////////////
+class Exp {
 public:
-  virtual const char* print() { return "";  }
+  /* If the tree needs to allocate a string representation, it is cached here
+   * and will be freed when tree is freed. */
+  const char* string_rep = nullptr;
+
+  Exp() {}
+  /* Copy the string to make sure we own it. */
+  Exp(const char* n) : string_rep(copy(n)) {}
+
+  ~Exp() { if(string_rep) free((char*)string_rep); }
+
   virtual bool is_sym() { return false; }
   virtual bool is_call() { return false; }
   virtual bool is_null() { return false; }
@@ -97,49 +93,54 @@ public:
   virtual bool is_num() { return false; }
   virtual bool is_str() { return false; }
   virtual bool is_other() { return false; }
-  virtual bool subsumes(Tree* t) { return false; }
+
+  /* Is this more general than that? For example, Num subsumes NA. */
+  virtual bool subsumes(Exp* that) { return false; }
+
+  /* Write tree to buffer. */
   void write(CharBuff* buf) { buf->write(print()); }
-  Tree* dup(Tree* t);
+
+  /* Return tree as string. */
+  virtual const char* print() { return "";  }
+
+  /* Deep copy of the tree. */
+  Exp* dup(Exp* t);
 };
 
-using Vec = std::vector<Tree*>;
+using Vec = std::vector<Exp*>;
 
 ////////////////  Null ///////////////////////
-class Null : public Tree {
+class Null : public Exp {
 
 public:
   const char* print() { return "NULL"; }
 
   bool is_null() { return true; }
 
-  bool subsumes(Tree* t) {
-    return t->is_null() || t->is_na();
-  }
+  // Null << { Null,  Na }
+  bool subsumes(Exp* t) { return t->is_null() || t->is_na(); }
 };
 
 //////////// Num ///////////////////////////
-class Num : public Tree {
+/* Num represents Int, Double, Cmplx, and Logical */
+class Num : public Exp {
 
 public:
   const char* print() { return "0"; }
 
   bool is_num() { return true; }
 
-  bool subsumes(Tree* t) {
-    return t->is_null() || t->is_na() || t->is_num();
-  }
+  // Num << {Null, NA, Num}
+  bool subsumes(Exp* t) { return t->is_null() || t->is_na() || t->is_num(); }
 };
 
 /////////////// Sym ////////////////////////
-class Sym : public Tree {
-  const char* name;
+class Sym : public Exp {
 
 public:
-  Sym(const char* nm) : name(copy(nm)) { }
+  Sym(const char* nm) : Exp(nm) { }
 
-  Sym(Sym* t) : name(copy(t->name)) { }
-
-  ~Sym() { free((char*)name); }
+  Sym(Sym* t) : Exp(t->string_rep) { }
 
   bool is_sym() { return true; }
 
@@ -147,35 +148,40 @@ public:
   const char* print() { return "X"; }
 
   /* This is used while printing function names. */
-  const char* get_name() { return name; }
+  const char* get_name() { return string_rep; }
 
-  bool subsumes(Tree* t) {
+  // Sym << {Sym, Num, NA, Null, Str}
+  // Rationale, a Sym could hold any of those
+  bool subsumes(Exp* t) {
     return t->is_sym() || t->is_num() || t->is_na() || t->is_null() || t->is_str();
   }
 
 };
 
 //////////////// NA ////////////////////////
-class NA : public Tree {
+class NA : public Exp {
 
 public:
   const char* print() { return "NA"; }
 
-  bool subsumes(Tree* t) { return t->is_na(); }
+  // NA << NA
+  bool subsumes(Exp* t) { return t->is_na(); }
 
   bool is_na() { return true; }
 };
 
 /////////////// Call ////////////////////////
-class Call : public Tree{
+class Call : public Exp{
   Sym* name; // name without namespace, could be null
-  Tree* anon; // Expression giving a function (for anon)
+  Exp* anon; // Expression giving a function (for anon)
   int opkind; // 0=Unknown, 1=model.frame, 2=arith, 3=logic, 4=named, 5=c list
   Vec args;
-  const char* string_rep = nullptr;
 
 public:
-  Call(Sym* nm, Tree* anon) : name(nm), anon(anon) {
+  /*  A function may not have a nm, but always has an anon, which is the
+   *  expression that yields a function value. If it has a name we try to assign
+   *  it a kind. */
+  Call(Sym* nm, Exp* anon) : name(nm), anon(anon) {
     if (!name) opkind = 0;
     else {
       const char* str = name->get_name(); // real name
@@ -184,34 +190,25 @@ public:
       else if (in(str, cmp_op, NB_COMP_OP))  opkind = 3;
       else if (in(str, str_op, NB_STR_OP))   opkind = 3;
       else if (in(str, listvec, NB_LISTVEC)) opkind = 5;
-      else if (!strcmp(str, "model.frame"))  opkind = 1;
+      else if (eq(str, "model.frame"))       opkind = 1;
       else                                   opkind = 4;
     }
   }
 
-  Call(Sym* nm, Tree* anon, Vec nargs) : Call(nm, anon) {
-    add_args(nargs);
+  Call(Sym* nm, Exp* anon, Vec nargs) : Call(nm, anon) { add_args(nargs); }
+
+  /* Copy constructor, deep copies that */
+  Call(Call* that) {
+    name = (that->name) ? dynamic_cast<Sym*>(dup(that->name)) : nullptr;
+    anon = dup(that->anon);
+    add_args(that->args);
   }
 
-  Call(Call* x) {
-    name = (x->name) ? x->name : nullptr;
-    anon = dup(x->anon);
-  }
+  Call(Call* x, Vec newargs) : Call(x->name, x->anon, newargs) { }
 
-  Call(Call* x, Vec newargs) : Call(x) {
-    add_args(newargs);
-  }
+  ~Call() { delete anon; } // should delete name, since we got name off it in build()
 
-  ~Call() {
-    delete anon; // should delete name, since we got name off it in build()
-    if(string_rep) free((char*)string_rep);
-  }
-
-  void add_args(Vec newargs) {
-    for(Tree* t : newargs) args.push_back(t);
-  }
-
-  int args_len() { return args.size(); }
+  void add_args(Vec newargs) { for(Exp* t : newargs) args.push_back(t); }
 
   Vec get_args() { return args; }
 
@@ -219,121 +216,105 @@ public:
 
   bool is_call() { return true; }
 
-  Tree* get_anon() { return anon; }
+  // A function is different from all other functions and values.
+  bool subsumes(Exp* t) { return false; }
 
-  bool is_name(const char* nm) {
-    if (!name) return false;
-    return strcmp(nm, name->get_name()) == 0;
-  }
+  Exp* get_anon() { return anon; }
 
-  const char* get_name() {
-    if (name) return name->get_name();
-    else return anon->print();
-  }
+  bool eq_name(const char* nm) { return (name) ? eq(nm, name->get_name()) : false; }
+
+  const char* get_name() { return (name) ? name->get_name() : "anon"; }
 
   const char* print() {
-    if (!string_rep) {
-      CharBuff buf;
-      if(name)
-	buf.write(name->get_name());
-      else
-	anon->write(&buf);
-      buf.write("(");
-      int pos = -1;
-      for(Tree* x : args) {
-	buf.write(x->print());
-	pos = buf.pos();
-	buf.write(", ");
-      }
-      if (pos!=-1) buf.rollback(pos);
-      buf.write(")");
-      string_rep = buf.get();
+    if (string_rep) return string_rep;
+    CharBuff buf;
+    if(name) buf.write(name->get_name());
+    else anon->write(&buf);
+    buf.write("(");
+    int pos = -1;
+    for(Exp* x : args) {
+      buf.write(x->print());
+      pos = buf.pos();
+      buf.write(", ");
     }
-    return string_rep;
+    if (pos!=-1) buf.rollback(pos);
+    buf.write(")");
+    return string_rep = copy(buf.get()); // buf deletes its string, so must copy
   }
 
-  void add_arg(Tree* a) { args.push_back(a); }
+  void add_arg(Exp* a) { args.push_back(a); }
 
-  Tree* get_arg(int x) { return args[x]; }
+  Exp* get_arg(int x) { return args[x]; }
 };
 
 ///////////// Str ////////////////////////////
-class Str : public Tree{
+class Str : public Exp{
 
 public:
   const char* print() { return "\"C\""; }
 
   bool is_str() { return true; }
 
-  bool subsumes(Tree* t) {
+  // Str << Str, NA, Null, Num
+  bool subsumes(Exp* t) {
     return t->is_str() || t->is_na() || t->is_null() || t->is_num();
   }
 
 };
 
 ///////////// Statements /////////////////////
-class Statements : public Tree {
+class Statements : public Exp {
   Vec elems;
-  const char* string_rep = nullptr;
 
 public:
   Statements() {}
 
-  Statements(Vec v) { for(Tree* x : v) add(x); }
+  Statements(Vec v) { for(Exp* x : v) add(x); }
 
   Statements(Statements* x) : Statements(x->elems){  }
 
-  ~Statements() {
-    for(Tree* x : elems) delete x;
-    if (string_rep) free((char*)string_rep);
-  }
+  ~Statements() { for(Exp* x : elems) delete x;  }
 
   Vec get_elems() { return elems; }
 
-  void add(Tree* x) { elems.push_back(x); }
+  void add(Exp* x) { elems.push_back(x); }
 
   bool is_statements() { return true; }
 
-  bool subsumes(Tree* t) { return false;  }
+  // Statements do not subsume
+  bool subsumes(Exp* t) { return false;  }
 
   const char* print() {
-    if (!string_rep) {
-      CharBuff buf;
-      buf.write("{ ");
-      int pos = -1;
-      for(Tree* x : elems) {
-	buf.write(x->print());
-	pos = buf.pos();
-	buf.write("; ");
-      }
-      if (pos!=-1) buf.rollback(pos);
-      buf.write(" }");
-      string_rep = buf.get();
+    if (string_rep) return string_rep;
+    CharBuff buf;
+    buf.write("{ ");
+    int pos = -1;
+    for(Exp* x : elems) {
+      buf.write(x->print());
+      pos = buf.pos();
+      buf.write("; ");
     }
-    return string_rep;
+    if (pos!=-1) buf.rollback(pos);
+    buf.write(" }");
+    return string_rep = copy(buf.get());
   }
 };
 
 ////////////// Other /////////////////////
-class Other : public Tree {
-  const char* name;
+class Other : public Exp {
 
 public:
-  Other(const char* nm) : name(nm) { }
+  Other(const char* nm) : Exp(nm) { }
 
-  Other(Other* x) : name(copy(x->name)) { }
-
-  ~Other() { /*Do not delete name*/ }
+  Other(Other* x) : Exp(x->string_rep) { }
 
   bool is_other() { return true; }
 
-  const char* print() { return name; }
+  const char* print() { return string_rep; }
 };
-
-
 //////////////////////////////////////////
 
-Tree* Tree::dup(Tree* t) {
+Exp* Exp::dup(Exp* t) {
   if (t->is_sym()) return new Sym(dynamic_cast<Sym*>(t));
   else if (t->is_call()) return new Call(dynamic_cast<Call*>(t));
   else if (t->is_null()) return new Null();
@@ -344,20 +325,21 @@ Tree* Tree::dup(Tree* t) {
   else if (t->is_other()) return new Other(dynamic_cast<Other*>(t));
 }
 
-
 ////////////// Builder /////////////////////
+/* A builder takes an R ast represented by a SEXP and builds the corresponding
+*  Exp. In the process it simplifies things a bit as our Exp is simpler than R's
+*  SEXP. */
 class Builder {
 
 public:
-  Tree* build(SEXP ast) {
+  Exp* build(SEXP ast) {
     switch (TYPEOF(ast)) {
     case NILSXP:  return new Null();
     case INTSXP:
     case REALSXP:
     case CPLXSXP: return new Num();
-    case SYMSXP:  return  new Sym(CHAR(PRINTNAME(ast)));
-    case LGLSXP:  return asLogical(ast)==NA_LOGICAL ?
-	((Tree*) new NA()) : ((Tree*) new Num());
+    case SYMSXP:  return new Sym(CHAR(PRINTNAME(ast)));
+    case LGLSXP:  return doLGLSXP(ast);
     case STRSXP:  return doSTRSXP(ast);
     case LISTSXP: return doLISTSXP(ast);
     case LANGSXP: return doLANGSXP(ast);
@@ -373,39 +355,48 @@ public:
     }
   }
 
-  Tree* doSTRSXP(SEXP ast) {
+  /* Logicals are represented by Nums except for NA, this is because NA starts
+  *  as LGL NA and is then converted to which ever type of NA the environment
+  *  needs. */
+  Exp* doLGLSXP(SEXP ast) {
+    return asLogical(ast)==NA_LOGICAL ? ((Exp*) new NA()) : ((Exp*) new Num());
+  }
+
+  /* We forget the value of strings, except a few special cases. */
+  Exp* doSTRSXP(SEXP ast) {
     const char* s = CHAR(STRING_ELT(ast, 0));
-    if (!strcmp(s, "<ENVIRONMENT>") || !strcmp(s, "<WEAK REFERENCE>") ||
-        !strcmp(s, "<POINTER>"))
+    if (eq(s, "<ENVIRONMENT>") || eq(s, "<WEAK REFERENCE>") || eq(s, "<POINTER>"))
       return new Other(s);
     else
       return new Str();
   }
 
-  Tree* doLISTSXP(SEXP ast) { return new Other("(ARGS)"); }
+  /* The only place we should encounter this type is when processing the
+     arguments of a function definition. Since we don't really care about those
+     right now, we can simplify. */
+  Exp* doLISTSXP(SEXP ast) { return new Other("(ARGS)"); }
 
-  Tree* doLANGSXP(SEXP ast) {
-    Tree* fun = build(CAR(ast)); // Function 'name' can be (1) a
+  /* Function calls can be place to named functions or anonymous ones. */
+  Exp* doLANGSXP(SEXP ast) {
+    Exp* fun = build(CAR(ast)); // Function 'name' can be (1) a
     Sym* fun_name = nullptr;   // symbol, (2) namespace (langsxp),
     // (3) anonymous function (langsxp). For (1) and (2) we keep
     // function names, for (3) we retain the whole expression.
     if (fun->is_sym()) fun_name = dynamic_cast<Sym*>(fun);
     else if (fun->is_call()) {
       Call* name_call = dynamic_cast<Call*>(fun);
-      if (name_call->is_name("::")) {
+      if (name_call->eq_name("::"))
 	fun_name = dynamic_cast<Sym*>(name_call->get_arg(1));
-      }
     }
-
     Call* call = new Call(fun_name, fun);
     // Process the arguments
-    for (SEXP ptr = CDR(ast); ptr != R_NilValue; ptr = CDR(ptr)) {
+    for (SEXP ptr = CDR(ast); ptr != R_NilValue; ptr = CDR(ptr))
       call->add_arg(build(CAR(ptr)));
-    }
     return call;
   }
 
-  Tree* doEXPRSXP(SEXP ast) {
+  /* Unclear what this is... */
+  Exp* doEXPRSXP(SEXP ast) {
     Statements* stmts = new Statements();
     int size = Rf_length(ast);
     for (int i = 0; i < size; i++)
@@ -413,15 +404,17 @@ public:
     return stmts;
   }
 
-  Tree* doDEFAULT(const char* val) { return new Other(val);  }
+  /* Other cases that we don't really handle */
+  Exp* doDEFAULT(const char* val) { return new Other(val);  }
 
 };
 
 ///////////////////// Simplifier /////////////////////////
+/* The simplifier takes an Exp and returns a simpler or equal Exp. */
 class Simplifier {
 
 public:
-  Tree* simplify(Tree* t) {
+  Exp* simplify(Exp* t) {
     if (t->is_sym()) return new Sym(dynamic_cast<Sym*>(t));
     else if (t->is_call()) return doCall(dynamic_cast<Call*>(t));
     else if (t->is_null()) return new Null();
@@ -433,13 +426,14 @@ public:
     error("Not reached.");
   }
 
-  Tree* doCall(Call* x) {
+  /* This is the heart of simplification as all intersting things are calls. */
+  Exp* doCall(Call* x) {
     Vec args;
-    for(Tree* t : x->get_args()) args.push_back(simplify(t));
+    for(Exp* t : x->get_args()) args.push_back(simplify(t));
     args = subsume(args);
 
     if (x->kind() == 0) { // anon function
-      Tree* anon = simplify(x->get_anon());
+      Exp* anon = simplify(x->get_anon());
       return new Call(nullptr, anon, args);
     } else if (x->kind() == 1) { // model.frame
       return new Call(x, args);
@@ -448,7 +442,7 @@ public:
       Sym* op = new Sym("OP");
       return new Call(op, op, args);
     } else if  (x->kind() == 4) { // named function
-      if (x->is_name("(") && args.size() == 1) return args[0];
+      if (x->eq_name("(") && args.size() == 1) return args[0];
       return new Call(x, args);
     } else if  (x->kind() == 5) { // c() or list()
       if (args.size() == 1) return args[0];
@@ -456,11 +450,13 @@ public:
     }
   }
 
-  std::vector<Tree*> subsume(std::vector<Tree*> v) {
-    std::vector<Tree*> r;
+  /* Subsume takes a vector of simplified Exp and removes all entries that are
+  *  subsumed by other entries. */
+  std::vector<Exp*> subsume(std::vector<Exp*> v) {
+    std::vector<Exp*> r;
     int len = v.size();
     for (int i=0; i<len; i++) {
-      Tree* t = v[i];
+      Exp* t = v[i];
       bool added = false;
       for (int j=0; j<r.size(); j++) {
         bool tr = t->subsumes(r[j]);
@@ -474,26 +470,25 @@ public:
     return r;
   }
 
-  Tree* doStatements(Statements* x) {
+  Exp* doStatements(Statements* x) {
     Vec elems;
-    for(Tree* t: x->get_elems())
-      elems.push_back(simplify(t));
+    for(Exp* t: x->get_elems()) elems.push_back(simplify(t));
     elems = subsume(elems);
     if (elems.size() == 1) return elems[0];
     return new Statements(elems);
   }
 };
 
-
 ///////////////////////////////////////////////////////////
 SEXP r_normalize_expr(SEXP ast) {
   Builder builder;
-  Tree* t = builder.build(ast);
+  Exp* t = builder.build(ast);
   Simplifier s;
-  Tree* t2 = s.simplify(t);
+  Exp* t2 = s.simplify(t);
+  delete t;
   CharBuff buf;
   t2->write(&buf);
-
+  delete t2;
   SEXP r_value = PROTECT(mkString(buf.get()));
   UNPROTECT(1);
   return r_value;
