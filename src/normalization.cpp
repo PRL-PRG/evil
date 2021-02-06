@@ -568,8 +568,36 @@ Vec subsume(std::vector<Exp*> v) {
   }
 };
 
+///////////////// COUNTER ////////////////////////////////
+class Counter {
+
+  bool modelframe = false;
+  bool funcall = false;
+  bool fundef = false;
+  const char* topcall = nullptr;
+  bool assign = false;
+  int callnesting = 0;
+
+public:
+  voi count(Exp* t) {
+    if (t->is_sym()) {}
+    else if (t->is_call()) { doCall(dynamic_cast<Call*>(t)); return;   }
+    else if (t->is_null()) {}
+    else if (t->is_na()) {}
+    else if (t->is_statements()) { doStatements(dynamic_cast<Statements*>(t)); return; }
+    else if (t->is_num()) {}
+    else if (t->is_str()) {}
+    else if (t->is_other()) {}
+  }
+  void doCall(Call* x) {
+  }
+
+  void doStatements(Statements* x) {
+  }
+};
+
 ///////////////////////////////////////////////////////////
-SEXP r_normalize_expr(SEXP ast) {
+Sexp r_normalize_expr(SEXP ast) {
   Builder builder;
   Exp* t = builder.build(ast);
   Simplifier s;
