@@ -579,7 +579,7 @@ class Counter {
   int callnesting = 0;
 
 public:
-  voi count(Exp* t) {
+  void count(Exp* t) {
     if (t->is_sym()) {}
     else if (t->is_call()) { doCall(dynamic_cast<Call*>(t)); return;   }
     else if (t->is_null()) {}
@@ -597,7 +597,7 @@ public:
 };
 
 ///////////////////////////////////////////////////////////
-Sexp r_normalize_expr(SEXP ast) {
+SEXP r_normalize_expr(SEXP ast) {
   Builder builder;
   Exp* t = builder.build(ast);
   Simplifier s;
@@ -640,11 +640,13 @@ SEXP r_simplify(SEXP tree) {
     Simplifier s;
     Exp* t2 = s.simplify(t);
 
-    SEXP res = R_MakeExternalPtr(t2, install("tree"), R_NilValue);
+    //T should also live with t2 as they share some part of the tree
+    SEXP res = R_MakeExternalPtr(t2, install("tree"), tree);
     PROTECT(res);
 
     R_RegisterCFinalizerEx(res, finalize_tree, TRUE);
 
+    UNPROTECT(1);
     return res;
 }
 
