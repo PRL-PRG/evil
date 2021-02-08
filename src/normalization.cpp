@@ -582,6 +582,7 @@ class Counter {
   const char* topcall = nullptr;
   bool assign = false;
   int callnesting = 0;
+  int nb_assigns = 0;
 
 public:
   void count(Exp* t) {
@@ -599,6 +600,10 @@ public:
       if(x->kind() == NamedOp || x->kind() == UnknownOp || x->kind() == ModelFrameOp) {
           callnesting++;
       }
+
+      if(x->eq_name("<-") || x->eq_name("assign") || x->eq_name("<<-")) {
+          nb_assigns++;
+      }
       
       for(auto arg : x->get_args()) {
           count(arg);
@@ -610,6 +615,10 @@ public:
 
   int get_callnesting() const {
       return callnesting;
+  }
+
+  int get_nb_assigns() const {
+      return nb_assigns;
   }
 };
 
@@ -644,21 +653,20 @@ SEXP r_normalize_stats_expr(SEXP ast) {
 
   delete t2;
 
-  Rprintf("Test1");
-
    /*
     To add an element to the list, just add a name for it and 
     then a SET_VECTOR_ELT instruction.
     For a double, use Rf_ScalarReal instead of Rf_ScalarInteger
 
-    The array of names must be terminated by ""
+    ATTENTION: the array of names must be terminated by ""
   */
 
-  const char* names[] = {"str_rep", "call_nesting", ""};
+  const char* names[] = {"str_rep", "call_nesting", "nb_assigns", ""};
   SEXP r_value = PROTECT(Rf_mkNamed(VECSXP, names));
   // No need to protect here, because they are directly assigned in a protected list
   SET_VECTOR_ELT(r_value, 0, mkString(buf.get()));
   SET_VECTOR_ELT(r_value, 1, Rf_ScalarInteger(counter.get_callnesting()));
+  SET_VECTOR_ELT(r_value, 2, Rf_ScalarInteger(counter.get_nb_assigns()));
   UNPROTECT(1);
   return r_value;
 }
