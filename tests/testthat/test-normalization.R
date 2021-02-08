@@ -86,3 +86,21 @@ test_that("Various normalization", {
     normalize_expr(quote(rgt::`+`(1, 2))), "0"
   )
 })
+
+
+test_that("Call nesting", {
+  # We do not count +
+  res <- normalize_stats_expr(quote(f(g(4 + 5))))
+  expect_equal(res$call_nesting, 2)
+})
+
+test_that("Call nesting", {
+  res <- normalize_stats_expr(quote(x <- 56))
+  expect_equal(res$nb_assigns, 1)
+
+  res <- normalize_stats_expr(quote(x <<- 56))
+  expect_equal(res$nb_assigns, 1)
+
+  res <- normalize_stats_expr(quote(assign(x, 56)))
+  expect_equal(res$nb_assigns, 1)
+})
