@@ -17,3 +17,8 @@ tree_to_string <- function(expr) {
 simplify_tree <- function(expr) {
     .Call(C_simplify, expr)
 }
+
+#' @export
+normalize_stats_expr <- function(expr) {
+    .Call(C_normalize_stats_expr, expr)
+}

@@ -2,7 +2,10 @@
 
 export(build_tree)
 export(normalize_expr)
+export(normalize_stats_expr)
+export(simplify_tree)
 export(trace_code)
+export(tree_to_string)
 export(write_trace)
 importFrom(digest,sha1)
 importFrom(instrumentr,activate)

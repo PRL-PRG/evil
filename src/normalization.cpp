@@ -595,9 +595,21 @@ public:
     else if (t->is_other()) {}
   }
   void doCall(Call* x) {
+      // We don't want to count other calls (Logi, Arithmetic)
+      if(x->kind() == NamedOp || x->kind() == UnknownOp || x->kind() == ModelFrameOp) {
+          callnesting++;
+      }
+      
+      for(auto arg : x->get_args()) {
+          count(arg);
+      }
   }
 
   void doStatements(Statements* x) {
+  }
+
+  int get_callnesting() const {
+      return callnesting;
   }
 };
 
@@ -612,6 +624,41 @@ SEXP r_normalize_expr(SEXP ast) {
   t2->write(&buf);
   delete t2;
   SEXP r_value = PROTECT(mkString(buf.get()));
+  UNPROTECT(1);
+  return r_value;
+}
+
+///////////////////////////////////////////////////////////
+SEXP r_normalize_stats_expr(SEXP ast) {
+  Builder builder;
+  Exp* t = builder.build(ast);
+  Simplifier s;
+  Exp* t2 = s.simplify(t);
+  delete t;
+  CharBuff buf;
+  t2->write(&buf);
+
+  Counter counter;
+  counter.count(t2);
+  
+
+  delete t2;
+
+  Rprintf("Test1");
+
+   /*
+    To add an element to the list, just add a name for it and 
+    then a SET_VECTOR_ELT instruction.
+    For a double, use Rf_ScalarReal instead of Rf_ScalarInteger
+
+    The array of names must be terminated by ""
+  */
+
+  const char* names[] = {"str_rep", "call_nesting", ""};
+  SEXP r_value = PROTECT(Rf_mkNamed(VECSXP, names));
+  // No need to protect here, because they are directly assigned in a protected list
+  SET_VECTOR_ELT(r_value, 0, mkString(buf.get()));
+  SET_VECTOR_ELT(r_value, 1, Rf_ScalarInteger(counter.get_callnesting()));
   UNPROTECT(1);
   return r_value;
 }

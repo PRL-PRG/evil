@@ -43,6 +43,7 @@ static const R_CallMethodDef callMethods[] = {
     {"build_tree", (DL_FUNC) &r_build_tree, 1},
     {"tree_to_string", (DL_FUNC) &r_tree_to_string, 1},
     {"simplify", (DL_FUNC) &r_simplify, 1},
+    {"normalize_stats_expr", (DL_FUNC) &r_normalize_stats_expr, 1},
     {NULL, NULL, 0}
 };
 

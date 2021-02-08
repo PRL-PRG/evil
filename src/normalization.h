@@ -14,6 +14,8 @@ SEXP r_tree_to_string(SEXP tree);
 
 SEXP r_simplify(SEXP tree);
 
+SEXP r_normalize_stats_expr(SEXP ast);
+
 typedef enum OpKind {
     UnknownOp,
     ModelFrameOp,
