@@ -283,11 +283,16 @@ public:
       }
       if (pos!=-1) buf.rollback(pos);
       buf.write("]");
-    } else if (eq_name("OP")) {
-      buf.write(args[0]->print());
-      buf.write(" OP ");
-      if (len == 2) buf.write(args[1]->print());
-    } else {
+    }
+    //  else if (eq_name("OP")) {
+    //     if (len == 1) {
+    //         buf.write(args[0]->print());
+    //         warning("Weird operator without arguments!\n");
+    //     }
+    //     buf.write(" OP ");
+    //   if (len == 2) buf.write(args[1]->print());
+    // } 
+    else {
       if(name) buf.write(name->get_name());
       else anon->write(&buf);
       buf.write("(");

@@ -10,7 +10,7 @@ test_that("Constant folding", {
 
 test_that("List simplification", {
   expect_equal(normalize_expr(quote(f(g(1),g(1)))), "f(g(0))")
-  expect_equal(normalize_expr(quote((g()+h()-y()))), "g() OP h() OP y()")
+  expect_equal(normalize_expr(quote((g()+h()-y()))), "OP(OP(g(), h()), y())")
   expect_equal(normalize_expr(quote(x$y)), "X$")
   expect_equal(normalize_expr(quote(x<-f(y))), "X <- f(X)")
   expect_equal(normalize_expr(quote(x$y$z)), "X$$X") # Yuck!!!!
