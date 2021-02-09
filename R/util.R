@@ -234,6 +234,8 @@ classify_environment <- function(application_frame_position,
   return("unhandled")
 }
 
+
+
 from_match.call <- function(expr_resolved, addresses_set) {
   if (is.call(expr_resolved)) {
     addresses <- vapply(expr_resolved, injectr::sexp_address, "")
@@ -241,7 +243,10 @@ from_match.call <- function(expr_resolved, addresses_set) {
       if (exists(k, where = addresses_set)) {
         # We don't remove the set of addresses from the hashmap; It could be used
         # by another eval
-        return(as.character(expr_resolved[[1]])) # get the name of the function called
+
+        # get the name of the function called (including namespace)
+        # it is actually redundant with expr_resolved_function (which is also more accurate)
+        return(as.character(expr_resolved[[1]]))
       }
     }
   }

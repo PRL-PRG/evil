@@ -649,6 +649,15 @@ SEXP r_normalize_stats_expr(SEXP ast) {
 
   Counter counter;
   counter.count(t2);
+
+  SEXP root_func_name;
+  if(t2->is_call()) {
+      Call* t3 = dynamic_cast<Call*>(t2);
+      root_func_name = PROTECT(mkString(t3->get_name()));
+  }
+  else {
+      root_func_name = PROTECT(NA_STRING);
+  }
   
 
   delete t2;
@@ -661,13 +670,14 @@ SEXP r_normalize_stats_expr(SEXP ast) {
     ATTENTION: the array of names must be terminated by ""
   */
 
-  const char* names[] = {"str_rep", "call_nesting", "nb_assigns", ""};
+  const char* names[] = {"str_rep", "call_nesting", "nb_assigns", "root_function", ""};
   SEXP r_value = PROTECT(Rf_mkNamed(VECSXP, names));
   // No need to protect here, because they are directly assigned in a protected list
   SET_VECTOR_ELT(r_value, 0, mkString(buf.get()));
   SET_VECTOR_ELT(r_value, 1, Rf_ScalarInteger(counter.get_callnesting()));
   SET_VECTOR_ELT(r_value, 2, Rf_ScalarInteger(counter.get_nb_assigns()));
-  UNPROTECT(1);
+  SET_VECTOR_ELT(r_value, 3, root_func_name);
+  UNPROTECT(2);
   return r_value;
 }
 
