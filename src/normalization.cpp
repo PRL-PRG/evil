@@ -656,7 +656,8 @@ SEXP r_normalize_stats_expr(SEXP ast) {
       root_func_name = PROTECT(mkString(t3->get_name()));
   }
   else {
-      root_func_name = PROTECT(NA_STRING);
+      // NA_STRING is not a STRSXP but a CHARSXP!!
+      root_func_name = PROTECT(Rf_ScalarString(NA_STRING));
   }
   
 
