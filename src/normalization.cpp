@@ -577,11 +577,9 @@ Vec subsume(std::vector<Exp*> v) {
 class Counter {
 
   bool modelframe = false;
-  bool funcall = false;
   bool fundef = false;
   const char* topcall = nullptr;
-  bool assign = false;
-  int callnesting = 0;
+  int callnesting = 0;// how many calls?
   int nb_assigns = 0;
 
 public:
@@ -599,12 +597,22 @@ public:
       // We don't want to count other calls (Logi, Arithmetic)
       if(x->kind() == NamedOp || x->kind() == UnknownOp || x->kind() == ModelFrameOp) {
           callnesting++;
+         
       }
 
       if(x->eq_name("<-") || x->eq_name("assign") || x->eq_name("<<-")) {
           nb_assigns++;
       }
+
+      if(!modelframe && x->kind() == ModelFrameOp) {
+          modelframe = true;
+      }
+
+      if(!fundef && x->kind() == UnknownOp) {
+          fundef = true;
+      }
       
+       //TODO: Ignore function bodies
       for(auto arg : x->get_args()) {
           count(arg);
       }
@@ -619,6 +627,14 @@ public:
 
   int get_nb_assigns() const {
       return nb_assigns;
+  }
+
+  bool is_modelframe() const {
+      return modelframe;
+  }
+
+  bool is_fundef() const {
+      return fundef;
   }
 };
 
@@ -671,13 +687,15 @@ SEXP r_normalize_stats_expr(SEXP ast) {
     ATTENTION: the array of names must be terminated by ""
   */
 
-  const char* names[] = {"str_rep", "call_nesting", "nb_assigns", "root_function", ""};
+  const char* names[] = {"str_rep", "call_nesting", "nb_assigns", "root_function", "model_frame", "fundef", ""};
   SEXP r_value = PROTECT(Rf_mkNamed(VECSXP, names));
   // No need to protect here, because they are directly assigned in a protected list
   SET_VECTOR_ELT(r_value, 0, mkString(buf.get()));
   SET_VECTOR_ELT(r_value, 1, Rf_ScalarInteger(counter.get_callnesting()));
   SET_VECTOR_ELT(r_value, 2, Rf_ScalarInteger(counter.get_nb_assigns()));
   SET_VECTOR_ELT(r_value, 3, root_func_name);
+  SET_VECTOR_ELT(r_value, 4, Rf_ScalarLogical(counter.is_modelframe()));
+  SET_VECTOR_ELT(r_value, 5, Rf_ScalarLogical(counter.is_fundef()));
   UNPROTECT(2);
   return r_value;
 }
