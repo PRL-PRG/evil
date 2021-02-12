@@ -222,7 +222,7 @@ public:
 
   void add_args(Vec newargs) { for(Exp* t : newargs) args.push_back(t); }
 
-  Vec get_args() { return args; }
+  const Vec& get_args() const { return args; }
 
   OpKind kind() { return opkind; }
 
@@ -480,7 +480,7 @@ public:
     else if (fun->is_call()) {
       Call* name_call = dynamic_cast<Call*>(fun);
       if (name_call->eq_name("::") || name_call->eq_name(":::"))
-	fun_name = dynamic_cast<Sym*>(name_call->get_arg(1));
+	    fun_name = dynamic_cast<Sym*>(name_call->get_arg(1));
     }
     Call* call = new Call(fun_name, fun);
     // Process the arguments
@@ -523,7 +523,8 @@ public:
   /* This is the heart of simplification as all intersting things are calls. */
   Exp* doCall(Call* x) {
     Vec args;
-    for(Exp* t : x->get_args()) args.push_back(simplify(t));
+    args.reserve(x-> get_args().size());
+    for(Exp* t : x-> get_args()) args.push_back(simplify(t));
     args = subsume(args);
 
     if (x->kind() == UnknownOp) { // anon function
@@ -537,6 +538,14 @@ public:
       return new Call(op, op, args);
     } else if  (x->kind() == NamedOp) { // named function
       if (x->eq_name("(") && args.size() == 1) return args[0];
+      else if((x->eq_name("integer") || x->eq_name("double") || x->eq_name("numeric")) &&
+         args.size() == 1 && args[0]->is_num() ) {
+          return new Num();
+      }
+      else if(x->eq_name("character")  &&
+         args.size() == 1 && args[0]->is_num() ) {
+          return new Str();
+      }
       return new Call(x, args);
     } else if  (x->kind() == ListVecOp) { // c() or list()
       if (args.size() == 1) return args[0];

@@ -22,6 +22,13 @@ test_that("List simplification", {
   expect_equal(normalize_expr(quote(c(1, 2, x, 4))), "X")
 })
 
+test_that("Constructors", {
+  expect_equal(normalize_expr(quote(integer(0))), "0")
+  expect_equal(normalize_expr(quote(numeric(0))), "0")
+  expect_equal(normalize_expr(quote(double(0))), "0")
+  expect_equal(normalize_expr(quote(character(0))), "S")
+})
+
 
 test_that("Stress test", {
   # Stress test: more than 100 characters to allocate
@@ -85,6 +92,10 @@ test_that("Various normalization", {
   expect_equal(
     normalize_expr(quote(rgt::`+`(1, 2))), "0"
   )
+
+  expect_equal(
+    normalize_expr(quote(plop::test(1, 2))), "test(0)"
+  )
 })
 
 
@@ -94,7 +105,7 @@ test_that("Call nesting", {
   expect_equal(res$call_nesting, 2)
 })
 
-test_that("Call nesting", {
+test_that("Number of assignments", {
   res <- normalize_stats_expr(quote(x <- 56))
   expect_equal(res$nb_assigns, 1)
 
