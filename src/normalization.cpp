@@ -479,7 +479,7 @@ public:
     if (fun->is_sym()) fun_name = dynamic_cast<Sym*>(fun);
     else if (fun->is_call()) {
       Call* name_call = dynamic_cast<Call*>(fun);
-      if (name_call->eq_name("::"))
+      if (name_call->eq_name("::") || name_call->eq_name(":::"))
 	fun_name = dynamic_cast<Sym*>(name_call->get_arg(1));
     }
     Call* call = new Call(fun_name, fun);
