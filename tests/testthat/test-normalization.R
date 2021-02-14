@@ -98,6 +98,12 @@ test_that("Various normalization", {
   )
 })
 
+test_that("Structure is  simplified", {
+  expect_equal(normalize_expr(quote(structure(x, tag = "plop"))), "X")
+  expect_equal(normalize_expr(quote(structure(f(1 + 1), tag = "plop"))), "structure(f(0), S)")
+  expect_equal(normalize_expr(quote(structure(123, tag = r))), "X")
+})
+
 
 test_that("Call nesting", {
   # We do not count +
@@ -115,3 +121,4 @@ test_that("Number of assignments", {
   res <- normalize_stats_expr(quote(assign(x, 56)))
   expect_equal(res$nb_assigns, 1)
 })
+

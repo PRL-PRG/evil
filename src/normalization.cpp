@@ -546,6 +546,10 @@ public:
          args.size() == 1 && args[0]->is_num() ) {
           return new Str();
       }
+      else if(x->eq_name("structure") && args.size() == 1 &&
+         !(args[0]->is_other() || args[0]->is_statements())) {
+          return args[0];
+      }
       return new Call(x, args);
     } else if  (x->kind() == ListVecOp) { // c() or list()
       if (args.size() == 1) return args[0];
