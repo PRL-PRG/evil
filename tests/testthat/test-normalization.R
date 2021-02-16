@@ -72,10 +72,14 @@ test_that("NA coercion", {
 })
 
 test_that("model.frame", {
-  # Special treatment!
-  expect_equal(normalize_expr(quote(model.frame(x ~ y))), "model.frame(~(X))")
-  expect_equal(normalize_expr(quote(model.frame(x ~ y, NULL))), "model.frame(~(X), NULL)")
-  expect_equal(normalize_expr(quote(model.frame(x ~ y, subset = t))), "model.frame(~(X), X)")
+  # Before
+  #expect_equal(normalize_expr(quote(model.frame(x ~ y))), "model.frame(~(X))")
+  #expect_equal(normalize_expr(quote(model.frame(x ~ y, NULL))), "model.frame(~(X), NULL)")
+  #expect_equal(normalize_expr(quote(model.frame(x ~ y, subset = t))), "model.frame(~(X), X)")
+  #after
+  expect_equal(normalize_expr(quote(model.frame(x ~ y))), "model.frame()")
+  expect_equal(normalize_expr(quote(model.frame(x ~ y, NULL))), "model.frame()")
+  expect_equal(normalize_expr(quote(model.frame(x ~ y, subset = t))), "model.frame()")
 })
 
 test_that("Blocks", {
@@ -83,6 +87,10 @@ test_that("Blocks", {
   expect_equal(normalize_expr(quote({sin(1 + 1)})), "0")
   expect_equal(normalize_expr(quote({1+1; x * 2})), "X") # We still subsumes in blocks
   expect_equal(normalize_expr(quote({f(1); x * 2})), "{MANY()")
+})
+
+test_that("Statistical functions", {
+  expect_equal(normalize_expr(quote(glm(r))), "STAT(X)")
 })
 
 test_that("Various normalization", {

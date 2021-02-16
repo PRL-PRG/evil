@@ -1,6 +1,7 @@
 #include <vector>
 #include <iostream>
 #include <cassert>
+#include <array>
 #include "normalization.h"
 #include "r_init.h"
 
@@ -598,12 +599,56 @@ Vec subsume(const std::vector<Exp*>& v) {
 
   Exp* doStatements(Statements* x) {
     Vec elems;
+    elems.reserve(x->get_elems().size());
     for(Exp* t: x->get_elems()) elems.push_back(simplify(t));
     elems = subsume(elems);
     if (elems.size() == 1) return elems[0];
     return new Statements(elems);
   }
 };
+
+///////////////// CATEGORIZER ////////////////////////////////
+class FunctionCategorizer {
+    inline static std::array<const char*, 2> stat_functions{{"lm", "glm"}};
+
+public:
+    Exp* categorize(Exp* t) {
+        if (t->is_sym()) return new Sym(dynamic_cast<Sym*>(t));
+        else if (t->is_call()) return doCall(dynamic_cast<Call*>(t));
+        else if (t->is_null()) return new Null();
+        else if (t->is_na()) return new NA();
+        else if (t->is_statements()) return doStatements(dynamic_cast<Statements*>(t));
+        else if (t->is_num()) return new Num();
+        else if (t->is_str()) return new Str();
+        else if (t->is_other()) return new Other(dynamic_cast<Other*>(t));
+        error("Not reached.");
+    }
+
+    Exp* doCall(Call* x) {
+        Vec args;
+        args.reserve(x-> get_args().size());
+        for(Exp* t : x-> get_args()) args.push_back(categorize(t));
+
+        if(x->kind() == ModelFrameOp) {
+            Vec empty_args;
+            return new Call(x, empty_args);
+        }
+        else if(in(x->get_name(), stat_functions.begin(), stat_functions.size())) {
+            return new Call(new Sym("STAT"), x->get_anon(), args);
+        }
+        
+        return x;
+    }
+
+    Exp* doStatements(Statements* x) {
+        Vec elems;
+        for(Exp* t: x->get_elems()) elems.push_back(categorize(t));
+        if (elems.size() == 1) return elems[0];
+        return new Statements(elems);
+    }
+};
+
+//std::array<const char*, 2> FunctionCategorizer::stat_functions{{"lm", "glm"}};
 
 ///////////////// COUNTER ////////////////////////////////
 class Counter {
@@ -677,9 +722,11 @@ SEXP r_normalize_expr(SEXP ast) {
   Simplifier s;
   Exp* t2 = s.simplify(t);
   delete t;
+  FunctionCategorizer fc;
+  Exp* t3 = fc.categorize(t2);
   CharBuff buf;
-  t2->write(&buf);
-  delete t2;
+  t3->write(&buf);
+  delete t3;
   SEXP r_value = PROTECT(mkString(buf.get()));
   UNPROTECT(1);
   return r_value;
@@ -692,16 +739,18 @@ SEXP r_normalize_stats_expr(SEXP ast) {
   Simplifier s;
   Exp* t2 = s.simplify(t);
   delete t;
+  FunctionCategorizer fc;
+  Exp* t3 = fc.categorize(t2);
   CharBuff buf;
-  t2->write(&buf);
+  t3->write(&buf);
 
   Counter counter;
-  counter.count(t2);
+  counter.count(t3);
 
   SEXP root_func_name;
-  if(t2->is_call()) {
-      Call* t3 = dynamic_cast<Call*>(t2);
-      root_func_name = PROTECT(mkString(t3->get_name()));
+  if(t3->is_call()) {
+      Call* t4 = dynamic_cast<Call*>(t3);
+      root_func_name = PROTECT(mkString(t4->get_name()));
   }
   else {
       // NA_STRING is not a STRSXP but a CHARSXP!!
@@ -709,7 +758,7 @@ SEXP r_normalize_stats_expr(SEXP ast) {
   }
   
 
-  delete t2;
+  delete t3;
 
    /*
     To add an element to the list, just add a name for it and 
