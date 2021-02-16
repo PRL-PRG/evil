@@ -6,6 +6,7 @@ test_that("Constant folding", {
   expect_equal(normalize_expr(quote(x)), "X")
   expect_equal(normalize_expr(quote(x + y)), "X")
   expect_equal(normalize_expr(quote(x + 1)), "X")
+  expect_equal(normalize_expr(quote(mean(1))), "0")
 })
 
 test_that("List simplification", {
@@ -75,6 +76,12 @@ test_that("model.frame", {
   expect_equal(normalize_expr(quote(model.frame(x ~ y))), "model.frame(~(X))")
   expect_equal(normalize_expr(quote(model.frame(x ~ y, NULL))), "model.frame(~(X), NULL)")
   expect_equal(normalize_expr(quote(model.frame(x ~ y, subset = t))), "model.frame(~(X), X)")
+})
+
+test_that("Blocks", {
+  expect_equal(normalize_expr(quote({})), "{()")
+  expect_equal(normalize_expr(quote({sin(1 + 1)})), "0")
+  expect_equal(normalize_expr(quote({1+1; x * 2})), "{MANY()")
 })
 
 test_that("Various normalization", {

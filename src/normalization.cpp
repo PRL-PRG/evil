@@ -20,14 +20,15 @@ int in(const char* target, const char** array, int array_length) {
     return 0;
 }
 
-#define NB_ARITH_OP 15
+#define NB_ARITH_OP 17
 #define NB_STR_OP 3
 #define NB_COMP_OP 6
 #define NB_BOOL_OP 5
 #define NB_LISTVEC 2
 
 static const char* arith_op[NB_ARITH_OP] = {"/",  "-",  "*", "+", "^",
-   "log", "sqrt", "exp", "max", "min", "cos", "sin", "abs", "atan", ":"};
+   "log", "sqrt", "exp", "max", "min", "cos", "sin", "abs", "atan", ":",
+    "mean", "atanh"};
 static const char* str_op[NB_STR_OP] = {"paste", "paste0", "str_c"};
 static const char* cmp_op[NB_COMP_OP] = {"<", ">", "<=", ">=", "==", "!="};
 static const char* bool_op[NB_BOOL_OP] = {"&", "&&", "|", "||", "!"};
@@ -525,6 +526,21 @@ public:
     Vec args;
     args.reserve(x-> get_args().size());
     for(Exp* t : x-> get_args()) args.push_back(simplify(t));
+
+    // We don't subsume for blocks
+    if(x->eq_name("{")) {
+          if(args.size() == 1) {
+              return args[0]; // A block with only one statement becomes that statement
+          }
+          else if(args.size() == 0) {
+              return new Call(x, args);
+          }
+          else {
+              Vec empty_args;
+              return new Call(new Sym("{MANY"), x->get_anon(), empty_args);
+          }
+    }
+
     args = subsume(args);
 
     if (x->kind() == UnknownOp) { // anon function
