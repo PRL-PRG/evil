@@ -1,7 +1,9 @@
 #include <vector>
 #include <iostream>
+#include <cassert>
 #include "normalization.h"
 #include "r_init.h"
+
 
 
 const char* copy(const char* str) {
@@ -14,25 +16,28 @@ const char* copy(const char* str) {
 bool eq(const char* str, const char* str2) { return strcmp(str, str2) == 0; }
 
 /* Is the target string in the array of strings? */
-int in(const char* target, const char** array, int array_length) {
+bool in(const char* target, const char** array, int array_length) {
     for (int i = 0; i < array_length; i++)
-        if (eq(array[i], target)) return 1;
-    return 0;
+        if (eq(array[i], target)) return true;
+    return false;
 }
 
-#define NB_ARITH_OP 17
-#define NB_STR_OP 3
+#define NB_ARITH_OP 34 
+#define NB_STR_OP 5
 #define NB_COMP_OP 6
 #define NB_BOOL_OP 5
 #define NB_LISTVEC 2
 
 static const char* arith_op[NB_ARITH_OP] = {"/",  "-",  "*", "+", "^",
    "log", "sqrt", "exp", "max", "min", "cos", "sin", "abs", "atan", ":",
-    "mean", "atanh"};
-static const char* str_op[NB_STR_OP] = {"paste", "paste0", "str_c"};
+    "mean", "atanh", "sd", "round", "ceiling", "floor", "trunc," "median", 
+    "pmin", "pmax", "log10", "log1p", "log2", "tan", "asin", "cosh", "sinh",
+    "acos", "sign", "atan2"};
+static const char* str_op[NB_STR_OP] = {"paste", "paste0", "str_c", "toupper", "tolower"};
 static const char* cmp_op[NB_COMP_OP] = {"<", ">", "<=", ">=", "==", "!="};
 static const char* bool_op[NB_BOOL_OP] = {"&", "&&", "|", "||", "!"};
 static const char* listvec[NB_LISTVEC] = {"list", "c"};
+
 
 /* Hold a sequence of characters. */
 class CharBuff  {
@@ -573,7 +578,7 @@ public:
 
   /* Subsume takes a vector of simplified Exp and removes all entries that are
   *  subsumed by other entries. */
-Vec subsume(std::vector<Exp*> v) {
+Vec subsume(const std::vector<Exp*>& v) {
     std::vector<Exp*> r;
     int len = v.size();
     for (int i=0; i<len; i++) {
