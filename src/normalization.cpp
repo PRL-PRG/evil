@@ -527,20 +527,6 @@ public:
     args.reserve(x-> get_args().size());
     for(Exp* t : x-> get_args()) args.push_back(simplify(t));
 
-    // We don't subsume for blocks
-    if(x->eq_name("{")) {
-          if(args.size() == 1) {
-              return args[0]; // A block with only one statement becomes that statement
-          }
-          else if(args.size() == 0) {
-              return new Call(x, args);
-          }
-          else {
-              Vec empty_args;
-              return new Call(new Sym("{MANY"), x->get_anon(), empty_args);
-          }
-    }
-
     args = subsume(args);
 
     if (x->kind() == UnknownOp) { // anon function
@@ -566,6 +552,18 @@ public:
          !(args[0]->is_other() || args[0]->is_statements())) {
           return args[0];
       }
+      else if(x->eq_name("{")) {
+          if(args.size() == 1) {
+              return args[0]; // A block with only one statement becomes that statement
+          }
+          else if(args.size() == 0) {
+              return new Call(x, args);
+          }
+          else {
+              Vec empty_args;
+              return new Call(new Sym("{MANY"), x->get_anon(), empty_args);
+          }
+    }
       return new Call(x, args);
     } else if  (x->kind() == ListVecOp) { // c() or list()
       if (args.size() == 1) return args[0];
