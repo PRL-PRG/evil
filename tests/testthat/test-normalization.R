@@ -93,6 +93,14 @@ test_that("Statistical functions", {
   expect_equal(normalize_expr(quote(glm(r))), "STAT(X)")
 })
 
+test_that("Plotting functions", {
+  expect_equal(normalize_expr(quote(boxplot(r))), "PLOT(X)")
+})
+
+test_that("Infix functions", {
+  expect_equal(normalize_expr(quote(x %>% y)), "%INFIX%(X)")
+})
+
 test_that("Various normalization", {
   # Crushing consecutive same types in c and list1
   expect_equal(

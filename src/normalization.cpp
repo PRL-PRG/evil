@@ -23,7 +23,7 @@ bool in(const char* target, const char** array, int array_length) {
     return false;
 }
 
-#define NB_ARITH_OP 34 
+#define NB_ARITH_OP 35
 #define NB_STR_OP 5
 #define NB_COMP_OP 6
 #define NB_BOOL_OP 5
@@ -33,7 +33,7 @@ static const char* arith_op[NB_ARITH_OP] = {"/",  "-",  "*", "+", "^",
    "log", "sqrt", "exp", "max", "min", "cos", "sin", "abs", "atan", ":",
     "mean", "atanh", "sd", "round", "ceiling", "floor", "trunc," "median", 
     "pmin", "pmax", "log10", "log1p", "log2", "tan", "asin", "cosh", "sinh",
-    "acos", "sign", "atan2"};
+    "acos", "sign", "atan2", "sum"};
 static const char* str_op[NB_STR_OP] = {"paste", "paste0", "str_c", "toupper", "tolower"};
 static const char* cmp_op[NB_COMP_OP] = {"<", ">", "<=", ">=", "==", "!="};
 static const char* bool_op[NB_BOOL_OP] = {"&", "&&", "|", "||", "!"};
@@ -209,7 +209,7 @@ public:
       else if (in(str, cmp_op, NB_COMP_OP))  opkind = LogicOp;
       else if (in(str, str_op, NB_STR_OP))   opkind = LogicOp;
       else if (in(str, listvec, NB_LISTVEC)) opkind = ListVecOp;
-      else if (eq(str, "model.frame"))       opkind = ModelFrameOp;
+      else if (eq(str, "model.frame"))       opkind = ModelFrameOp; // What about model.matrix?
       else                                   opkind = NamedOp;
     }
   }
@@ -609,7 +609,10 @@ Vec subsume(const std::vector<Exp*>& v) {
 
 ///////////////// CATEGORIZER ////////////////////////////////
 class FunctionCategorizer {
-    inline static std::array<const char*, 2> stat_functions{{"lm", "glm"}};
+    //Stat models
+    inline static std::array<const char*, 5> stat_functions{{"lm", "glm", "plm", "binomial", "randomForest"}};
+    // Add stat distribution such as rnorm?
+    
 
 public:
     Exp* categorize(Exp* t) {
@@ -635,6 +638,12 @@ public:
         }
         else if(in(x->get_name(), stat_functions.begin(), stat_functions.size())) {
             return new Call(new Sym("STAT"), x->get_anon(), args);
+        }
+        else if(x->get_name() != nullptr && x->get_name()[0] == '%') {
+            return new Call(new Sym("%INFIX%"), x->get_anon(), args);
+        }
+        else if(strstr(x->get_name(), "plot") != nullptr) {
+            return new Call(new Sym("PLOT"), x->get_anon(), args);
         }
         
         return x;
