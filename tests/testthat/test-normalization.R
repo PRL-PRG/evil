@@ -120,6 +120,8 @@ test_that("Various normalization", {
   expect_equal(
     normalize_expr(quote(plop::test(1, 2))), "test(0)"
   )
+
+  expect_equal(normalize_expr(quote(if_else(TRUE, 56, x + 347))), "RARE(X)")
 })
 
 test_that("Structure is  simplified", {

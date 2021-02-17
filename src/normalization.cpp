@@ -647,6 +647,7 @@ public:
             return new Call(new Sym("%INFIX%"), x->get_anon(), args);
         }
         else if(strstr(x->get_name(), "plot") != nullptr) {
+            //Add other graphc functions, like facet_grid?
             return new Call(new Sym("PLOT"), x->get_anon(), args);
         }
         else if(in(x->get_name(), ffi_functions.begin(), ffi_functions.size())) {
