@@ -148,3 +148,14 @@ test_that("Number of assignments", {
   expect_equal(res$nb_assigns, 1)
 })
 
+
+test_that("Unifiction of values", {
+  res <- normalize_stats_expr(quote(1 + 56))
+  expect_equal(res$str_rep, "V")
+
+  res <- normalize_stats_expr(quote("test"))
+  expect_equal(res$str_rep, "V")
+
+  res <- normalize_stats_expr(quote("NA"))
+  expect_equal(res$str_rep, "V")
+})
