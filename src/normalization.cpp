@@ -234,6 +234,7 @@ public:
   void add_args(Vec newargs) { for(Exp* t : newargs) args.push_back(t); }
 
   const Vec& get_args() const { return args; }
+  Vec& get_args() { return args; }
 
   OpKind kind() { return opkind; }
 
@@ -497,6 +498,11 @@ public:
     // Process the arguments
     for (SEXP ptr = CDR(ast); ptr != R_NilValue; ptr = CDR(ptr))
       call->add_arg(build(CAR(ptr)));
+
+    // In some cases, function has 3 arguments. The last one is a srcref. We get rid of it
+    if(call->eq_name("function") && call->get_args().size() == 3) {
+        call->get_args().pop_back();
+    }
     return call;
   }
 
