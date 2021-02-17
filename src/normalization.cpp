@@ -4,7 +4,7 @@
 #include <array>
 #include "normalization.h"
 #include "r_init.h"
-
+#include "rare_functions.h"
 
 
 const char* copy(const char* str) {
@@ -610,9 +610,12 @@ Vec subsume(const std::vector<Exp*>& v) {
 ///////////////// CATEGORIZER ////////////////////////////////
 class FunctionCategorizer {
     //Stat models
-    inline static std::array<const char*, 5> stat_functions{{"lm", "glm", "plm", "binomial", "randomForest"}};
+    inline static std::array<const char*, 7> stat_functions{{"lm", "glm", "plm", "binomial", "randomForest", "gamlss", "gls"}};
     // Add stat distribution such as rnorm?
-    
+    // FFI functions
+    inline static std::array<const char*, 7> ffi_functions{{".Call", ".External", ".Internal", ".C", 
+    ".Fortran", ".External.graphics", ".Call.graphics"}};
+
 
 public:
     Exp* categorize(Exp* t) {
@@ -626,6 +629,7 @@ public:
         else if (t->is_other()) return new Other(dynamic_cast<Other*>(t));
         error("Not reached.");
     }
+
 
     Exp* doCall(Call* x) {
         Vec args;
@@ -644,6 +648,12 @@ public:
         }
         else if(strstr(x->get_name(), "plot") != nullptr) {
             return new Call(new Sym("PLOT"), x->get_anon(), args);
+        }
+        else if(in(x->get_name(), ffi_functions.begin(), ffi_functions.size())) {
+            return new Call(new Sym("FFI"), x->get_anon(), args);
+        }
+        else if(rare_functions.count(x->get_name()) > 0) {
+            return new Call(new Sym("RARE"), x->get_anon(), args);
         }
         
         return x;
