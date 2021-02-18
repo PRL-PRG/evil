@@ -6,7 +6,6 @@
 #include "r_init.h"
 
 
-
 const char* copy(const char* str) {
   int len = strlen(str) + 1;
   char* cpstr = (char*) malloc(len * sizeof(char));
@@ -14,7 +13,11 @@ const char* copy(const char* str) {
   return cpstr;
 }
 
-bool eq(const char* str, const char* str2) { return strcmp(str, str2) == 0; }
+bool eq(const char* str, const char* str2) {
+  if (str == str2) return true;
+  if (str == nullptr || str2 == nullptr) return false;
+  return strcmp(str, str2) == 0;
+}
 
 /* Is the target string in the array of strings? */
 bool in(const char* target, const char** array, int array_length) {
@@ -31,7 +34,7 @@ bool in(const char* target, const char** array, int array_length) {
 
 static const char* arith_op[NB_ARITH_OP] = {"/",  "-",  "*", "+", "^",
    "log", "sqrt", "exp", "max", "min", "cos", "sin", "abs", "atan", ":",
-    "mean", "atanh", "sd", "round", "ceiling", "floor", "trunc," "median", 
+    "mean", "atanh", "sd", "round", "ceiling", "floor", "trunc," "median",
     "pmin", "pmax", "log10", "log1p", "log2", "tan", "asin", "cosh", "sinh",
     "acos", "sign", "atan2", "sum"};
 static const char* str_op[NB_STR_OP] = {"paste", "paste0", "str_c", "toupper", "tolower"};
@@ -209,7 +212,7 @@ public:
       else if (in(str, cmp_op, NB_COMP_OP))  opkind = LogicOp;
       else if (in(str, str_op, NB_STR_OP))   opkind = LogicOp;
       else if (in(str, listvec, NB_LISTVEC)) opkind = ListVecOp;
-      else if (eq(str, "model.frame"))       opkind = ModelFrameOp; // What about model.matrix?
+      else if (eq(str, "model.frame"))       opkind = ModelFrameOp;//What about model.matrix?
       else                                   opkind = NamedOp;
     }
   }
@@ -262,9 +265,9 @@ public:
 
   Exp* get_anon() { return anon; }
 
-  bool eq_name(const char* nm) { return (name) ? eq(nm, name->get_name()) : false; }
+  bool eq_name(const char* nm) { return name? eq(nm, name->get_name()) : false; }
 
-  const char* get_name() { return (name) ? name->get_name() : "anon"; }
+  const char* get_name() { return name? name->get_name() : "anon"; }
 
   const char* print() {
     if (string_rep) return string_rep;
@@ -298,7 +301,7 @@ public:
     //     }
     //     buf.write(" OP ");
     //   if (len == 2) buf.write(args[1]->print());
-    // } 
+    // }
     else {
       if(name) buf.write(name->get_name());
       else anon->write(&buf);
@@ -538,43 +541,32 @@ public:
     if (x->kind() == UnknownOp) { // anon function
       Exp* anon = simplify(x->get_anon());
       return new Call(nullptr, anon, args);
-    } else if (x->kind() == ModelFrameOp) { // model.frame
+    } else if (x->kind() == ModelFrameOp) {
       return new Call(x, args);
-    } else if  (x->kind() == ArithOp ||x->kind() == LogicOp) { // arith | logic
+    } else if  (x->kind() == ArithOp ||x->kind() == LogicOp) {
       if (args.size() == 1) return args[0];
       Sym* op = new Sym("OP");
       return new Call(op, op, args);
     } else if  (x->kind() == NamedOp) { // named function
       if (x->eq_name("(") && args.size() == 1) return args[0];
-      else if((x->eq_name("integer") || x->eq_name("double") || x->eq_name("numeric")) &&
-         args.size() == 1 && args[0]->is_num() ) {
-          return new Num();
-      }
-      else if(x->eq_name("character")  &&
-         args.size() == 1 && args[0]->is_num() ) {
-          return new Str();
-      }
+      else if((x->eq_name("integer") || x->eq_name("double") ||
+	       x->eq_name("numeric")) && args.size() == 1 && args[0]->is_num() )
+	return new Num();
+      else if(x->eq_name("character")  && args.size() == 1 &&
+	      args[0]->is_num() )
+	return new Str();
       else if(x->eq_name("structure") && args.size() == 1 &&
-         !(args[0]->is_other() || args[0]->is_statements())) {
-          return args[0];
-      }
+         !(args[0]->is_other() || args[0]->is_statements())) 
+	return args[0];
       else if(x->eq_name("{")) {
-          if(args.size() == 1) {
-              return args[0]; // A block with only one statement becomes that statement
-          }
-          else if(args.size() == 0) {
-              return new Call(x, args);
-          }
-          else {
-              Vec empty_args;
-              return new Call(new Sym("{MANY"), x->get_anon(), empty_args);
-          }
-    }
+	if(args.size() == 1) return args[0]; // Elide block with only 1 statement
+	else if(args.size() == 0) return new Call(x, args);
+	Vec empty_args;
+	return new Call(new Sym("{MANY"), x->get_anon(), empty_args);
+      }
       return new Call(x, args);
-    } else if  (x->kind() == ListVecOp) { // c() or list()
-      if (args.size() == 1) return args[0];
-      else return new Call(x, args);
-    }
+    } else if  (x->kind() == ListVecOp)  // c() or list()
+      return (args.size() == 1)?  args[0] :  new Call(x, args);
   }
 
   /* Subsume takes a vector of simplified Exp and removes all entries that are
@@ -609,119 +601,109 @@ Vec subsume(const std::vector<Exp*>& v) {
 
 ///////////////// CATEGORIZER ////////////////////////////////
 class FunctionCategorizer {
-    //Stat models
-    inline static std::array<const char*, 5> stat_functions{{"lm", "glm", "plm", "binomial", "randomForest"}};
-    // Add stat distribution such as rnorm?
-    
+  //Stat models
+  inline static std::array<const char*, 5> stat_functions{{"lm", "glm",
+      "plm", "binomial", "randomForest"}}; // Add stat distribution such as rnorm?
 
 public:
-    Exp* categorize(Exp* t) {
-        if (t->is_sym()) return new Sym(dynamic_cast<Sym*>(t));
-        else if (t->is_call()) return doCall(dynamic_cast<Call*>(t));
-        else if (t->is_null()) return new Null();
-        else if (t->is_na()) return new NA();
-        else if (t->is_statements()) return doStatements(dynamic_cast<Statements*>(t));
-        else if (t->is_num()) return new Num();
-        else if (t->is_str()) return new Str();
-        else if (t->is_other()) return new Other(dynamic_cast<Other*>(t));
-        error("Not reached.");
-    }
-
-    Exp* doCall(Call* x) {
-        Vec args;
-        args.reserve(x-> get_args().size());
-        for(Exp* t : x-> get_args()) args.push_back(categorize(t));
-
-        if(x->kind() == ModelFrameOp) {
-            Vec empty_args;
-            return new Call(x, empty_args);
-        }
-        else if(in(x->get_name(), stat_functions.begin(), stat_functions.size())) {
-            return new Call(new Sym("STAT"), x->get_anon(), args);
-        }
-        else if(x->get_name() != nullptr && x->get_name()[0] == '%') {
-            return new Call(new Sym("%INFIX%"), x->get_anon(), args);
-        }
-        else if(strstr(x->get_name(), "plot") != nullptr) {
-            return new Call(new Sym("PLOT"), x->get_anon(), args);
-        }
-        
-        return x;
-    }
-
-    Exp* doStatements(Statements* x) {
-        Vec elems;
-        for(Exp* t: x->get_elems()) elems.push_back(categorize(t));
-        if (elems.size() == 1) return elems[0];
-        return new Statements(elems);
-    }
+  Exp* categorize(Exp* t) {
+    if (t->is_sym()) return new Sym(dynamic_cast<Sym*>(t));
+    else if (t->is_call()) return doCall(dynamic_cast<Call*>(t));
+    else if (t->is_null()) return new Null();
+    else if (t->is_na()) return new NA();
+    else if (t->is_statements()) return doStatements(dynamic_cast<Statements*>(t));
+    else if (t->is_num()) return new Num();
+    else if (t->is_str()) return new Str();
+    else if (t->is_other()) return new Other(dynamic_cast<Other*>(t));
+    error("Not reached.");
+  }
+  
+  Exp* doCall(Call* x) {
+    Vec args;
+    args.reserve(x-> get_args().size());
+    for(Exp* t : x-> get_args()) args.push_back(categorize(t));
+    
+    if(x->kind() == ModelFrameOp) {
+      Vec empty_args;
+      return new Call(x, empty_args);
+    } else if(in(x->get_name(), stat_functions.begin(), stat_functions.size()))
+      return new Call(new Sym("STAT"), x->get_anon(), args);
+    else if(x->get_name() != nullptr && x->get_name()[0] == '%')
+      return new Call(new Sym("%INFIX%"), x->get_anon(), args);
+    else if(strstr(x->get_name(), "plot") != nullptr)
+      return new Call(new Sym("PLOT"), x->get_anon(), args);
+    else return x;
+  }
+  
+  Exp* doStatements(Statements* x) {
+    Vec elems;
+    for(Exp* t: x->get_elems()) elems.push_back(categorize(t));
+    if (elems.size() == 1) return elems[0];
+    return new Statements(elems);
+  }
 };
 
-//std::array<const char*, 2> FunctionCategorizer::stat_functions{{"lm", "glm"}};
 
 ///////////////// COUNTER ////////////////////////////////
 class Counter {
-
-  bool modelframe = false;
-  bool fundef = false;
-  const char* topcall = nullptr;
-  int callnesting = 0;// how many calls?
-  int nb_assigns = 0;
-
+  bool top = true;  // are we at the root? Internal use.
+  
 public:
+  bool is_model = false; // is the top a call to model.frame?
+  bool has_fundef = false;  // is there a function definition
+  const char* topcall = nullptr; // what is the top call if any?
+  int has_calls = 0;// how many function calls?
+  int has_assigns = 0; // how many assignments?
+  bool has_var = false; // is there a var access?
+  bool has_bracket = false; // is there indexing?
+  bool is_assign = false; // is it assignment?
+  bool is_value = false; // is it  a value?
+  bool is_ignore = false; // should we ignore this?
+  bool has_dollar = false;
+  bool has_user_call = false;
+  bool has_block = false;
+  
+  bool boring() {
+    return is_ignore || is_value || has_calls <= 1;
+  }
+    
+
   void count(Exp* t) {
-    if (t->is_sym()) {}
-    else if (t->is_call()) { doCall(dynamic_cast<Call*>(t)); return;   }
-    else if (t->is_null()) {}
-    else if (t->is_na()) {}
-    else if (t->is_statements()) { doStatements(dynamic_cast<Statements*>(t)); return; }
-    else if (t->is_num()) {}
-    else if (t->is_str()) {}
-    else if (t->is_other()) {}
+    if (t->is_sym()) { has_var = true; }
+    else if (t->is_call()) { doCall(dynamic_cast<Call*>(t)); }
+    else if (t->is_null()) { if (top) is_ignore = true; }
+    else if (t->is_na()) { if (top) is_ignore = true; }
+    else if (t->is_statements()) { doStatements(dynamic_cast<Statements*>(t)); }
+    else if (t->is_num()) { if (top) is_value = true;}
+    else if (t->is_str()) { if (top) is_value = true; }
+    else if (t->is_other()) { if (top) is_ignore = true;}
   }
   void doCall(Call* x) {
-      // We don't want to count other calls (Logi, Arithmetic)
-      if(x->kind() == NamedOp || x->kind() == UnknownOp || x->kind() == ModelFrameOp) {
-          callnesting++;
-         
-      }
+    if (top) topcall = x->get_name();
+    
+    if(x->eq_name("<-") || x->eq_name("assign") || x->eq_name("<<-")) {
+      if (top) is_assign = true;
+      has_assigns++;
+    } else if (x->eq_name("$")) {
+      has_dollar = true;
+    } else if (x->eq_name("{")) {
+      has_block = true;
+    } else if (x->eq_name("[[") || x->eq_name("[")) {
+      has_bracket = true;
+    } else if (x->kind() == NamedOp || x->kind() == UnknownOp) {
+      has_calls++;
+      has_user_call = true;
+    }
+	       
+    if (top) is_model = (x->kind() == ModelFrameOp);
 
-      if(x->eq_name("<-") || x->eq_name("assign") || x->eq_name("<<-")) {
-          nb_assigns++;
-      }
-
-      if(!modelframe && x->kind() == ModelFrameOp) {
-          modelframe = true;
-      }
-
-      if(!fundef && x->kind() == UnknownOp) {
-          fundef = true;
-      }
-      
-       //TODO: Ignore function bodies
-      for(auto arg : x->get_args()) {
-          count(arg);
-      }
+    if (x->eq_name("function")) { has_fundef = true; return; }
+    top = false;
+    for(auto arg : x->get_args()) count(arg);
   }
 
-  void doStatements(Statements* x) {
-  }
+  void doStatements(Statements* x) { for(Exp* t: x->get_elems()) count(t); }
 
-  int get_callnesting() const {
-      return callnesting;
-  }
-
-  int get_nb_assigns() const {
-      return nb_assigns;
-  }
-
-  bool is_modelframe() const {
-      return modelframe;
-  }
-
-  bool is_fundef() const {
-      return fundef;
-  }
 };
 
 ///////////////////////////////////////////////////////////
@@ -753,40 +735,104 @@ SEXP r_normalize_stats_expr(SEXP ast) {
   CharBuff buf;
   t3->write(&buf);
 
-  Counter counter;
-  counter.count(t3);
+  Counter c;
+  c.count(t3);
 
-  SEXP root_func_name;
-  if(t3->is_call()) {
-      Call* t4 = dynamic_cast<Call*>(t3);
-      root_func_name = PROTECT(mkString(t4->get_name()));
-  }
-  else {
-      // NA_STRING is not a STRSXP but a CHARSXP!!
-      root_func_name = PROTECT(Rf_ScalarString(NA_STRING));
-  }
+  bool done = false;
+  char* str = buf.get();
   
+  if (c.is_ignore) {
+    std::cout << "Ignore" << std::endl;
+    done = true;
+  } else if (c.is_value) {
+    std::cout << "0" << std::endl;
+    done = true;
+  } else if (c.is_model && c.boring()) {   
+    std::cout << "model.frame" << std::endl;
+    done = true;
+  } else if (c.has_var && c.has_calls == 0) {   
+    std::cout << "X" << std::endl;
+    done = true;
+  } else if (c.is_assign && c.boring()) {
+    std::cout << "<-" << std::endl;
+  } else if (c.has_calls == 1 && c.has_var) {
+    std::cout << "F(X)" << std::endl;
+  } else if (eq(c.topcall,"{")) {
+    std::cout << "{BLOCK}" << std::endl;
+  } else if (c.has_user_call && c.has_calls == 1) {
+    std::cout << "F()" << std::endl;
+  } else if (eq(c.topcall,"function")) {
+    std::cout << "FUN " <<  std::endl; 
+  } else if (!c.has_user_call) {
+    if (c.has_var && c.has_bracket && c.has_dollar && c.has_assigns == 0)
+       std::cout << "$["  << std::endl;
+    if (c.has_var && c.has_bracket && c.has_assigns == 0)
+       std::cout << "["  << std::endl;
+    else if (c.has_var && c.has_bracket && c.has_dollar && c.has_assigns == 1)
+       std::cout << "$[<-"  << std::endl;
+    else if (c.has_var && c.has_bracket && c.has_assigns == 1)
+       std::cout << "[<-"  << std::endl;
+   else if (c.has_var && c.has_dollar && c.has_assigns == 1)
+       std::cout << "$<-"  << std::endl;
+  else if (c.has_var && c.has_dollar && c.has_bracket && c.has_assigns == 0)
+       std::cout << "$["  << std::endl;
+  else if (c.has_var && c.has_dollar && c.has_assigns == 0)
+       std::cout << "$"  << std::endl;
+  else if (c.has_calls == 0)  {
+    std::cout << "V" << std::endl;
+  } else {
+       std::cout << "## " << str
+		 << " has_var=" << c.has_var
+		 << " has_assigns=" << c.has_assigns
+		 << " has_dollar=" << c.has_dollar
+		 << " has_calls" << c.has_calls
+		 <<	 std::endl; 
+  }
+  } else {
+    if (c.has_user_call) std::cout << "F^" << c.has_calls<< " ";
+    if (c.has_dollar) std::cout << "$ ";
+    if (c.has_bracket) std::cout << "[ ";
+    if (c.has_assigns) std::cout << "<- ";
+    if (c.has_var) std::cout << "X ";
+    if (c.has_block) std::cout << "{BLOCK} ";
+    if (c.has_fundef) std::cout << "FUN";
+    std::cout<< std::endl;
+  }
 
+
+  
+  // SEXP root_func_name;
+  // if(t3->call) {
+  //   Call* t4 = dynamic_cast<Call*>(t3);
+  //   root_func_name = PROTECT(mkString(t4->get_name()));
+  // } else {
+  //   // NA_STRING is not a STRSXP but a CHARSXP!!
+  //   root_func_name = PROTECT(Rf_ScalarString(NA_STRING));
+  // }
+
+    
   delete t3;
 
    /*
-    To add an element to the list, just add a name for it and 
+    To add an element to the list, just add a name for it and
     then a SET_VECTOR_ELT instruction.
     For a double, use Rf_ScalarReal instead of Rf_ScalarInteger
-
     ATTENTION: the array of names must be terminated by ""
   */
 
+  
+  //  std::cout << str << std::endl; 
+  
   const char* names[] = {"str_rep", "call_nesting", "nb_assigns", "root_function", "model_frame", "fundef", ""};
-  SEXP r_value = PROTECT(Rf_mkNamed(VECSXP, names));
+  SEXP r_value = Rf_mkNamed(VECSXP, names);
   // No need to protect here, because they are directly assigned in a protected list
-  SET_VECTOR_ELT(r_value, 0, mkString(buf.get()));
-  SET_VECTOR_ELT(r_value, 1, Rf_ScalarInteger(counter.get_callnesting()));
-  SET_VECTOR_ELT(r_value, 2, Rf_ScalarInteger(counter.get_nb_assigns()));
-  SET_VECTOR_ELT(r_value, 3, root_func_name);
-  SET_VECTOR_ELT(r_value, 4, Rf_ScalarLogical(counter.is_modelframe()));
-  SET_VECTOR_ELT(r_value, 5, Rf_ScalarLogical(counter.is_fundef()));
-  UNPROTECT(2);
+  //  SET_VECTOR_ELT(r_value, 0, mkString(str));
+  //  SET_VECTOR_ELT(r_value, 1, Rf_ScalarInteger(counter.get_callnesting()));
+  //  SET_VECTOR_ELT(r_value, 2, Rf_ScalarInteger(counter.get_nb_assigns()));
+  ///  SET_VECTOR_ELT(r_value, 3, root_func_name);
+  //  SET_VECTOR_ELT(r_value, 4, Rf_ScalarLogical(counter.is_modelframe()));
+  //  SET_VECTOR_ELT(r_value, 5, Rf_ScalarLogical(counter.is_fundef()));
+  //  UNPROTECT(2);
   return r_value;
 }
 
@@ -796,7 +842,6 @@ SEXP r_normalize_stats_expr(SEXP ast) {
 
 void finalize_tree(SEXP tree) {
     Exp* t = static_cast<Exp*>(R_ExternalPtrAddr(tree));
-
     delete t;
 }
 
