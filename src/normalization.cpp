@@ -716,6 +716,8 @@ public:
 
 };
 
+bool first = true;
+
 ///////////////////////////////////////////////////////////
 SEXP r_normalize(SEXP hash, SEXP ast) {
   Builder builder;
@@ -730,33 +732,37 @@ SEXP r_normalize(SEXP hash, SEXP ast) {
 
   Counter c;
   c.count(t3);
-
-  bool done = false;
   char* str = buf.get();
-  
-  if (c.is_ignore) {
-    std::cout << "Ignore" ;
-    done = true;
-  } else if (c.is_value) {
-    std::cout << "0" ;
-    done = true;
-  } else if (c.is_model && c.boring()) {   
-    std::cout << "model.frame" ;
-    done = true;
-  } else if (c.has_var && c.has_calls == 0) {   
-    std::cout << "X" ;
-    done = true;
-  } else if (c.is_assign && c.boring()) {
-    std::cout << "<-" ;
-  } else if (c.has_calls == 1 && c.has_var) {
-    std::cout << "F(X)" ;
-  } else if (eq(c.topcall,"{")) {
-    std::cout << "{BLOCK}" ;
-  } else if (c.has_user_call && c.has_calls == 1) {
-    std::cout << "F()" ;
-  } else if (eq(c.topcall,"function")) {
-    std::cout << "FUN " <<  std::endl; 
-  } else if (!c.has_user_call) {
+  if (first) {
+    std::cout << "minimized, "
+	     <<  "topcall, "
+	     <<  "is_model, "
+      	     <<  "has_fundef, "
+      	     <<  "has_calls, "
+      	     <<  "has_assigns, "
+      	     <<  "has_var, "
+      	     <<  "has_bracket, "
+	     <<  "is_assign,"
+             <<  "is_value, "
+	     <<  "is_ignore, "
+	     <<  "has_user_call, "
+	     <<  "has_block, "
+	     <<  "is_value, "
+             <<  "normalized, "
+             <<  "hash"
+             << std::endl;
+    first = false;
+  }
+  if (c.is_ignore)                        std::cout << "Ignore" ;
+  else if (c.is_value)                    std::cout << "0" ;
+  else if (c.is_model && c.boring())      std::cout << "model.frame" ;
+  else if (c.has_var && c.has_calls == 0) std::cout << "X" ;
+  else if (c.is_assign && c.boring())     std::cout << "<-" ;
+  else if (c.has_calls == 1 && c.has_var) std::cout << "F(X)" ;
+  else if (eq(c.topcall,"{"))             std::cout << "{BLOCK}" ;
+  else if (c.has_user_call && c.has_calls == 1) std::cout << "F()" ;
+  else if (eq(c.topcall,"function"))      std::cout << "FUN "; 
+  else if (!c.has_user_call) {
     if (c.has_var && c.has_bracket && c.has_dollar && c.has_assigns == 0)
        std::cout << "$["  ;
     if (c.has_var && c.has_bracket && c.has_assigns == 0)
@@ -765,22 +771,21 @@ SEXP r_normalize(SEXP hash, SEXP ast) {
        std::cout << "$[<-"  ;
     else if (c.has_var && c.has_bracket && c.has_assigns == 1)
        std::cout << "[<-"  ;
-   else if (c.has_var && c.has_dollar && c.has_assigns == 1)
-       std::cout << "$<-"  ;
-  else if (c.has_var && c.has_dollar && c.has_bracket && c.has_assigns == 0)
-       std::cout << "$["  ;
-  else if (c.has_var && c.has_dollar && c.has_assigns == 0)
-       std::cout << "$"  ;
-  else if (c.has_calls == 0)  {
-    std::cout << "V" ;
-  } else {
-       std::cout << "## " << str
-		 << " has_var=" << c.has_var
-		 << " has_assigns=" << c.has_assigns
-		 << " has_dollar=" << c.has_dollar
-		 << " has_calls" << c.has_calls
-		 <<	 std::endl; 
-  }
+    else if (c.has_var && c.has_dollar && c.has_assigns == 1)
+      std::cout << "$<-"  ;
+    else if (c.has_var && c.has_dollar && c.has_bracket && c.has_assigns == 0)
+      std::cout << "$["  ;
+    else if (c.has_var && c.has_dollar && c.has_assigns == 0)
+      std::cout << "$"  ;
+    else if (c.has_calls == 0)  {
+      std::cout << "V" ;
+    } else {
+      std::cout << "ERROR " << str
+		<< " has_var=" << c.has_var
+		<< " has_assigns=" << c.has_assigns
+		<< " has_dollar=" << c.has_dollar
+		<< " has_calls" << c.has_calls;
+    }
   } else {
     if (c.has_user_call) std::cout << "F^" << c.has_calls<< " ";
     if (c.has_dollar) std::cout << "$ ";
@@ -789,9 +794,8 @@ SEXP r_normalize(SEXP hash, SEXP ast) {
     if (c.has_var) std::cout << "X ";
     if (c.has_block) std::cout << "{BLOCK} ";
     if (c.has_fundef) std::cout << "FUN";
-    std::cout;
   }
-
+  
   std::cout << ", " << (c.topcall? c.topcall : "")
 	    << ", " << c.is_model
     	    << ", " << c.has_fundef
@@ -804,6 +808,8 @@ SEXP r_normalize(SEXP hash, SEXP ast) {
     	    << ", " << c.is_ignore
        	    << ", " << c.has_user_call
 	    << ", " << c.has_block
+            << ", \"" << str << "\""
+    //<< ", " hash
 	    << std::endl;
     
   delete t3;
