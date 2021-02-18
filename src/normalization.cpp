@@ -4,7 +4,6 @@
 #include <array>
 #include "normalization.h"
 #include "r_init.h"
-#include "rare_functions.h"
 
 const char* copy(const char* str) {
   int len = strlen(str) + 1;
@@ -609,49 +608,6 @@ Vec subsume(const std::vector<Exp*>& v) {
   }
 };
 
-///////////////// CATEGORIZER ////////////////////////////////
-class FunctionCategorizer {
-  //Stat models
-  inline static std::array<const char*, 5> stat_functions{{"lm", "glm",
-      "plm", "binomial", "randomForest"}}; // Add stat distribution such as rnorm?
-
-public:
-  Exp* categorize(Exp* t) {
-    if (t->is_sym()) return new Sym(dynamic_cast<Sym*>(t));
-    else if (t->is_call()) return doCall(dynamic_cast<Call*>(t));
-    else if (t->is_null()) return new Null();
-    else if (t->is_na()) return new NA();
-    else if (t->is_statements()) return doStatements(dynamic_cast<Statements*>(t));
-    else if (t->is_num()) return new Num();
-    else if (t->is_str()) return new Str();
-    else if (t->is_other()) return new Other(dynamic_cast<Other*>(t));
-    error("Not reached.");
-  }
-  
-  Exp* doCall(Call* x) {
-    Vec args;
-    args.reserve(x-> get_args().size());
-    for(Exp* t : x-> get_args()) args.push_back(categorize(t));
-    
-    if(x->kind() == ModelFrameOp) {
-      Vec empty_args;
-      return new Call(x, empty_args);
-    } else if(in(x->get_name(), stat_functions.begin(), stat_functions.size()))
-      return new Call(new Sym("STAT"), x->get_anon(), args);
-    else if(x->get_name() != nullptr && x->get_name()[0] == '%')
-      return new Call(new Sym("%INFIX%"), x->get_anon(), args);
-    else if(strstr(x->get_name(), "plot") != nullptr)
-      return new Call(new Sym("PLOT"), x->get_anon(), args);
-    else return x;
-  }
-  
-  Exp* doStatements(Statements* x) {
-    Vec elems;
-    for(Exp* t: x->get_elems()) elems.push_back(categorize(t));
-    if (elems.size() == 1) return elems[0];
-    return new Statements(elems);
-  }
-};
 
 
 ///////////////// COUNTER ////////////////////////////////
@@ -725,13 +681,11 @@ SEXP r_normalize(SEXP hash, SEXP ast) {
   Simplifier s;
   Exp* t2 = s.simplify(t);
   delete t;
-  FunctionCategorizer fc;
-  Exp* t3 = fc.categorize(t2);
   CharBuff buf;
-  t3->write(&buf, true);
+  t2->write(&buf, true);
 
   Counter c;
-  c.count(t3);
+  c.count(t2);
   char* str = buf.get();
   if (first) {
     std::cout << "minimized, "
@@ -812,6 +766,6 @@ SEXP r_normalize(SEXP hash, SEXP ast) {
             << ", " << CHAR(STRING_ELT(hash,0))
 	    << std::endl;
     
-  delete t3;
+  delete t2;
 }
 
