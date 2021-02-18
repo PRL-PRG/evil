@@ -119,7 +119,7 @@ public:
   /* Write tree to buffer. */
   void write(CharBuff* buf, bool _unify_values=false) {
       unify_values = _unify_values;
-    buf->write(print()); 
+    buf->write(print());
     }
 
   /* Return tree as string. */
@@ -565,7 +565,7 @@ public:
 	      args[0]->is_num() )
 	return new Str();
       else if(x->eq_name("structure") && args.size() == 1 &&
-         !(args[0]->is_other() || args[0]->is_statements())) 
+         !(args[0]->is_other() || args[0]->is_statements()))
 	return args[0];
       else if(x->eq_name("{")) {
 	if(args.size() == 1) return args[0]; // Elide block with only 1 statement
@@ -613,7 +613,7 @@ Vec subsume(const std::vector<Exp*>& v) {
 ///////////////// COUNTER ////////////////////////////////
 class Counter {
   bool top = true;  // are we at the root? Internal use.
-  
+
 public:
   const char* topcall = nullptr; // what is the top call if any?
   bool is_model = false; // is the top a call to model.frame?
@@ -628,25 +628,25 @@ public:
   bool has_dollar = false;
   bool has_user_call = false;
   bool has_block = false;
-  
+
   bool boring() {
     return is_ignore || is_value || has_calls <= 1;
   }
-    
+
 
   void count(Exp* t) {
-    if (t->is_sym()) { has_var = true; }
-    else if (t->is_call()) { doCall(dynamic_cast<Call*>(t)); }
-    else if (t->is_null()) { if (top) is_ignore = true; }
-    else if (t->is_na()) { if (top) is_ignore = true; }
+    if (t->is_sym())        { has_var = true; }
+    else if (t->is_call())  { doCall(dynamic_cast<Call*>(t)); }
+    else if (t->is_null())  { if (top) is_value = true; }
+    else if (t->is_na())    { if (top) is_value = true; }
     else if (t->is_statements()) { doStatements(dynamic_cast<Statements*>(t)); }
-    else if (t->is_num()) { if (top) is_value = true;}
-    else if (t->is_str()) { if (top) is_value = true; }
+    else if (t->is_num())   { if (top) is_value = true;}
+    else if (t->is_str())   { if (top) is_value = true; }
     else if (t->is_other()) { if (top) is_ignore = true;}
   }
   void doCall(Call* x) {
     if (top) topcall = x->get_name();
-    
+
     if(x->eq_name("<-") || x->eq_name("assign") || x->eq_name("<<-")) {
       if (top) is_assign = true;
       has_assigns++;
@@ -660,7 +660,7 @@ public:
       has_calls++;
       has_user_call = true;
     }
-	       
+
     if (top) is_model = (x->kind() == ModelFrameOp);
 
     if (x->eq_name("function")) { has_fundef = true; return; }
@@ -699,6 +699,7 @@ SEXP r_normalize(SEXP hash, SEXP ast) {
 	     <<  "is_assign,"
              <<  "is_value, "
 	     <<  "is_ignore, "
+	     <<  "has_dollar, "
 	     <<  "has_user_call, "
 	     <<  "has_block, "
 	     <<  "is_value, "
@@ -708,14 +709,14 @@ SEXP r_normalize(SEXP hash, SEXP ast) {
     first = false;
   }
   if (c.is_ignore)                        std::cout << "Ignore" ;
-  else if (c.is_value)                    std::cout << "0" ;
-  else if (c.is_model && c.boring())      std::cout << "model.frame" ;
-  else if (c.has_var && c.has_calls == 0) std::cout << "X" ;
+  else if (c.is_value)                    std::cout << "V" ;
+  else if (c.is_model)                    std::cout << "model.frame" ;
+  else if (c.has_dollar && c.boring())    std::cout << "$" ;
   else if (c.is_assign && c.boring())     std::cout << "<-" ;
   else if (c.has_calls == 1 && c.has_var) std::cout << "F(X)" ;
-  else if (eq(c.topcall,"{"))             std::cout << "{BLOCK}" ;
+  else if (eq(c.topcall,"{MANY"))         std::cout << "{BLOCK}" ;
+  else if (eq(c.topcall,"function"))      std::cout << "FUN ";
   else if (c.has_user_call && c.has_calls == 1) std::cout << "F()" ;
-  else if (eq(c.topcall,"function"))      std::cout << "FUN "; 
   else if (!c.has_user_call) {
     if (c.has_var && c.has_bracket && c.has_dollar && c.has_assigns == 0)
        std::cout << "$["  ;
@@ -731,6 +732,8 @@ SEXP r_normalize(SEXP hash, SEXP ast) {
       std::cout << "$["  ;
     else if (c.has_var && c.has_dollar && c.has_assigns == 0)
       std::cout << "$"  ;
+    else if (c.has_var)
+      std::cout << "X";
     else if (c.has_calls == 0)  {
       std::cout << "V" ;
     } else {
@@ -749,7 +752,7 @@ SEXP r_normalize(SEXP hash, SEXP ast) {
     if (c.has_block) std::cout << "{BLOCK} ";
     if (c.has_fundef) std::cout << "FUN";
   }
-  
+
   std::cout << ", " << (c.topcall? c.topcall : "")
 	    << ", " << c.is_model
     	    << ", " << c.has_fundef
@@ -760,12 +763,13 @@ SEXP r_normalize(SEXP hash, SEXP ast) {
 	    << ", " << c.is_assign
     	    << ", " << c.is_value
     	    << ", " << c.is_ignore
+       	    << ", " << c.has_dollar
        	    << ", " << c.has_user_call
 	    << ", " << c.has_block
             << ", \"" << str << "\""
             << ", " << CHAR(STRING_ELT(hash,0))
 	    << std::endl;
-    
+
   delete t2;
 }
 
