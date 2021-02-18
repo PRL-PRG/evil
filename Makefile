@@ -1,12 +1,14 @@
+R := R
+
 .PHONY: all build check document test
 
 all: document build check
 
 build: document
-	R CMD build .
+	$(R) CMD build .
 
 check: build
-	R CMD check evil*tar.gz
+	$(R) CMD check evil*tar.gz
 
 clean:
 	-rm -f evil*tar.gz
@@ -14,13 +16,13 @@ clean:
 	-rm -rf src/*.o src/*.so
 
 document:
-	Rscript -e 'devtools::document()'
+	$(R) --slave -e 'devtools::document()'
 
 test:
-	Rscript -e 'devtools::test()'
+	$(R) --slave -e 'devtools::test()'
 
 lintr:
-	R --slave -e "lintr::lint_package()"
+	$(R) --slave -e "lintr::lint_package()"
 
 install: clean
-	R CMD INSTALL .
+	$(R) CMD INSTALL .
