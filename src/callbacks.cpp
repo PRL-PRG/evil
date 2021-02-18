@@ -92,6 +92,8 @@ void variable_definition_callback(ContextSPtr context,
     TracerState& tracer_state = *get_tracer_state(r_data);
     Event event = Event::variable_definition(r_variable, r_value, r_rho);
 
+    tracer_state.analyze(event);
+
     for (Analysis* analysis: get_analyses(r_data)) {
         analysis->analyze(tracer_state, event);
     }
@@ -106,6 +108,8 @@ void variable_assignment_callback(ContextSPtr context,
 
     TracerState& tracer_state = *get_tracer_state(r_data);
     Event event = Event::variable_assignment(r_variable, r_value, r_rho);
+
+    tracer_state.analyze(event);
 
     for (Analysis* analysis: get_analyses(r_data)) {
         analysis->analyze(tracer_state, event);
@@ -135,6 +139,8 @@ void variable_lookup_callback(ContextSPtr context,
 
     TracerState& tracer_state = *get_tracer_state(r_data);
     Event event = Event::variable_lookup(r_variable, r_value, r_rho);
+
+    tracer_state.analyze(event);
 
     for (Analysis* analysis: get_analyses(r_data)) {
         analysis->analyze(tracer_state, event);

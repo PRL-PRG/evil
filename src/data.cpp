@@ -111,6 +111,12 @@ SEXP r_tracer_data_finalize(SEXP r_data) {
 
     UNPROTECT(2);
 
+    /* write trace to file */
+
+    TracerState& tracer_state = *get_tracer_state(r_data);
+    ExecTrace& trace = tracer_state.get_exec_trace();
+    trace.serialize("exec_trace.txt");
+
     return r_table_list;
 }
 
