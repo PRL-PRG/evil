@@ -809,10 +809,9 @@ SEXP r_normalize(SEXP hash, SEXP ast) {
        	    << ", " << c.has_user_call
 	    << ", " << c.has_block
             << ", \"" << str << "\""
-    //<< ", " hash
+            << ", " << CHAR(STRING_ELT(hash,0))
 	    << std::endl;
     
   delete t3;
-
 }
 
