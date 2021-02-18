@@ -4,7 +4,7 @@
 #include <array>
 #include "normalization.h"
 #include "r_init.h"
-
+#include "rare_functions.h"
 
 const char* copy(const char* str) {
   int len = strlen(str) + 1;
@@ -93,6 +93,7 @@ public:
   /* If the tree needs to allocate a string representation, it is cached here
    * and will be freed when tree is freed. */
   const char* string_rep = nullptr;
+  inline static bool unify_values = false;
 
   Exp() {}
   /* Copy the string to make sure we own it. */
@@ -117,7 +118,10 @@ public:
   virtual bool subsumes(Exp* that) { return false; }
 
   /* Write tree to buffer. */
-  void write(CharBuff* buf) { buf->write(print()); }
+  void write(CharBuff* buf, bool _unify_values=false) {
+      unify_values = _unify_values;
+    buf->write(print()); 
+    }
 
   /* Return tree as string. */
   virtual const char* print() { return "";  }
@@ -135,7 +139,7 @@ using Vec = std::vector<Exp*>;
 class Null : public Exp {
 
 public:
-  const char* print() { return "NULL"; }
+  const char* print() { return Exp::unify_values? "V" : "NULL"; }
 
   bool is_null() { return true; }
 
@@ -148,7 +152,7 @@ public:
 class Num : public Exp {
 
 public:
-  const char* print() { return "0"; }
+  const char* print() { return Exp::unify_values? "V" : "0"; }
 
   bool is_num() { return true; }
 
@@ -184,7 +188,7 @@ public:
 class NA : public Exp {
 
 public:
-  const char* print() { return "NA"; }
+  const char* print() { return Exp::unify_values? "V" : "NA"; }
 
   // NA << NA
   bool subsumes(Exp* t) { return t->is_na(); }
@@ -233,6 +237,7 @@ public:
   void add_args(Vec newargs) { for(Exp* t : newargs) args.push_back(t); }
 
   const Vec& get_args() const { return args; }
+  Vec& get_args() { return args; }
 
   OpKind kind() { return opkind; }
 
@@ -327,7 +332,7 @@ public:
 class Str : public Exp{
 
 public:
-  const char* print() { return "S"; }
+  const char* print() { return Exp::unify_values? "V" : "S"; }
 
   bool is_str() { return true; }
 
@@ -496,6 +501,11 @@ public:
     // Process the arguments
     for (SEXP ptr = CDR(ast); ptr != R_NilValue; ptr = CDR(ptr))
       call->add_arg(build(CAR(ptr)));
+
+    // In some cases, function has 3 arguments. The last one is a srcref. We get rid of it
+    if(call->eq_name("function") && call->get_args().size() == 3) {
+        call->get_args().pop_back();
+    }
     return call;
   }
 
@@ -716,7 +726,7 @@ SEXP r_normalize_expr(SEXP ast) {
   FunctionCategorizer fc;
   Exp* t3 = fc.categorize(t2);
   CharBuff buf;
-  t3->write(&buf);
+  t3->write(&buf, false);
   delete t3;
   SEXP r_value = PROTECT(mkString(buf.get()));
   UNPROTECT(1);
@@ -733,7 +743,7 @@ SEXP r_normalize_stats_expr(SEXP ast) {
   FunctionCategorizer fc;
   Exp* t3 = fc.categorize(t2);
   CharBuff buf;
-  t3->write(&buf);
+  t3->write(&buf, true);
 
   Counter c;
   c.count(t3);
