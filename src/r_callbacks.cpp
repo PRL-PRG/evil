@@ -50,3 +50,18 @@ SEXP r_get_variable_lookup_callback() {
     return R_MakeExternalPtr(
         (void*) (variable_lookup_callback), R_NilValue, R_NilValue);
 }
+
+SEXP r_get_context_entry_callback() {
+    return R_MakeExternalPtr(
+        (void*) (context_entry_callback), R_NilValue, R_NilValue);
+}
+
+SEXP r_get_context_exit_callback() {
+    return R_MakeExternalPtr(
+        (void*) (context_exit_callback), R_NilValue, R_NilValue);
+}
+
+SEXP r_get_context_jump_callback() {
+    return R_MakeExternalPtr(
+        (void*) (context_jump_callback), R_NilValue, R_NilValue);
+}
