@@ -39,11 +39,7 @@ static const R_CallMethodDef callMethods[] = {
     {"tracer_data_finalize", (DL_FUNC) &r_tracer_data_finalize, 1},
     {"tracer_data_push_eval_call", (DL_FUNC) &r_tracer_data_push_eval_call, 4},
     {"tracer_data_pop_eval_call", (DL_FUNC) &r_tracer_data_pop_eval_call, 1},
-    {"normalize_expr", (DL_FUNC) &r_normalize_expr, 1},
-    {"build_tree", (DL_FUNC) &r_build_tree, 1},
-    {"tree_to_string", (DL_FUNC) &r_tree_to_string, 1},
-    {"simplify", (DL_FUNC) &r_simplify, 1},
-    {"normalize_stats_expr", (DL_FUNC) &r_normalize_stats_expr, 1},
+    {"normalize", (DL_FUNC) &r_normalize, 2},
     {NULL, NULL, 0}
 };
 

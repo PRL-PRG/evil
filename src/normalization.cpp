@@ -659,9 +659,9 @@ class Counter {
   bool top = true;  // are we at the root? Internal use.
   
 public:
+  const char* topcall = nullptr; // what is the top call if any?
   bool is_model = false; // is the top a call to model.frame?
   bool has_fundef = false;  // is there a function definition
-  const char* topcall = nullptr; // what is the top call if any?
   int has_calls = 0;// how many function calls?
   int has_assigns = 0; // how many assignments?
   bool has_var = false; // is there a var access?
@@ -717,24 +717,7 @@ public:
 };
 
 ///////////////////////////////////////////////////////////
-SEXP r_normalize_expr(SEXP ast) {
-  Builder builder;
-  Exp* t = builder.build(ast);
-  Simplifier s;
-  Exp* t2 = s.simplify(t);
-  delete t;
-  FunctionCategorizer fc;
-  Exp* t3 = fc.categorize(t2);
-  CharBuff buf;
-  t3->write(&buf, false);
-  delete t3;
-  SEXP r_value = PROTECT(mkString(buf.get()));
-  UNPROTECT(1);
-  return r_value;
-}
-
-///////////////////////////////////////////////////////////
-SEXP r_normalize_stats_expr(SEXP ast) {
+SEXP r_normalize(SEXP hash, SEXP ast) {
   Builder builder;
   Exp* t = builder.build(ast);
   Simplifier s;
@@ -752,44 +735,44 @@ SEXP r_normalize_stats_expr(SEXP ast) {
   char* str = buf.get();
   
   if (c.is_ignore) {
-    std::cout << "Ignore" << std::endl;
+    std::cout << "Ignore" ;
     done = true;
   } else if (c.is_value) {
-    std::cout << "0" << std::endl;
+    std::cout << "0" ;
     done = true;
   } else if (c.is_model && c.boring()) {   
-    std::cout << "model.frame" << std::endl;
+    std::cout << "model.frame" ;
     done = true;
   } else if (c.has_var && c.has_calls == 0) {   
-    std::cout << "X" << std::endl;
+    std::cout << "X" ;
     done = true;
   } else if (c.is_assign && c.boring()) {
-    std::cout << "<-" << std::endl;
+    std::cout << "<-" ;
   } else if (c.has_calls == 1 && c.has_var) {
-    std::cout << "F(X)" << std::endl;
+    std::cout << "F(X)" ;
   } else if (eq(c.topcall,"{")) {
-    std::cout << "{BLOCK}" << std::endl;
+    std::cout << "{BLOCK}" ;
   } else if (c.has_user_call && c.has_calls == 1) {
-    std::cout << "F()" << std::endl;
+    std::cout << "F()" ;
   } else if (eq(c.topcall,"function")) {
     std::cout << "FUN " <<  std::endl; 
   } else if (!c.has_user_call) {
     if (c.has_var && c.has_bracket && c.has_dollar && c.has_assigns == 0)
-       std::cout << "$["  << std::endl;
+       std::cout << "$["  ;
     if (c.has_var && c.has_bracket && c.has_assigns == 0)
-       std::cout << "["  << std::endl;
+       std::cout << "["  ;
     else if (c.has_var && c.has_bracket && c.has_dollar && c.has_assigns == 1)
-       std::cout << "$[<-"  << std::endl;
+       std::cout << "$[<-"  ;
     else if (c.has_var && c.has_bracket && c.has_assigns == 1)
-       std::cout << "[<-"  << std::endl;
+       std::cout << "[<-"  ;
    else if (c.has_var && c.has_dollar && c.has_assigns == 1)
-       std::cout << "$<-"  << std::endl;
+       std::cout << "$<-"  ;
   else if (c.has_var && c.has_dollar && c.has_bracket && c.has_assigns == 0)
-       std::cout << "$["  << std::endl;
+       std::cout << "$["  ;
   else if (c.has_var && c.has_dollar && c.has_assigns == 0)
-       std::cout << "$"  << std::endl;
+       std::cout << "$"  ;
   else if (c.has_calls == 0)  {
-    std::cout << "V" << std::endl;
+    std::cout << "V" ;
   } else {
        std::cout << "## " << str
 		 << " has_var=" << c.has_var
@@ -806,89 +789,24 @@ SEXP r_normalize_stats_expr(SEXP ast) {
     if (c.has_var) std::cout << "X ";
     if (c.has_block) std::cout << "{BLOCK} ";
     if (c.has_fundef) std::cout << "FUN";
-    std::cout<< std::endl;
+    std::cout;
   }
 
-
-  
-  // SEXP root_func_name;
-  // if(t3->call) {
-  //   Call* t4 = dynamic_cast<Call*>(t3);
-  //   root_func_name = PROTECT(mkString(t4->get_name()));
-  // } else {
-  //   // NA_STRING is not a STRSXP but a CHARSXP!!
-  //   root_func_name = PROTECT(Rf_ScalarString(NA_STRING));
-  // }
-
+  std::cout << ", " << (c.topcall? c.topcall : "")
+	    << ", " << c.is_model
+    	    << ", " << c.has_fundef
+    	    << ", " << c.has_calls
+    	    << ", " << c.has_assigns
+	    << ", " << c.has_var
+	    << ", " << c.has_bracket
+	    << ", " << c.is_assign
+    	    << ", " << c.is_value
+    	    << ", " << c.is_ignore
+       	    << ", " << c.has_user_call
+	    << ", " << c.has_block
+	    << std::endl;
     
   delete t3;
 
-   /*
-    To add an element to the list, just add a name for it and
-    then a SET_VECTOR_ELT instruction.
-    For a double, use Rf_ScalarReal instead of Rf_ScalarInteger
-    ATTENTION: the array of names must be terminated by ""
-  */
-
-  
-  //  std::cout << str << std::endl; 
-  
-  const char* names[] = {"str_rep", "call_nesting", "nb_assigns", "root_function", "model_frame", "fundef", ""};
-  SEXP r_value = Rf_mkNamed(VECSXP, names);
-  // No need to protect here, because they are directly assigned in a protected list
-  //  SET_VECTOR_ELT(r_value, 0, mkString(str));
-  //  SET_VECTOR_ELT(r_value, 1, Rf_ScalarInteger(counter.get_callnesting()));
-  //  SET_VECTOR_ELT(r_value, 2, Rf_ScalarInteger(counter.get_nb_assigns()));
-  ///  SET_VECTOR_ELT(r_value, 3, root_func_name);
-  //  SET_VECTOR_ELT(r_value, 4, Rf_ScalarLogical(counter.is_modelframe()));
-  //  SET_VECTOR_ELT(r_value, 5, Rf_ScalarLogical(counter.is_fundef()));
-  //  UNPROTECT(2);
-  return r_value;
 }
 
-
-
-/* Directly play with our custom expr tree in R */
-
-void finalize_tree(SEXP tree) {
-    Exp* t = static_cast<Exp*>(R_ExternalPtrAddr(tree));
-    delete t;
-}
-
-
-SEXP r_build_tree(SEXP ast) {
-    Builder builder;
-    Exp* t = builder.build(ast);
-
-    SEXP tree = R_MakeExternalPtr(t, install("tree"), R_NilValue);
-    PROTECT(tree);
-
-    R_RegisterCFinalizerEx(tree, finalize_tree, TRUE);
-
-    UNPROTECT(1);
-    return tree;
-}
-
-SEXP r_simplify(SEXP tree) {
-    Exp* t = static_cast<Exp*>(R_ExternalPtrAddr(tree));
-    Simplifier s;
-    Exp* t2 = s.simplify(t);
-
-    //T should also live with t2 as they share some part of the tree
-    SEXP res = R_MakeExternalPtr(t2, install("tree"), tree);
-    PROTECT(res);
-
-    R_RegisterCFinalizerEx(res, finalize_tree, TRUE);
-
-    UNPROTECT(1);
-    return res;
-}
-
-SEXP r_tree_to_string(SEXP tree) {
-    Exp* t = static_cast<Exp*>(R_ExternalPtrAddr(tree));
-    CharBuff buf;
-    t->write(&buf);
-     SEXP r_value = PROTECT(mkString(buf.get()));
-    UNPROTECT(1);
-    return r_value;
-}
