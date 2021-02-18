@@ -40,6 +40,7 @@ static const R_CallMethodDef callMethods[] = {
     {"tracer_data_push_eval_call", (DL_FUNC) &r_tracer_data_push_eval_call, 4},
     {"tracer_data_pop_eval_call", (DL_FUNC) &r_tracer_data_pop_eval_call, 1},
     {"normalize", (DL_FUNC) &r_normalize, 2},
+    {"normalize_expr", (DL_FUNC) &r_normalize_expr, 1},
     {NULL, NULL, 0}
 };
 

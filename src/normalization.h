@@ -7,6 +7,7 @@ extern "C" {
 #endif
 
 SEXP r_normalize(SEXP hash, SEXP ast);
+SEXP r_normalize_expr(SEXP ast);
 
 typedef enum OpKind {
     UnknownOp,

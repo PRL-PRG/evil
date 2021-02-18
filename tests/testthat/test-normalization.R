@@ -72,14 +72,9 @@ test_that("NA coercion", {
 })
 
 test_that("model.frame", {
-  # Before
-  #expect_equal(normalize_expr(quote(model.frame(x ~ y))), "model.frame(~(X))")
-  #expect_equal(normalize_expr(quote(model.frame(x ~ y, NULL))), "model.frame(~(X), NULL)")
-  #expect_equal(normalize_expr(quote(model.frame(x ~ y, subset = t))), "model.frame(~(X), X)")
-  #after
-  expect_equal(normalize_expr(quote(model.frame(x ~ y))), "model.frame()")
-  expect_equal(normalize_expr(quote(model.frame(x ~ y, NULL))), "model.frame()")
-  expect_equal(normalize_expr(quote(model.frame(x ~ y, subset = t))), "model.frame()")
+  expect_equal(normalize_expr(quote(model.frame(x ~ y))), "model.frame(~(X))")
+  expect_equal(normalize_expr(quote(model.frame(x ~ y, NULL))), "model.frame(~(X), NULL)")
+  expect_equal(normalize_expr(quote(model.frame(x ~ y, subset = t))), "model.frame(~(X), X)")
 })
 
 test_that("Blocks", {
@@ -89,17 +84,6 @@ test_that("Blocks", {
   expect_equal(normalize_expr(quote({f(1); x * 2})), "{MANY()")
 })
 
-test_that("Statistical functions", {
-  expect_equal(normalize_expr(quote(glm(r))), "STAT(X)")
-})
-
-test_that("Plotting functions", {
-  expect_equal(normalize_expr(quote(boxplot(r))), "PLOT(X)")
-})
-
-test_that("Infix functions", {
-  expect_equal(normalize_expr(quote(x %>% y)), "%INFIX%(X)")
-})
 
 test_that("Various normalization", {
   # Crushing consecutive same types in c and list1
@@ -120,42 +104,10 @@ test_that("Various normalization", {
   expect_equal(
     normalize_expr(quote(plop::test(1, 2))), "test(0)"
   )
-
-  expect_equal(normalize_expr(quote(if_else(TRUE, 56, x + 347))), "RARE(X)")
 })
 
 test_that("Structure is  simplified", {
   expect_equal(normalize_expr(quote(structure(x, tag = "plop"))), "X")
   expect_equal(normalize_expr(quote(structure(f(1 + 1), tag = "plop"))), "structure(f(0), S)")
   expect_equal(normalize_expr(quote(structure(123, tag = r))), "X")
-})
-
-
-test_that("Call nesting", {
-  # We do not count +
-  res <- normalize_stats_expr(quote(f(g(4 + 5))))
-  expect_equal(res$call_nesting, 2)
-})
-
-test_that("Number of assignments", {
-  res <- normalize_stats_expr(quote(x <- 56))
-  expect_equal(res$nb_assigns, 1)
-
-  res <- normalize_stats_expr(quote(x <<- 56))
-  expect_equal(res$nb_assigns, 1)
-
-  res <- normalize_stats_expr(quote(assign(x, 56)))
-  expect_equal(res$nb_assigns, 1)
-})
-
-
-test_that("Unifiction of values", {
-  res <- normalize_stats_expr(quote(1 + 56))
-  expect_equal(res$str_rep, "V")
-
-  res <- normalize_stats_expr(quote("test"))
-  expect_equal(res$str_rep, "V")
-
-  res <- normalize_stats_expr(quote("NA"))
-  expect_equal(res$str_rep, "V")
 })

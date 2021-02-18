@@ -769,3 +769,19 @@ SEXP r_normalize(SEXP hash, SEXP ast) {
   delete t2;
 }
 
+
+
+SEXP r_normalize_expr(SEXP ast) {
+  Builder builder;
+  Exp* t = builder.build(ast);
+  Simplifier s;
+  Exp* t2 = s.simplify(t);
+  delete t;
+  CharBuff buf;
+  t2->write(&buf, false);
+  delete t2;
+
+  SEXP r_value = PROTECT(mkString(buf.get()));
+  UNPROTECT(1);
+  return r_value;
+}
