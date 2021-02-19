@@ -1,9 +1,21 @@
 #ifndef EVIL_FUNCTION_TABLE_H
 #define EVIL_FUNCTION_TABLE_H
 
+#include <R.h>
+#include <Rinternals.h>
+
 class FunctionTable {
   public:
     FunctionTable() {
+        for (SEXP r_rho = R_GlobalEnv; r_rho != R_EmptyEnv;
+             r_rho = ENCLOS(r_rho)) {
+            SEXP r_names = R_lsInternal(r_rho, TRUE);
+            for (int i = 0; i < Rf_length(r_names); ++i) {
+                const char* name = CHAR(STRING_ELT(r_names, i));
+                SEXP r_obj = Rf_findVarInFrame(r_rho, Rf_install(name));
+                update(r_obj, name, r_rho);
+            }
+        }
     }
 
     ~FunctionTable() {
@@ -68,18 +80,48 @@ class FunctionTable {
         return function;
     }
 
-    void update(SEXP r_closure, SEXP r_name, SEXP r_rho) {
+    void update(SEXP r_value, const char* name, SEXP r_rho) {
+        SEXP r_closure = unwrap_function_(r_value);
+
+        if (TYPEOF(r_closure) != CLOSXP) {
+            return;
+        }
+
         Function* function = lookup(r_closure);
 
         if (function->has_name()) {
             return;
         }
 
-        update_name_(function, CHAR(STRING_ELT(r_name, 0)), r_rho);
+        update_name_(function, name, r_rho);
     }
 
   private:
     std::unordered_map<SEXP, Function*> table_;
+
+    SEXP unwrap_function_(SEXP r_value) {
+        SEXP r_closure = R_NilValue;
+
+        switch (TYPEOF(r_value)) {
+        case CLOSXP:
+            r_closure = r_value;
+            break;
+        case PROMSXP:
+            r_closure = dyntrace_get_promise_value(r_value);
+            if (r_closure == R_UnboundValue || TYPEOF(r_closure) != CLOSXP) {
+                r_closure = dyntrace_get_promise_expression(r_value);
+                if (r_closure == R_UnboundValue ||
+                    TYPEOF(r_closure) != CLOSXP) {
+                    r_closure = R_NilValue;
+                }
+            }
+            break;
+        default:
+            break;
+        }
+
+        return r_closure;
+    }
 
     Function* get_or_create_(SEXP r_closure) {
         auto result = table_.find(r_closure);
