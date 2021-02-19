@@ -62,11 +62,4 @@ class StackFrame {
     }
 };
 
-using stack_frames_t = std::vector<StackFrame>;
-using stack_frame_iterator = stack_frames_t::iterator;
-using reverse_stack_frame_iterator = stack_frames_t::reverse_iterator;
-using const_stack_frame_iterator = stack_frames_t::const_iterator;
-using const_reverse_stack_frame_iterator =
-    stack_frames_t::const_reverse_iterator;
-
 #endif /* EVIL_STACK_FRAME_H */

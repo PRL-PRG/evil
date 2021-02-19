@@ -9,11 +9,6 @@ using stack_frames_t = std::vector<StackFrame>;
 
 class Stack {
   public:
-    using iterator = stack_frames_t::iterator;
-    using reverse_iterator = stack_frames_t::reverse_iterator;
-    using const_iterator = stack_frames_t::const_iterator;
-    using const_reverse_iterator = stack_frames_t::const_reverse_iterator;
-
     explicit Stack(): stack_() {
     }
 
@@ -23,38 +18,6 @@ class Stack {
 
     bool is_empty() const {
         return stack_.empty();
-    }
-
-    iterator begin() {
-        return stack_.begin();
-    }
-
-    iterator end() {
-        return stack_.end();
-    }
-
-    reverse_iterator rbegin() {
-        return stack_.rbegin();
-    }
-
-    reverse_iterator rend() {
-        return stack_.rend();
-    }
-
-    const_iterator cbegin() const {
-        return stack_.cbegin();
-    }
-
-    const_iterator cend() const {
-        return stack_.cend();
-    }
-
-    const_reverse_iterator crbegin() const {
-        return stack_.crbegin();
-    }
-
-    const_reverse_iterator crend() const {
-        return stack_.crend();
     }
 
     void push(StackFrame& frame) {
@@ -68,11 +31,11 @@ class Stack {
     }
 
     const StackFrame& peek(std::size_t n = 1) const {
-        return stack_.at(stack_.size() - n);
+        return stack_[stack_.size() - n];
     }
 
     StackFrame& peek(std::size_t n = 1) {
-        return stack_.at(stack_.size() - n);
+        return stack_[stack_.size() - n];
     }
 
     stack_frames_t unwind(void* context) {
