@@ -690,7 +690,7 @@ SEXP r_normalize(SEXP hash, SEXP ast, SEXP trimmed_str) {
 	     <<  "has_block, "
 	     <<  "is_value, "
              <<  "normalized, "
-             << "trimmed,"
+             << "trimmed, "
              <<  "hash"
              << std::endl;
     first = false;
