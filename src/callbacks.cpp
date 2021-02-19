@@ -2,30 +2,6 @@
 #include "r_init.h"
 #include "data.h"
 
-void update_function_name(TracerState& tracer_state,
-                          SEXP r_value,
-                          SEXP r_variable,
-                          SEXP r_rho) {
-    SEXP r_op = NULL;
-
-    if (TYPEOF(r_value) == PROMSXP) {
-        r_op = dyntrace_get_promise_value(r_value);
-        if (r_op == R_UnboundValue || TYPEOF(r_op) != CLOSXP) {
-            r_op = dyntrace_get_promise_expression(r_value);
-            if (r_op == R_UnboundValue || TYPEOF(r_op) != CLOSXP) {
-                return;
-            }
-        }
-    } else if (TYPEOF(r_value) == CLOSXP) {
-        r_op = r_value;
-    } else {
-        return;
-    }
-
-    FunctionTable& function_table = tracer_state.get_function_table();
-    function_table.update(r_op, r_variable, r_rho);
-}
-
 void builtin_call_entry_callback(ContextSPtr context,
                                  ApplicationSPtr application,
                                  SEXP r_call,
@@ -114,9 +90,6 @@ void variable_definition_callback(ContextSPtr context,
     SEXP r_data = context->get_data();
 
     TracerState& tracer_state = *get_tracer_state(r_data);
-
-    update_function_name(tracer_state, r_value, r_variable, r_rho);
-
     Event event = Event::variable_definition(r_variable, r_value, r_rho);
 
     tracer_state.analyze(event);
@@ -134,9 +107,6 @@ void variable_assignment_callback(ContextSPtr context,
     SEXP r_data = context->get_data();
 
     TracerState& tracer_state = *get_tracer_state(r_data);
-
-    update_function_name(tracer_state, r_value, r_variable, r_rho);
-
     Event event = Event::variable_assignment(r_variable, r_value, r_rho);
 
     tracer_state.analyze(event);
@@ -153,7 +123,6 @@ void variable_removal_callback(ContextSPtr context,
     SEXP r_data = context->get_data();
 
     TracerState& tracer_state = *get_tracer_state(r_data);
-
     Event event = Event::variable_removal(r_variable, r_rho);
 
     for (Analysis* analysis: get_analyses(r_data)) {
@@ -169,9 +138,6 @@ void variable_lookup_callback(ContextSPtr context,
     SEXP r_data = context->get_data();
 
     TracerState& tracer_state = *get_tracer_state(r_data);
-
-    update_function_name(tracer_state, r_value, r_variable, r_rho);
-
     Event event = Event::variable_lookup(r_variable, r_value, r_rho);
 
     tracer_state.analyze(event);
