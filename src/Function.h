@@ -22,13 +22,14 @@ class Function {
                 package_name_ = "base";
             }
 
-            else {
-                SEXP r_package_name = getAttrib(r_lexenv, R_NameSymbol);
-                if (TYPEOF(r_package_name) == STRSXP &&
-                    Rf_length(r_package_name) > 0) {
-                  /* NOTE: remove package: prefix  */
-                  package_name_ = std::string(CHAR(STRING_ELT(r_package_name, 0))).substr(8);
-                }
+            else if (R_IsPackageEnv(r_lexenv)) {
+                package_name_ = CHAR(STRING_ELT(R_PackageEnvName(r_lexenv), 0));
+
+            }
+
+            else if (R_IsNamespaceEnv(r_lexenv)) {
+                package_name_ =
+                    CHAR(STRING_ELT(R_NamespaceEnvSpec(r_lexenv), 0));
             }
         }
     }
