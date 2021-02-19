@@ -31,12 +31,12 @@ bool in(const char* target, const char** array, int array_length) {
 #define NB_BOOL_OP 5
 #define NB_LISTVEC 2
 
-static const char* arith_op[NB_ARITH_OP] = {"/",  "-",  "*", "+", "^",
-   "log", "sqrt", "exp", "max", "min", "cos", "sin", "abs", "atan", ":",
-    "mean", "atanh", "sd", "round", "ceiling", "floor", "trunc," "median",
-    "pmin", "pmax", "log10", "log1p", "log2", "tan", "asin", "cosh", "sinh",
-    "acos", "sign", "atan2", "sum"};
-static const char* str_op[NB_STR_OP] = {"paste", "paste0", "str_c", "toupper", "tolower"};
+static const char* arith_op[NB_ARITH_OP] = {"/",  "-",  "*", "+", "^", "log", "sqrt",
+  "exp", "max", "min", "cos", "sin", "abs", "atan", ":", "mean", "atanh", "sd",
+  "round", "ceiling", "floor", "trunc," "median", "pmin", "pmax", "log10", "log1p",
+  "log2", "tan", "asin", "cosh", "sinh", "acos", "sign", "atan2", "sum"};
+static const char* str_op[NB_STR_OP] = {"paste", "paste0", "str_c",  "toupper",
+  "tolower"};
 static const char* cmp_op[NB_COMP_OP] = {"<", ">", "<=", ">=", "==", "!="};
 static const char* bool_op[NB_BOOL_OP] = {"&", "&&", "|", "||", "!"};
 static const char* listvec[NB_LISTVEC] = {"list", "c"};
@@ -83,8 +83,6 @@ public:
 class Call;           // forward declarations
 class Statements;
 class Other;
-
-
 
 /////////////////// Exp /////////////////////
 class Exp {
@@ -215,7 +213,7 @@ public:
       else if (in(str, cmp_op, NB_COMP_OP))  opkind = LogicOp;
       else if (in(str, str_op, NB_STR_OP))   opkind = LogicOp;
       else if (in(str, listvec, NB_LISTVEC)) opkind = ListVecOp;
-      else if (eq(str, "model.frame"))       opkind = ModelFrameOp;//What about model.matrix?
+      else if (eq(str, "model.frame"))       opkind = ModelFrameOp; // model.matrix?
       else                                   opkind = NamedOp;
     }
   }
@@ -256,8 +254,7 @@ public:
     if (len != len2) return false;
 
     for(int i=0; i<len; i++)
-      if (!args[i]->equals(c->args[i]))
-        return false;
+      if (!args[i]->equals(c->args[i])) return false;
     return true;
   }
 
@@ -297,16 +294,7 @@ public:
       }
       if (pos!=-1) buf.rollback(pos);
       buf.write("]");
-    }
-    //  else if (eq_name("OP")) {
-    //     if (len == 1) {
-    //         buf.write(args[0]->print());
-    //         warning("Weird operator without arguments!\n");
-    //     }
-    //     buf.write(" OP ");
-    //   if (len == 2) buf.write(args[1]->print());
-    // }
-    else {
+    } else {
       if(name) buf.write(name->get_name());
       else anon->write(&buf);
       buf.write("(");
@@ -501,10 +489,9 @@ public:
     for (SEXP ptr = CDR(ast); ptr != R_NilValue; ptr = CDR(ptr))
       call->add_arg(build(CAR(ptr)));
 
-    // In some cases, function has 3 arguments. The last one is a srcref. We get rid of it
-    if(call->eq_name("function") && call->get_args().size() == 3) {
+    // Some function have 3 arguments. The last one is a srcref. We get rid of it
+    if(call->eq_name("function") && call->get_args().size() == 3)
         call->get_args().pop_back();
-    }
     return call;
   }
 
@@ -683,7 +670,6 @@ SEXP r_normalize(SEXP hash, SEXP ast) {
   delete t;
   CharBuff buf;
   t2->write(&buf, true);
-
   Counter c;
   c.count(t2);
   char* str = buf.get();
@@ -760,10 +746,8 @@ SEXP r_normalize(SEXP hash, SEXP ast) {
             << ", \"" << str << "\""
             << ", " << CHAR(STRING_ELT(hash,0))
 	    << std::endl;
-
   delete t2;
 }
-
 
 
 SEXP r_normalize_expr(SEXP ast) {
@@ -775,7 +759,6 @@ SEXP r_normalize_expr(SEXP ast) {
   CharBuff buf;
   t2->write(&buf, false);
   delete t2;
-
   SEXP r_value = PROTECT(mkString(buf.get()));
   UNPROTECT(1);
   return r_value;
