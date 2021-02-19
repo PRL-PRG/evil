@@ -33,7 +33,7 @@ void closure_call_entry_callback(ContextSPtr context,
 
     Stack& stack = tracer_state.get_stack();
 
-    Function* function = function_table.lookup(r_op, r_call, r_rho);
+    Function* function = function_table.lookup(r_op);
 
     StackFrame frame =
         StackFrame::from_call(new Call(function, r_call, r_args, r_rho));
