@@ -674,26 +674,24 @@ SEXP r_normalize(SEXP hash, SEXP ast, SEXP trimmed_str) {
   c.count(t2);
   char* str = buf.get();
   if (first) {
-    std::cout << "minimized, "
-	     <<  "topcall, "
-	     <<  "is_model, "
-      	     <<  "has_fundef, "
-      	     <<  "has_calls, "
-      	     <<  "has_assigns, "
-      	     <<  "has_var, "
-      	     <<  "has_bracket, "
-	     <<  "is_assign,"
-             <<  "is_value, "
-	     <<  "is_ignore, "
-	     <<  "has_dollar, "
-	     <<  "has_user_call, "
-	     <<  "has_block, "
-	     <<  "is_value, "
-             <<  "normalized, "
-             << "trimmed, "
-             <<  "hash"
-             << std::endl;
-    first = false;
+      std::cout << "minimized, "
+                << "topcall, "
+                << "is_model, "
+                << "has_fundef, "
+                << "has_calls, "
+                << "has_assigns, "
+                << "has_var, "
+                << "has_bracket, "
+                << "is_assign, "
+                << "is_value, "
+                << "is_ignore, "
+                << "has_dollar, "
+                << "has_user_call, "
+                << "has_block, "
+                << "normalized, "
+                << "trimmed, "
+                << "hash" << std::endl;
+      first = false;
   }
   if (c.is_ignore)                        std::cout << "Ignore" ;
   else if (c.is_value)                    std::cout << "V" ;
@@ -733,20 +731,20 @@ SEXP r_normalize(SEXP hash, SEXP ast, SEXP trimmed_str) {
   }
   std::cout << ", " << (c.topcall? c.topcall : "")
 	    << ", " << c.is_model
-    	    << ", " << c.has_fundef
-    	    << ", " << c.has_calls
-    	    << ", " << c.has_assigns
+    	<< ", " << c.has_fundef
+    	<< ", " << c.has_calls
+    	<< ", " << c.has_assigns
 	    << ", " << c.has_var
 	    << ", " << c.has_bracket
 	    << ", " << c.is_assign
-    	    << ", " << c.is_value
-    	    << ", " << c.is_ignore
-       	    << ", " << c.has_dollar
-       	    << ", " << c.has_user_call
+    	<< ", " << c.is_value
+    	<< ", " << c.is_ignore
+      << ", " << c.has_dollar
+      << ", " << c.has_user_call
 	    << ", " << c.has_block
-            << ", \"" << str << "\""
-            << ", \"" << CHAR(STRING_ELT(trimmed_str, 0)) <<  "\""
-            << ", " << CHAR(STRING_ELT(hash,0))
+      << ", \"" << str << "\""
+      << ", \"" << CHAR(STRING_ELT(trimmed_str, 0)) <<  "\""
+      << ", " << CHAR(STRING_ELT(hash,0))
 	    << std::endl;
   delete t2;
 
