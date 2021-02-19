@@ -136,6 +136,17 @@ class FunctionTable {
     }
 
     Function* update_name_(Function* function, const char* name, SEXP r_rho) {
+        /* NOTE: A function's lexical environment is a namespace. If r_rho is a
+         * package environment, we retrieve the corresponding namespace by
+         * querying the namespace registry with the package name (without the
+         * "package:" prefix)*/
+        if (R_IsPackageEnv(r_rho)) {
+            const char* package_name =
+                CHAR(STRING_ELT(R_PackageEnvName(r_rho), 0));
+            r_rho = Rf_findVarInFrame(
+                R_NamespaceRegistry,
+                Rf_install(package_name + strlen("package:")));
+        }
         SEXP r_lexenv = CLOENV(function->get_op());
 
         /* function has a name in its lexical env */

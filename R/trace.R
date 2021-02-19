@@ -12,6 +12,20 @@ parse_evals_to_trace <- function(evals_to_trace) {
     evals_to_trace
 }
 
+force_lazy_loaded_functions <- function() {
+    packages <- search()
+
+    for(package in packages) {
+        if(startsWith(package, "package:")) {
+            ns <- getNamespace(substr(package, 9, nchar(package)))
+            names <- ls(ns, all.names = TRUE)
+            Map(function(name) get(name, envir = ns), names)
+        }
+    }
+
+    NULL
+}
+
 #' @param eval_to_trace - a vector of <package> or <package>::<function> to
 #'   trace, or "global" or NULL
 #' @export
@@ -23,6 +37,8 @@ trace_code <- function(code,
                        envir = parent.frame(),
                        quote=TRUE,
                        evals_to_trace=NULL) {
+
+    force_lazy_loaded_functions()
 
     evals_to_trace <- parse_evals_to_trace(evals_to_trace)
     packages <- NULL
