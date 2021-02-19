@@ -643,7 +643,7 @@ public:
       has_block = true;
     } else if (x->eq_name("[[") || x->eq_name("[")) {
       has_bracket = true;
-    } else if (x->kind() == NamedOp || x->kind() == UnknownOp) {
+    } else if (x->kind() == NamedOp || x->kind() == ListVecOp || x->kind() == UnknownOp) {
       has_calls++;
       has_user_call = true;
     }
@@ -715,6 +715,7 @@ SEXP r_normalize(SEXP hash, SEXP ast, SEXP trimmed_str) {
       else                                std::cout << "$";
     } else if (c.has_assigns)             std::cout << "<-";
     else if (c.has_var)                   std::cout << "X";
+    else if(c.has_block)                  std::cout << "{BLOCK}";
     else {
       std::cout << "ERROR " << str
 		<< " has_var=" << c.has_var
