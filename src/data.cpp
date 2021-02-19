@@ -3,7 +3,6 @@
 #include "ReflectionAnalysis.h"
 #include "CodeAnalysis.h"
 #include "SideEffectAnalysis.h"
-#include "ExecutionTraceAnalysis.h"
 
 template <typename T>
 T* unwrap(SEXP r_value) {
@@ -35,8 +34,7 @@ void initialize_tracer_state(SEXP r_data) {
 void initialize_tracer_analyses(SEXP r_data) {
     std::vector<SEXP> analyses = {wrap(new ReflectionAnalysis()),
                                   wrap(new CodeAnalysis()),
-                                  wrap(new SideEffectAnalysis()),
-                                  wrap(new ExecutionTraceAnalysis())};
+                                  wrap(new SideEffectAnalysis())};
 
     int count = analyses.size();
 
@@ -112,6 +110,12 @@ SEXP r_tracer_data_finalize(SEXP r_data) {
     Rf_setAttrib(r_table_list, R_NamesSymbol, r_table_names);
 
     UNPROTECT(2);
+
+    /* write trace to file */
+
+    TracerState& tracer_state = *get_tracer_state(r_data);
+    ExecTrace& trace = tracer_state.get_exec_trace();
+    trace.serialize("exec_trace.txt");
 
     return r_table_list;
 }

@@ -68,16 +68,4 @@ void variable_lookup_callback(ContextSPtr context,
                               SEXP r_value,
                               SEXP r_rho);
 
-void context_entry_callback(ContextSPtr context,
-                            ApplicationSPtr application,
-                            void* call_context);
-
-void context_exit_callback(ContextSPtr context,
-                           ApplicationSPtr application,
-                           void* call_context);
-
-void context_jump_callback(ContextSPtr context,
-                           ApplicationSPtr application,
-                           void* call_context);
-
 #endif /* EVIL_CALLBACKS_H */

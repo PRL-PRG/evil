@@ -4,9 +4,7 @@
 #include "r_utilities.h"
 #include "Event.h"
 #include <unordered_map>
-#include "Function.h"
-#include "Stack.h"
-#include "FunctionTable.h"
+#include "ExecTrace.h"
 
 class TracerState {
   private:
@@ -27,18 +25,6 @@ class TracerState {
         add_environment_(R_GlobalEnv, "global", 0);
         add_environment_(R_BaseEnv, "package:base", 0);
         add_environment_(R_BaseNamespace, "package:base", 0);
-    }
-
-    FunctionTable& get_function_table() {
-        return function_table_;
-    }
-
-    Stack& get_stack() {
-        return stack_;
-    }
-
-    const Stack& get_stack() const {
-        return stack_;
     }
 
     int get_eval_call_id(int index) {
@@ -73,6 +59,10 @@ class TracerState {
         return eval_calls_.size();
     }
 
+    ExecTrace& get_exec_trace() {
+        return exec_trace_;
+    }
+
     bool is_local_environment(SEXP r_rho, int eval_call_id) {
         auto result = environments_.find(r_rho);
         /* NOTE: if environment is not present in the map, then it means that it
@@ -103,25 +93,26 @@ class TracerState {
     }
 
     const char* get_call_name(SEXP r_call) {
-        return TYPEOF(CAR(r_call)) == SYMSXP ? CHAR(PRINTNAME(CAR(r_call)))
-                                             : "<object>";
+        return TYPEOF(CAR(r_call)) == SYMSXP
+            ? CHAR(PRINTNAME(CAR(r_call)))
+            : "<object>";
     }
 
     void analyze(Event& event) {
-        Event::Type event_type = event.get_type();
-
-        if (event_type == Event::Type::EvalEntry) {
+        switch (event.get_type()) {
+        case Event::Type::EvalEntry:
             ++eval_calls_.back().interp_eval;
-        }
-
-        else if (event_type == Event::Type::ClosureCallEntry) {
-            SEXP r_rho = event.get_rho();
-            SEXP r_call = event.get_call();
-            const char* name = get_call_name(r_call);
-            add_environment_(r_rho, std::string("function:") + name);
-        }
-
-        else if (event_type == Event::Type::ClosureCallExit) {
+            break;
+        case Event::Type::ClosureCallEntry:
+            {
+                SEXP r_rho = event.get_rho();
+                SEXP r_call = event.get_call();
+                const char* name = get_call_name(r_call);
+                add_environment_(r_rho, std::string("function:") + name);
+                exec_trace_.enter_call(name);
+            }
+            break;
+        case Event::Type::ClosureCallExit:
             if (event.is_call_to("new.env")) {
                 SEXP r_result = event.get_result();
                 set_envkind_(r_result, "explicit:new.env");
@@ -129,6 +120,15 @@ class TracerState {
                 SEXP r_result = event.get_result();
                 set_envkind_(r_result, "explicit:list2env");
             }
+            exec_trace_.exit_call(get_call_name(event.get_call()));
+            break;
+        case Event::Type::VariableDefinition:
+        case Event::Type::VariableAssignment:
+            exec_trace_.write_var(CHAR(STRING_ELT(event.get_variable(), 0)));
+            break;
+        case Event::Type::VariableRemoval:
+        case Event::Type::VariableLookup:
+            break;
         }
     }
 
@@ -143,13 +143,11 @@ class TracerState {
     }
 
   private:
-    FunctionTable function_table_;
-
-    Stack stack_;
-
     std::unordered_map<SEXP, env_info_t> environments_;
 
     std::vector<eval_call_info_t> eval_calls_;
+
+    ExecTrace exec_trace_;
 
     /* NOTE: this function serves the dual purpose of looking up or inserting
      * and looking up. For this, it leverages the fact that insert only inserts
