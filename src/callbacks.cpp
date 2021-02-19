@@ -126,18 +126,6 @@ void eval_entry_callback(ContextSPtr context,
     }
 }
 
-void gc_allocation_callback(ContextSPtr context,
-                            ApplicationSPtr application,
-                            SEXP r_object) {
-    SEXP r_data = context->get_data();
-    TracerState& tracer_state = *get_tracer_state(r_data);
-    Event event = Event::gc_allocation(r_object);
-
-    tracer_state.analyze(event);
-
-    // TODO - add calls to analysis classes
-}
-
 void variable_definition_callback(ContextSPtr context,
                                   ApplicationSPtr application,
                                   SEXP r_variable,
@@ -283,4 +271,36 @@ void context_jump_callback(ContextSPtr context,
     }
 
     Rf_error("cannot find matching context while unwinding\n");
+}
+
+void gc_allocation_callback(ContextSPtr context,
+                            ApplicationSPtr application,
+                            SEXP r_object) {
+    SEXP r_data = context->get_data();
+
+    TracerState& tracer_state = *get_tracer_state(r_data);
+
+    if (TYPEOF(r_object) == CLOSXP) {
+        FunctionTable& function_table = tracer_state.get_function_table();
+
+        function_table.insert(r_object);
+    }
+
+    Event event = Event::gc_allocation(r_object);
+
+    tracer_state.analyze(event);
+}
+
+void gc_unmark_callback(ContextSPtr context,
+                        ApplicationSPtr application,
+                        SEXP r_object) {
+    if (TYPEOF(r_object) == CLOSXP) {
+        SEXP r_data = context->get_data();
+
+        TracerState& tracer_state = *get_tracer_state(r_data);
+
+        FunctionTable& function_table = tracer_state.get_function_table();
+
+        function_table.remove(r_object);
+    }
 }

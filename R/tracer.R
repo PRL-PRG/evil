@@ -27,11 +27,12 @@ create_tracer <- function(packages) {
         context_exit_callback = .Call(C_get_context_exit_callback),
         context_jump_callback = .Call(C_get_context_jump_callback),
         eval_entry_callback = .Call(C_get_eval_entry_callback),
-        gc_allocation_callback = .Call(C_get_gc_allocation_callback),
         variable_definition_callback = .Call(C_get_variable_definition_callback),
         variable_assignment_callback = .Call(C_get_variable_assignment_callback),
         variable_removal_callback = .Call(C_get_variable_removal_callback),
         variable_lookup_callback = .Call(C_get_variable_lookup_callback),
+        gc_allocation_callback = .Call(C_get_gc_allocation_callback),
+        gc_unmark_callback = .Call(C_get_gc_unmark_callback),
         functions = functions
     )
 

@@ -12,6 +12,27 @@ class FunctionTable {
         }
     }
 
+    void insert(SEXP r_closure) {
+        Function* function = new Function(r_closure);
+
+        auto result = table_.insert({r_closure, function});
+
+        if (!result.second) {
+            delete result.first->second;
+            result.first->second = function;
+        }
+    }
+
+    void remove(SEXP r_closure) {
+        auto result = table_.find(r_closure);
+
+        if (result != table_.end()) {
+            Function* function = result->second;
+            table_.erase(result);
+            delete function;
+        }
+    }
+
     Function* lookup(SEXP r_closure) {
         return get_or_create_(r_closure);
     }

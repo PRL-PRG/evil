@@ -80,4 +80,12 @@ void context_jump_callback(ContextSPtr context,
                            ApplicationSPtr application,
                            void* call_context);
 
+void gc_allocation_callback(ContextSPtr context,
+                          ApplicationSPtr application,
+                          SEXP r_object);
+
+void gc_unmark_callback(ContextSPtr context,
+                        ApplicationSPtr application,
+                        SEXP r_object);
+
 #endif /* EVIL_CALLBACKS_H */
