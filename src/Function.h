@@ -14,10 +14,21 @@ class Function {
         } else {
             SEXP r_lexenv = CLOENV(r_op);
 
-            SEXP r_package_name = R_PackageEnvName(r_lexenv);
+            if (r_lexenv == R_GlobalEnv) {
+                package_name_ = "global";
+            }
 
-            if (r_package_name != R_NilValue) {
-                package_name_ = CHAR(STRING_ELT(r_package_name, 0));
+            else if (r_lexenv == R_BaseEnv || r_lexenv == R_BaseNamespace) {
+                package_name_ = "base";
+            }
+
+            else {
+                SEXP r_package_name = getAttrib(r_lexenv, R_NameSymbol);
+                if (TYPEOF(r_package_name) == STRSXP &&
+                    Rf_length(r_package_name) > 0) {
+                  /* NOTE: remove package: prefix  */
+                  package_name_ = std::string(CHAR(STRING_ELT(r_package_name, 0))).substr(8);
+                }
             }
         }
     }
@@ -52,6 +63,10 @@ class Function {
 
     void set_name(const char* name) {
         name_ = name;
+    }
+
+    bool has_package_name() const {
+        return !package_name_.empty();
     }
 
     const std::string& get_package_name() const {

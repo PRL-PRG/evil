@@ -19,7 +19,7 @@ class ExecutionTraceAnalysis: public Analysis {
             const Stack& stack = tracer_state.get_stack();
             const StackFrame& frame = stack.peek();
             const Function* function = frame.as_call()->get_function();
-            table_.record(depth_, "ent", function->get_name());
+            table_.record(depth_, "ent", get_full_function_name_(function));
             ++depth_;
         }
 
@@ -28,7 +28,7 @@ class ExecutionTraceAnalysis: public Analysis {
             const Stack& stack = tracer_state.get_stack();
             const StackFrame& frame = stack.peek();
             const Function* function = frame.as_call()->get_function();
-            table_.record(depth_, "ext", function->get_name());
+            table_.record(depth_, "ext", get_full_function_name_(function));
         }
 
         else if (event_type == Event::Type::VariableDefinition) {
@@ -49,6 +49,25 @@ class ExecutionTraceAnalysis: public Analysis {
   private:
     ExecutionTraceTable table_;
     int depth_;
+
+    std::string get_full_function_name_(const Function* function) {
+        std::string full_name("");
+
+        if (function->has_package_name()) {
+            full_name.append(function->get_package_name());
+            full_name.append("::");
+        }
+
+        std::string name("<unknown>");
+
+        if (function->has_name()) {
+            name = function->get_name();
+        }
+
+        full_name.append(name);
+
+        return full_name;
+    }
 };
 
 #endif /* EVIL_EXECUTION_TRACE_ANALYSIS_H */
