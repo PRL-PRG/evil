@@ -662,7 +662,7 @@ public:
 bool first = true;
 
 ///////////////////////////////////////////////////////////
-SEXP r_normalize(SEXP hash, SEXP ast) {
+SEXP r_normalize(SEXP hash, SEXP ast, SEXP trimmed_str) {
   Builder builder;
   Exp* t = builder.build(ast);
   Simplifier s;
@@ -690,6 +690,7 @@ SEXP r_normalize(SEXP hash, SEXP ast) {
 	     <<  "has_block, "
 	     <<  "is_value, "
              <<  "normalized, "
+             << "trimmed,"
              <<  "hash"
              << std::endl;
     first = false;
@@ -744,9 +745,12 @@ SEXP r_normalize(SEXP hash, SEXP ast) {
        	    << ", " << c.has_user_call
 	    << ", " << c.has_block
             << ", \"" << str << "\""
+            << ", \"" << CHAR(STRING_ELT(trimmed_str, 0)) <<  "\""
             << ", " << CHAR(STRING_ELT(hash,0))
 	    << std::endl;
   delete t2;
+
+  return Rf_ScalarLogical(NA_LOGICAL); // Just return something to prevent warnings
 }
 
 

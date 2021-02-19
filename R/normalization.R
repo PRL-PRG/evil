@@ -1,6 +1,6 @@
 #' @export
-normalize <- function(h, expr) {
-    .Call(C_normalize, h, expr)
+normalize <- function(h, expr, trimmed_expr) {
+    .Call(C_normalize, h, expr, trimmed_expr)
 }
 
 
