@@ -2,30 +2,6 @@
 #include "r_init.h"
 #include "data.h"
 
-void update_function_name(TracerState& tracer_state,
-                          SEXP r_value,
-                          SEXP r_variable,
-                          SEXP r_rho) {
-    SEXP r_op = NULL;
-
-    if (TYPEOF(r_value) == PROMSXP) {
-        r_op = dyntrace_get_promise_value(r_value);
-        if (r_op == R_UnboundValue || TYPEOF(r_op) != CLOSXP) {
-            r_op = dyntrace_get_promise_expression(r_value);
-            if (r_op == R_UnboundValue || TYPEOF(r_op) != CLOSXP) {
-                return;
-            }
-        }
-    } else if (TYPEOF(r_value) == CLOSXP) {
-        r_op = r_value;
-    } else {
-        return;
-    }
-
-    FunctionTable& function_table = tracer_state.get_function_table();
-    function_table.update(r_op, r_variable, r_rho);
-}
-
 void builtin_call_entry_callback(ContextSPtr context,
                                  ApplicationSPtr application,
                                  SEXP r_call,
@@ -126,18 +102,6 @@ void eval_entry_callback(ContextSPtr context,
     }
 }
 
-void gc_allocation_callback(ContextSPtr context,
-                            ApplicationSPtr application,
-                            SEXP r_object) {
-    SEXP r_data = context->get_data();
-    TracerState& tracer_state = *get_tracer_state(r_data);
-    Event event = Event::gc_allocation(r_object);
-
-    tracer_state.analyze(event);
-
-    // TODO - add calls to analysis classes
-}
-
 void variable_definition_callback(ContextSPtr context,
                                   ApplicationSPtr application,
                                   SEXP r_variable,
@@ -147,7 +111,9 @@ void variable_definition_callback(ContextSPtr context,
 
     TracerState& tracer_state = *get_tracer_state(r_data);
 
-    update_function_name(tracer_state, r_value, r_variable, r_rho);
+    FunctionTable& function_table = tracer_state.get_function_table();
+
+    function_table.update(r_value, CHAR(STRING_ELT(r_variable, 0)), r_rho);
 
     Event event = Event::variable_definition(r_variable, r_value, r_rho);
 
@@ -167,7 +133,9 @@ void variable_assignment_callback(ContextSPtr context,
 
     TracerState& tracer_state = *get_tracer_state(r_data);
 
-    update_function_name(tracer_state, r_value, r_variable, r_rho);
+    FunctionTable& function_table = tracer_state.get_function_table();
+
+    function_table.update(r_value, CHAR(STRING_ELT(r_variable, 0)), r_rho);
 
     Event event = Event::variable_assignment(r_variable, r_value, r_rho);
 
@@ -202,7 +170,9 @@ void variable_lookup_callback(ContextSPtr context,
 
     TracerState& tracer_state = *get_tracer_state(r_data);
 
-    update_function_name(tracer_state, r_value, r_variable, r_rho);
+    FunctionTable& function_table = tracer_state.get_function_table();
+
+    function_table.update(r_value, CHAR(STRING_ELT(r_variable, 0)), r_rho);
 
     Event event = Event::variable_lookup(r_variable, r_value, r_rho);
 
@@ -283,4 +253,36 @@ void context_jump_callback(ContextSPtr context,
     }
 
     Rf_error("cannot find matching context while unwinding\n");
+}
+
+void gc_allocation_callback(ContextSPtr context,
+                            ApplicationSPtr application,
+                            SEXP r_object) {
+    SEXP r_data = context->get_data();
+
+    TracerState& tracer_state = *get_tracer_state(r_data);
+
+    if (TYPEOF(r_object) == CLOSXP) {
+        FunctionTable& function_table = tracer_state.get_function_table();
+
+        function_table.insert(r_object);
+    }
+
+    Event event = Event::gc_allocation(r_object);
+
+    tracer_state.analyze(event);
+}
+
+void gc_unmark_callback(ContextSPtr context,
+                        ApplicationSPtr application,
+                        SEXP r_object) {
+    if (TYPEOF(r_object) == CLOSXP) {
+        SEXP r_data = context->get_data();
+
+        TracerState& tracer_state = *get_tracer_state(r_data);
+
+        FunctionTable& function_table = tracer_state.get_function_table();
+
+        function_table.remove(r_object);
+    }
 }
