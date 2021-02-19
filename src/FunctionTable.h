@@ -9,11 +9,14 @@ class FunctionTable {
     FunctionTable() {
         for (SEXP r_rho = R_GlobalEnv; r_rho != R_EmptyEnv;
              r_rho = ENCLOS(r_rho)) {
-            SEXP r_names = R_lsInternal(r_rho, TRUE);
+            SEXP r_namespace = infer_namespace_(r_rho);
+
+            SEXP r_names = R_lsInternal(r_namespace, TRUE);
+
             for (int i = 0; i < Rf_length(r_names); ++i) {
                 const char* name = CHAR(STRING_ELT(r_names, i));
-                SEXP r_obj = Rf_findVarInFrame(r_rho, Rf_install(name));
-                update(r_obj, name, r_rho);
+                SEXP r_obj = Rf_findVarInFrame(r_namespace, Rf_install(name));
+                update(r_obj, name, r_namespace);
             }
         }
     }
@@ -47,37 +50,6 @@ class FunctionTable {
 
     Function* lookup(SEXP r_closure) {
         return get_or_create_(r_closure);
-    }
-
-    Function* lookup(SEXP r_closure, SEXP r_call, SEXP r_rho) {
-        Function* function = lookup(r_closure);
-
-        if (function->has_name()) {
-            return function;
-        }
-
-        SEXP r_call_name = CAR(r_call);
-
-        if (TYPEOF(r_call_name) != SYMSXP) {
-            return function;
-        }
-
-        SEXP obj = Rf_findVarInFrame(r_rho, r_call_name);
-
-        if (obj == R_UnboundValue) {
-            return function;
-        }
-
-        if (obj == r_closure) {
-            update_name_(function, CHAR(PRINTNAME(r_call_name)), r_rho);
-        } else if (TYPEOF(obj) == PROMSXP) {
-            if (dyntrace_get_promise_value(obj) == r_closure ||
-                dyntrace_get_promise_expression(obj) == r_closure) {
-                update_name_(function, CHAR(PRINTNAME(r_call_name)), r_rho);
-            }
-        }
-
-        return function;
     }
 
     void update(SEXP r_value, const char* name, SEXP r_rho) {
@@ -123,6 +95,32 @@ class FunctionTable {
         return r_closure;
     }
 
+    SEXP infer_namespace_(SEXP r_package) {
+        if (r_package == R_BaseEnv) {
+            return R_BaseNamespace;
+        }
+
+        else if (r_package == R_GlobalEnv) {
+            return R_GlobalEnv;
+        }
+
+        else if (R_IsNamespaceEnv(r_package)) {
+            return r_package;
+        }
+
+        else if (R_IsPackageEnv(r_package)) {
+            const char* package_name =
+                CHAR(STRING_ELT(R_PackageEnvName(r_package), 0));
+            return Rf_findVarInFrame(
+                R_NamespaceRegistry,
+                Rf_install(package_name + strlen("package:")));
+        }
+
+        else {
+            return r_package;
+        }
+    }
+
     Function* get_or_create_(SEXP r_closure) {
         auto result = table_.find(r_closure);
 
@@ -141,12 +139,9 @@ class FunctionTable {
          * querying the namespace registry with the package name (without the
          * "package:" prefix)*/
         if (R_IsPackageEnv(r_rho)) {
-            const char* package_name =
-                CHAR(STRING_ELT(R_PackageEnvName(r_rho), 0));
-            r_rho = Rf_findVarInFrame(
-                R_NamespaceRegistry,
-                Rf_install(package_name + strlen("package:")));
+            r_rho = infer_namespace_(r_rho);
         }
+
         SEXP r_lexenv = CLOENV(function->get_op());
 
         /* function has a name in its lexical env */
