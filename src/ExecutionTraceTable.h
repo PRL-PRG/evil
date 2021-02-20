@@ -7,7 +7,7 @@
 
 class ExecutionTraceTable: public Table {
   public:
-    ExecutionTraceTable(): Table("execution-trace") {
+    ExecutionTraceTable(): Table("trace") {
     }
 
     void
