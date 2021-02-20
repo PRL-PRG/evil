@@ -31,14 +31,14 @@ class ExecutionTraceAnalysis: public Analysis {
             table_.record(depth_, "ext", get_full_function_name_(function));
         }
 
-        else if (event_type == Event::Type::VariableDefinition) {
+        else if (event_type == Event::Type::VariableDefinition ||
+                 event_type == Event::Type::VariableAssignment) {
             std::string varname = CHAR(PRINTNAME(event.get_variable()));
-            table_.record(depth_, "def", varname);
-        }
-
-        else if (event_type == Event::Type::VariableAssignment) {
-            std::string varname = CHAR(PRINTNAME(event.get_variable()));
-            table_.record(depth_, "asn", varname);
+            /* ignore *tmp* used by R internals for intermediate computation */
+            if (is_tmp_val_symbol_(varname)) {
+                return;
+            }
+            table_.record(depth_, event.get_short_name(), varname);
         }
     }
 
@@ -67,6 +67,10 @@ class ExecutionTraceAnalysis: public Analysis {
         full_name.append(name);
 
         return full_name;
+    }
+
+    bool is_tmp_val_symbol_(const std::string& name) {
+        return name == "*tmp*";
     }
 };
 

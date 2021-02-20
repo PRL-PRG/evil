@@ -3,24 +3,27 @@
 std::string event_type_to_string(const Event::Type& event_type) {
     switch (event_type) {
     case Event::Type::EvalEntry:
-        return "eval_entry";
+        return "eve";
     case Event::Type::ClosureCallEntry:
-        return "closure_call_entry";
+        return "ent";
     case Event::Type::ClosureCallExit:
-        return "closure_call_exit";
-    case Event::Type::GcAllocation:
-        return "gc_allocation";
+        return "ext";
     case Event::Type::VariableDefinition:
-        return "variable_definition";
+        return "def";
     case Event::Type::VariableAssignment:
-        return "variable_assignment";
+        return "asn";
     case Event::Type::VariableRemoval:
-        return "variable_removal";
+        return "rvl";
     case Event::Type::VariableLookup:
-        return "variable_lookup";
+        return "lkp";
+    case Event::Type::GcAllocation:
+        return "gca";
     }
-
     return "unhandled";
+}
+
+std::string Event::get_short_name() const {
+    return event_type_to_string(type_);
 }
 
 Event Event::closure_call_entry(SEXP r_call, SEXP r_rho) {

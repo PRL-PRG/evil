@@ -103,6 +103,8 @@ class Event {
         return library;
     }
 
+    std::string get_short_name() const;
+
     static Event eval_entry(SEXP r_expression, SEXP r_rho);
 
     static Event closure_call_entry(SEXP r_call, SEXP r_rho);

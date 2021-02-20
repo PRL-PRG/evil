@@ -11,7 +11,7 @@ class ExecutionTraceTable: public Table {
     }
 
     void
-    record(int depth, const char* event, const std::string& argument) {
+    record(int depth, const std::string& event, const std::string& argument) {
         depths_.push_back(depth);
         events_.push_back(event);
         arguments_.push_back(argument);
