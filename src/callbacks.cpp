@@ -276,13 +276,17 @@ void gc_allocation_callback(ContextSPtr context,
 void gc_unmark_callback(ContextSPtr context,
                         ApplicationSPtr application,
                         SEXP r_object) {
-    if (TYPEOF(r_object) == CLOSXP) {
-        SEXP r_data = context->get_data();
-
-        TracerState& tracer_state = *get_tracer_state(r_data);
-
-        FunctionTable& function_table = tracer_state.get_function_table();
-
-        function_table.remove(r_object);
-    }
+    /* NOTE: this causes deletion of Function objects
+       which can still be referenced by Call objects on stack.
+       This leads to segfaults on some program executions.
+    */
+    //if (TYPEOF(r_object) == CLOSXP) {
+    //    SEXP r_data = context->get_data();
+    //
+    //    TracerState& tracer_state = *get_tracer_state(r_data);
+    //
+    //    FunctionTable& function_table = tracer_state.get_function_table();
+    //
+    //    function_table.remove(r_object);
+    //}
 }
