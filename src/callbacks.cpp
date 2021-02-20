@@ -104,7 +104,7 @@ void eval_entry_callback(ContextSPtr context,
 
 void variable_definition_callback(ContextSPtr context,
                                   ApplicationSPtr application,
-                                  SEXP r_variable,
+                                  SEXP r_symbol,
                                   SEXP r_value,
                                   SEXP r_rho) {
     SEXP r_data = context->get_data();
@@ -113,9 +113,9 @@ void variable_definition_callback(ContextSPtr context,
 
     FunctionTable& function_table = tracer_state.get_function_table();
 
-    function_table.update(r_value, CHAR(STRING_ELT(r_variable, 0)), r_rho);
+    function_table.update(r_value, CHAR(PRINTNAME(r_symbol)), r_rho);
 
-    Event event = Event::variable_definition(r_variable, r_value, r_rho);
+    Event event = Event::variable_definition(r_symbol, r_value, r_rho);
 
     tracer_state.analyze(event);
 
@@ -126,7 +126,7 @@ void variable_definition_callback(ContextSPtr context,
 
 void variable_assignment_callback(ContextSPtr context,
                                   ApplicationSPtr application,
-                                  SEXP r_variable,
+                                  SEXP r_symbol,
                                   SEXP r_value,
                                   SEXP r_rho) {
     SEXP r_data = context->get_data();
@@ -135,9 +135,9 @@ void variable_assignment_callback(ContextSPtr context,
 
     FunctionTable& function_table = tracer_state.get_function_table();
 
-    function_table.update(r_value, CHAR(STRING_ELT(r_variable, 0)), r_rho);
+    function_table.update(r_value, CHAR(PRINTNAME(r_symbol)), r_rho);
 
-    Event event = Event::variable_assignment(r_variable, r_value, r_rho);
+    Event event = Event::variable_assignment(r_symbol, r_value, r_rho);
 
     tracer_state.analyze(event);
 
@@ -148,13 +148,13 @@ void variable_assignment_callback(ContextSPtr context,
 
 void variable_removal_callback(ContextSPtr context,
                                ApplicationSPtr application,
-                               SEXP r_variable,
+                               SEXP r_symbol,
                                SEXP r_rho) {
     SEXP r_data = context->get_data();
 
     TracerState& tracer_state = *get_tracer_state(r_data);
 
-    Event event = Event::variable_removal(r_variable, r_rho);
+    Event event = Event::variable_removal(r_symbol, r_rho);
 
     for (Analysis* analysis: get_analyses(r_data)) {
         analysis->analyze(tracer_state, event);
@@ -163,7 +163,7 @@ void variable_removal_callback(ContextSPtr context,
 
 void variable_lookup_callback(ContextSPtr context,
                               ApplicationSPtr application,
-                              SEXP r_variable,
+                              SEXP r_symbol,
                               SEXP r_value,
                               SEXP r_rho) {
     SEXP r_data = context->get_data();
@@ -172,9 +172,9 @@ void variable_lookup_callback(ContextSPtr context,
 
     FunctionTable& function_table = tracer_state.get_function_table();
 
-    function_table.update(r_value, CHAR(STRING_ELT(r_variable, 0)), r_rho);
+    function_table.update(r_value, CHAR(PRINTNAME(r_symbol)), r_rho);
 
-    Event event = Event::variable_lookup(r_variable, r_value, r_rho);
+    Event event = Event::variable_lookup(r_symbol, r_value, r_rho);
 
     tracer_state.analyze(event);
 

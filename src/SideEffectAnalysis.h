@@ -35,7 +35,7 @@ class SideEffectAnalysis: public Analysis {
 
         int eval_call_id = tracer_state.get_last_eval_call_id();
         SEXP r_variable = event.get_variable();
-        const char* variable = CHAR(STRING_ELT(r_variable, 0));
+        const char* variable = CHAR(PRINTNAME(r_variable));
 
         if (event_type == Event::Type::VariableLookup) {
             SEXP r_value = event.get_value();

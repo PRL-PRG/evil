@@ -32,12 +32,12 @@ class ExecutionTraceAnalysis: public Analysis {
         }
 
         else if (event_type == Event::Type::VariableDefinition) {
-            std::string varname = CHAR(STRING_ELT(event.get_variable(), 0));
+            std::string varname = CHAR(PRINTNAME(event.get_variable()));
             table_.record(depth_, "def", varname);
         }
 
         else if (event_type == Event::Type::VariableAssignment) {
-            std::string varname = CHAR(STRING_ELT(event.get_variable(), 0));
+            std::string varname = CHAR(PRINTNAME(event.get_variable()));
             table_.record(depth_, "asn", varname);
         }
     }
