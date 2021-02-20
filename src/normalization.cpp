@@ -716,12 +716,13 @@ SEXP r_normalize(SEXP hash, SEXP ast, SEXP trimmed_str) {
     } else if (c.has_assigns)             std::cout << "<-";
     else if (c.has_var)                   std::cout << "X";
     else if(c.has_block)                  std::cout << "{BLOCK}";
+    else if(c.has_bracket)                std::cout << "[]";
     else {
       std::cout << "ERROR " << str
 		<< " has_var=" << c.has_var
 		<< " has_assigns=" << c.has_assigns
 		<< " has_dollar=" << c.has_dollar
-		<< " has_calls" << c.has_calls;
+		<< " has_calls=" << c.has_calls;
     }
   } else {
     if (c.has_user_call)                  std::cout << "F(F(";
