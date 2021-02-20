@@ -18,8 +18,10 @@ class ExecutionTraceAnalysis: public Analysis {
         if (event_type == Event::Type::ClosureCallEntry) {
             const Stack& stack = tracer_state.get_stack();
             const StackFrame& frame = stack.peek();
-            const Function* function = frame.as_call()->get_function();
-            table_.record(depth_, "ent", get_full_function_name_(function));
+            const Call* call = frame.as_call();
+            const Function* function = call->get_function();
+            table_.record(
+                depth_, call->get_id(), "ent", function->get_qualified_name());
             ++depth_;
         }
 
@@ -27,8 +29,10 @@ class ExecutionTraceAnalysis: public Analysis {
             --depth_;
             const Stack& stack = tracer_state.get_stack();
             const StackFrame& frame = stack.peek();
-            const Function* function = frame.as_call()->get_function();
-            table_.record(depth_, "ext", get_full_function_name_(function));
+            const Call* call = frame.as_call();
+            const Function* function = call->get_function();
+            table_.record(
+                depth_, call->get_id(), "ext", function->get_qualified_name());
         }
 
         else if (event_type == Event::Type::VariableDefinition ||
@@ -38,7 +42,7 @@ class ExecutionTraceAnalysis: public Analysis {
             if (is_tmp_val_symbol_(varname)) {
                 return;
             }
-            table_.record(depth_, event.get_short_name(), varname);
+            table_.record(depth_, NA_INTEGER, event.get_short_name(), varname);
         }
     }
 
@@ -49,25 +53,6 @@ class ExecutionTraceAnalysis: public Analysis {
   private:
     ExecutionTraceTable table_;
     int depth_;
-
-    std::string get_full_function_name_(const Function* function) {
-        std::string full_name("");
-
-        if (function->has_package_name()) {
-            full_name.append(function->get_package_name());
-            full_name.append("::");
-        }
-
-        std::string name("<unknown>");
-
-        if (function->has_name()) {
-            name = function->get_name();
-        }
-
-        full_name.append(name);
-
-        return full_name;
-    }
 
     bool is_tmp_val_symbol_(const std::string& name) {
         return name == "*tmp*";

@@ -57,6 +57,12 @@ SEXP r_tracer_data_initialize(SEXP r_data) {
     return R_NilValue;
 }
 
+SEXP r_function_table_initialize(SEXP r_data) {
+    TracerState* state = get_tracer_state(r_data);
+    state->get_function_table().initialize();
+    return R_NilValue;
+}
+
 TracerState* get_tracer_state(SEXP r_data) {
     SEXP r_state = Rf_findVarInFrame(r_data, TracerStateSymbol);
     return unwrap<TracerState>(r_state);
@@ -116,22 +122,21 @@ SEXP r_tracer_data_finalize(SEXP r_data) {
     return r_table_list;
 }
 
-SEXP r_tracer_data_push_eval_call(SEXP r_data,
-                                  SEXP r_call_id,
-                                  SEXP r_env,
-                                  SEXP r_frame_depth) {
+SEXP r_tracer_data_eval_call_entry(SEXP r_data,
+                                   SEXP r_call_id,
+                                   SEXP r_env,
+                                   SEXP r_frame_depth) {
     TracerState* state = get_tracer_state(r_data);
     int call_id = asInteger(r_call_id);
     int frame_depth = asInteger(r_frame_depth);
 
-    state->push_eval_call(call_id, r_env, frame_depth);
+    state->set_eval_call_info(call_id, r_env, frame_depth);
 
     return R_NilValue;
 }
 
-SEXP r_tracer_data_pop_eval_call(SEXP r_data) {
+SEXP r_tracer_data_eval_call_exit(SEXP r_data) {
     TracerState* state = get_tracer_state(r_data);
-    int interp_eval = state->pop_eval_call();
-
+    int interp_eval = state->pop_interp_eval_count();
     return ScalarInteger(interp_eval);
 }

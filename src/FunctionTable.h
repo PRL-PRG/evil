@@ -7,6 +7,9 @@
 class FunctionTable {
   public:
     FunctionTable() {
+    }
+
+    void initialize() {
         for (SEXP r_rho = R_GlobalEnv; r_rho != R_EmptyEnv;
              r_rho = ENCLOS(r_rho)) {
             SEXP r_namespace = infer_namespace_(r_rho);
@@ -16,9 +19,27 @@ class FunctionTable {
             for (int i = 0; i < Rf_length(r_names); ++i) {
                 const char* name = CHAR(STRING_ELT(r_names, i));
                 SEXP r_obj = Rf_findVarInFrame(r_namespace, Rf_install(name));
+
                 update(r_obj, name, r_namespace);
             }
         }
+
+        set_function_type_("eval", Function::Type::Eval);
+        set_function_type_("evalq", Function::Type::EvalQ);
+        set_function_type_("eval.parent", Function::Type::EvalParent);
+        set_function_type_("local", Function::Type::Local);
+    }
+
+    void set_function_type_(const char* name, Function::Type type) {
+        SEXP r_fun = unwrap_function_(
+            Rf_findVarInFrame(R_BaseNamespace, Rf_install(name)));
+
+        if (TYPEOF(r_fun) != CLOSXP) {
+            Rf_error("set_function_type_: expected CLOSXP after unwrapping");
+        }
+
+        Function* fun = lookup(r_fun);
+        fun->set_type(type);
     }
 
     ~FunctionTable() {
@@ -33,7 +54,6 @@ class FunctionTable {
         auto result = table_.insert({r_closure, function});
 
         if (!result.second) {
-            delete result.first->second;
             result.first->second = function;
         }
     }
