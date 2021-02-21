@@ -3,6 +3,7 @@
 
 #include <R.h>
 #include <Rinternals.h>
+#include "Function.h"
 
 class FunctionTable {
   public:
@@ -72,18 +73,21 @@ class FunctionTable {
 
     ~FunctionTable() {
         for (auto& it: table_) {
-            delete it.second;
+            Function::dec_ref(it.second);
         }
     }
 
-    void insert(SEXP r_closure) {
+    Function* insert(SEXP r_closure) {
         Function* function = new Function(r_closure);
 
         auto result = table_.insert({r_closure, function});
 
         if (!result.second) {
+            Function::dec_ref(result.first->second);
             result.first->second = function;
         }
+
+        return function;
     }
 
     void remove(SEXP r_closure) {
@@ -92,7 +96,7 @@ class FunctionTable {
         if (result != table_.end()) {
             Function* function = result->second;
             table_.erase(result);
-            delete function;
+            Function::dec_ref(function);
         }
     }
 

@@ -2,6 +2,8 @@
 #define EVIL_FUNCTION_H
 
 #include <string>
+#include <climits>
+#include "Rdyntrace.h"
 
 class Function {
   public:
@@ -18,15 +20,19 @@ class Function {
         UnloadNamespace = 512,
         LazyLoad = 1024,
         LazyLoadDbExec = 2048,
-        Other = 4096,
+        NewEnv = 4096,
+        List2Env = 8192,
+        Other = 16384,
         EvalFamily = Eval | EvalQ | EvalParent | Local,
         PackageFamily = Library | Require | AttachNamespace | LoadNamespace |
                         RequireNamespace | UnloadNamespace | LazyLoad |
                         LazyLoadDbExec,
+        EnvironmentFamily = NewEnv | List2Env,
         Any = INT_MAX
     };
 
-    explicit Function(SEXP r_op): r_op_(r_op), identity_(Identity::Other) {
+    explicit Function(SEXP r_op)
+        : r_op_(r_op), identity_(Identity::Other), ref_(1) {
         type_ = TYPEOF(r_op);
 
         if (type_ == BUILTINSXP || type_ == SPECIALSXP) {
@@ -129,12 +135,20 @@ class Function {
         return (int) (identity_) & (int) (identity);
     }
 
+    static void inc_ref(Function* function);
+
+    static void dec_ref(Function* function);
+
   private:
     SEXP r_op_;
     SEXPTYPE type_;
     std::string name_;
     std::string package_name_;
     Identity identity_;
+    int ref_;
+
+    ~Function() {
+    }
 };
 
 #endif /* EVIL_FUNCTION_H */

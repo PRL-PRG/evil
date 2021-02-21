@@ -15,6 +15,8 @@ class ExecutionTraceAnalysis: public Analysis {
     void analyze(TracerState& tracer_state, Event& event) override {
         Event::Type event_type = event.get_type();
         Stack& stack = tracer_state.get_stack();
+        EnvironmentTable& environment_table =
+            tracer_state.get_environment_table();
 
         /* ignore side effects happening in package functions */
         if (stack.peek_call(0, Function::Identity::PackageFamily)) {
@@ -41,6 +43,8 @@ class ExecutionTraceAnalysis: public Analysis {
 
         else if (event_type == Event::Type::VariableDefinition ||
                  event_type == Event::Type::VariableAssignment) {
+            SEXP r_rho = event.get_rho();
+
             std::string varname = CHAR(PRINTNAME(event.get_variable()));
 
             /* ignore *tmp* used by R internals for intermediate computation */
@@ -48,7 +52,23 @@ class ExecutionTraceAnalysis: public Analysis {
                 return;
             }
 
-            table_.record(depth_, NA_INTEGER, event.get_short_name(), varname);
+            int eval_count = stack.count_call(Function::Identity::EvalFamily);
+
+            /* if we are not inside eval, then exit */
+            if (eval_count == 0) {
+                return;
+            }
+
+            for (int i = 0; i < eval_count; ++i) {
+                Call* eval_call =
+                    stack.peek_call(i, Function::Identity::EvalFamily);
+                Environment* environment = environment_table.lookup(r_rho);
+                if (environment->get_parent_eval_id() < eval_call->get_id()) {
+                    table_.record(
+                        depth_, NA_INTEGER, event.get_short_name(), varname);
+                    return;
+                }
+            }
         }
     }
 

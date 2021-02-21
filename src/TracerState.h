@@ -7,6 +7,7 @@
 #include "Function.h"
 #include "Stack.h"
 #include "FunctionTable.h"
+#include "EnvironmentTable.h"
 
 class TracerState {
   private:
@@ -22,10 +23,6 @@ class TracerState {
         add_environment_(R_BaseNamespace, "package:base", 0);
     }
 
-    FunctionTable& get_function_table() {
-        return function_table_;
-    }
-
     Stack& get_stack() {
         return stack_;
     }
@@ -34,8 +31,12 @@ class TracerState {
         return stack_;
     }
 
-    int get_current_frame_depth() {
-        return dyntrace_get_frame_depth();
+    FunctionTable& get_function_table() {
+        return function_table_;
+    }
+
+    EnvironmentTable& get_environment_table() {
+        return environment_table_;
     }
 
     int get_last_eval_call_id() {
@@ -86,24 +87,31 @@ class TracerState {
 
         if (event_type == Event::Type::GcAllocation) {
             SEXP r_object = event.get_object();
-            if (TYPEOF(r_object) == CLOSXP) {
-                FunctionTable& function_table = get_function_table();
-
-                function_table.insert(r_object);
+            switch (TYPEOF(r_object)) {
+            case CLOSXP:
+                get_function_table().insert(r_object);
+                break;
+            case ENVSXP:
+                get_environment_table().insert(r_object)->set_parent_eval_id(
+                    get_last_eval_call_id());
+                break;
+            default:
+                break;
             }
         }
 
         else if (event_type == Event::Type::GcUnmark) {
-            /* NOTE: this causes deletion of Function objects which can still be
-             * referenced by Call objects on stack. This leads to segfaults on
-             * some program executions. */
-            // SEXP r_object = event.get_object();
-            // if (TYPEOF(r_object) == CLOSXP) {
-            //    FunctionTable& function_table =
-            //        tracer_state.get_function_table();
-            //
-            //    function_table.remove(r_object);
-            //}
+            SEXP r_object = event.get_object();
+            switch (TYPEOF(r_object)) {
+            case CLOSXP:
+                get_function_table().remove(r_object);
+                break;
+            case ENVSXP:
+                get_environment_table().remove(r_object);
+                break;
+            default:
+                break;
+            }
         }
 
         else if (event_type == Event::Type::ContextEntry) {
@@ -141,16 +149,16 @@ class TracerState {
             SEXP r_args = event.get_args();
             SEXP r_rho = event.get_rho();
 
-            const char* name = get_call_name(r_call);
-            add_environment_(r_rho, std::string("function:") + name);
-
             Stack& stack = get_stack();
             Function* function = get_function_table().lookup(r_op);
 
-            StackFrame frame = StackFrame::from_call(
-                new Call(function, r_call, r_args, r_rho, stack.size()));
+            Call* call =
+                new Call(function, r_call, r_args, r_rho, stack.size());
+            StackFrame frame = StackFrame::from_call(call);
 
             stack.push(frame);
+
+            get_environment_table().lookup(r_rho)->set_call_source(call);
 
         }
 
@@ -160,12 +168,6 @@ class TracerState {
             SEXP r_args = event.get_args();
             SEXP r_rho = event.get_rho();
             SEXP r_result = event.get_result();
-
-            if (event.is_call_to("new.env")) {
-                set_envkind_(r_result, "explicit:new.env");
-            } else if (event.is_call_to("list2env")) {
-                set_envkind_(r_result, "explicit:list2env");
-            }
 
             Stack& stack = get_stack();
             StackFrame frame = stack.pop();
@@ -182,11 +184,21 @@ class TracerState {
                 }
             }
 
-            if (call->get_function()->has_identity(Function::Identity::Eval)) {
+            call->set_status(Call::Status::Inactive);
+
+            Function* function = call->get_function();
+
+            if (function->has_identity(Function::Identity::EnvironmentFamily)) {
+                Environment* env = get_environment_table().lookup(r_result);
+                env->set_explicit_source(call);
+            }
+
+            else if (call->get_function()->has_identity(
+                         Function::Identity::Eval)) {
                 interp_eval_counts_.push_back(call->get_interp_eval_count());
             }
 
-            delete call;
+            Call::dec_ref(call);
         }
     }
 
@@ -208,6 +220,7 @@ class TracerState {
 
   private:
     FunctionTable function_table_;
+    EnvironmentTable environment_table_;
 
     Stack stack_;
 
@@ -215,9 +228,10 @@ class TracerState {
 
     std::unordered_map<SEXP, env_info_t> environments_;
 
-    /* NOTE: this function serves the dual purpose of looking up or inserting
-     * and looking up. For this, it leverages the fact that insert only inserts
-     * if the key is not already in map. Otherwise, it returns an iterator to
+    /* NOTE: this function serves the dual purpose of looking up
+     * or inserting and looking up. For this, it leverages the
+     * fact that insert only inserts if the key is not already
+     * in map. Otherwise, it returns an iterator to
      * the existing binding.   */
     std::unordered_map<SEXP, env_info_t>::iterator
     add_environment_(SEXP r_env,
@@ -232,14 +246,6 @@ class TracerState {
             result.first->second.envkind = envkind;
         }
         return result.first;
-    }
-
-    void set_envkind_(SEXP r_env, const std::string& envkind) {
-        env_info_t env_info{get_last_eval_call_id(), envkind};
-        auto result = environments_.insert({r_env, env_info});
-        if (!result.second) {
-            result.first->second.envkind = envkind;
-        }
     }
 };
 

@@ -218,6 +218,7 @@ void context_jump_callback(ContextSPtr context,
             SEXP r_rho = call->get_environment();
 
             if (call->get_function()->get_type() == CLOSXP) {
+                call->set_status(Call::Status::Interrupted);
                 closure_call_exit_callback(
                     context, application, r_call, r_op, r_args, r_rho, NULL);
             }
