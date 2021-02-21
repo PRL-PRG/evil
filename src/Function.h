@@ -16,10 +16,13 @@ class Function {
         LoadNamespace = 128,
         RequireNamespace = 256,
         UnloadNamespace = 512,
-        Other = 1024,
+        LazyLoad = 1024,
+        LazyLoadDbExec = 2048,
+        Other = 4096,
         EvalFamily = Eval | EvalQ | EvalParent | Local,
         PackageFamily = Library | Require | AttachNamespace | LoadNamespace |
-                        RequireNamespace | UnloadNamespace,
+                        RequireNamespace | UnloadNamespace | LazyLoad |
+                        LazyLoadDbExec,
         Any = INT_MAX
     };
 
