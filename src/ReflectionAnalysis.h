@@ -21,7 +21,7 @@ class ReflectionAnalysis: public Analysis {
         SEXP r_rho = event.get_rho();
 
         Stack& stack = tracer_state.get_stack();
-        Call* call = stack.peek_call(0, Function::Type::Eval);
+        Call* call = stack.peek_call(0, Function::Identity::Eval);
 
         int current_frame_depth = stack.size();
         int eval_call_id = 0;

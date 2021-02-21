@@ -14,9 +14,14 @@ class ExecutionTraceAnalysis: public Analysis {
 
     void analyze(TracerState& tracer_state, Event& event) override {
         Event::Type event_type = event.get_type();
+        Stack& stack = tracer_state.get_stack();
+
+        /* ignore side effects happening in package functions */
+        if (stack.peek_call(0, Function::Identity::PackageFamily)) {
+            return;
+        }
 
         if (event_type == Event::Type::ClosureCallEntry) {
-            const Stack& stack = tracer_state.get_stack();
             const StackFrame& frame = stack.peek();
             const Call* call = frame.as_call();
             const Function* function = call->get_function();
@@ -27,7 +32,6 @@ class ExecutionTraceAnalysis: public Analysis {
 
         else if (event_type == Event::Type::ClosureCallExit) {
             --depth_;
-            const Stack& stack = tracer_state.get_stack();
             const StackFrame& frame = stack.peek();
             const Call* call = frame.as_call();
             const Function* function = call->get_function();
@@ -38,10 +42,12 @@ class ExecutionTraceAnalysis: public Analysis {
         else if (event_type == Event::Type::VariableDefinition ||
                  event_type == Event::Type::VariableAssignment) {
             std::string varname = CHAR(PRINTNAME(event.get_variable()));
+
             /* ignore *tmp* used by R internals for intermediate computation */
             if (is_tmp_val_symbol_(varname)) {
                 return;
             }
+
             table_.record(depth_, NA_INTEGER, event.get_short_name(), varname);
         }
     }

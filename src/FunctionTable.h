@@ -24,22 +24,33 @@ class FunctionTable {
             }
         }
 
-        set_function_type_("eval", Function::Type::Eval);
-        set_function_type_("evalq", Function::Type::EvalQ);
-        set_function_type_("eval.parent", Function::Type::EvalParent);
-        set_function_type_("local", Function::Type::Local);
+        set_function_identity_("eval", Function::Identity::Eval);
+        set_function_identity_("evalq", Function::Identity::EvalQ);
+        set_function_identity_("eval.parent", Function::Identity::EvalParent);
+        set_function_identity_("local", Function::Identity::Local);
+        set_function_identity_("library", Function::Identity::Library);
+        set_function_identity_("require", Function::Identity::Require);
+        set_function_identity_("attachNamespace",
+                               Function::Identity::AttachNamespace);
+        set_function_identity_("loadNamespace",
+                               Function::Identity::LoadNamespace);
+        set_function_identity_("requireNamespace",
+                               Function::Identity::RequireNamespace);
+        set_function_identity_("unloadNamespace",
+                               Function::Identity::UnloadNamespace);
     }
 
-    void set_function_type_(const char* name, Function::Type type) {
+    void set_function_identity_(const char* name, Function::Identity identity) {
         SEXP r_fun = unwrap_function_(
             Rf_findVarInFrame(R_BaseNamespace, Rf_install(name)));
 
         if (TYPEOF(r_fun) != CLOSXP) {
-            Rf_error("set_function_type_: expected CLOSXP after unwrapping");
+            Rf_error(
+                "set_function_identity_: expected CLOSXP after unwrapping");
         }
 
         Function* fun = lookup(r_fun);
-        fun->set_type(type);
+        fun->set_identity(identity);
     }
 
     ~FunctionTable() {

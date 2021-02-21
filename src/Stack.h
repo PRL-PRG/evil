@@ -31,20 +31,21 @@ class Stack {
     }
 
     StackFrame& peek(std::size_t n = 0,
-                     Function::Type type = Function::Type::Any) {
+                     Function::Identity identity = Function::Identity::Any) {
         StackFrame& frame = stack_[stack_.size() - n - 1];
         return frame;
     }
 
-    const StackFrame& peek(std::size_t n = 0,
-                           Function::Type type = Function::Type::Any) const {
+    const StackFrame&
+    peek(std::size_t n = 0,
+         Function::Identity identity = Function::Identity::Any) const {
         const StackFrame& frame = stack_[stack_.size() - n - 1];
         return frame;
     }
 
     Call* peek_call(std::size_t n = 0,
-                    Function::Type type = Function::Type::Any) {
-        int index = get_call_index_(n, type);
+                    Function::Identity identity = Function::Identity::Any) {
+        int index = get_call_index_(n, identity);
 
         if (index < 0)
             return nullptr;
@@ -53,13 +54,13 @@ class Stack {
         return frame.as_call();
     }
 
-    int count_call(Function::Type type = Function::Type::Any) {
+    int count_call(Function::Identity identity = Function::Identity::Any) {
         int count = 0;
 
         for (int index = stack_.size() - 1; index >= 0; --index) {
             const StackFrame& frame = stack_[index];
             if (frame.is_call() &&
-                frame.as_call()->get_function()->has_type(type)) {
+                frame.as_call()->get_function()->has_identity(identity)) {
                 ++count;
             }
         }
@@ -70,12 +71,11 @@ class Stack {
   private:
     stack_frames_t stack_;
 
-    int get_call_index_(std::size_t n = 0,
-                        Function::Type type = Function::Type::Any) const {
+    int get_call_index_(std::size_t n, Function::Identity identity) const {
         for (int index = stack_.size() - 1; index >= 0; --index) {
             const StackFrame& frame = stack_[index];
             if (frame.is_call() &&
-                frame.as_call()->get_function()->has_type(type)) {
+                frame.as_call()->get_function()->has_identity(identity)) {
                 if (n == 0) {
                     return index;
                 }

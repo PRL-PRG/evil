@@ -5,9 +5,7 @@
 
 class Function;
 
-typedef std::vector<int> force_order_t;
-
-class Call {
+ class Call {
   public:
     Call(Function* function, SEXP r_call, SEXP r_args, SEXP r_rho, int depth)
         : function_(function)

@@ -40,7 +40,7 @@ class TracerState {
 
     int get_last_eval_call_id() {
         Stack& stack = get_stack();
-        Call* call = stack.peek_call(0, Function::Type::Eval);
+        Call* call = stack.peek_call(0, Function::Identity::Eval);
         if (call == nullptr) {
             return 0;
         }
@@ -129,7 +129,7 @@ class TracerState {
 
         else if (event_type == Event::Type::EvalEntry) {
             Stack& stack = get_stack();
-            Call* call = stack.peek_call(0, Function::Type::Eval);
+            Call* call = stack.peek_call(0, Function::Identity::Eval);
             if (call != nullptr) {
                 call->increment_interp_eval_count();
             }
@@ -182,7 +182,7 @@ class TracerState {
                 }
             }
 
-            if (call->get_function()->has_type(Function::Type::Eval)) {
+            if (call->get_function()->has_identity(Function::Identity::Eval)) {
                 interp_eval_counts_.push_back(call->get_interp_eval_count());
             }
 
@@ -192,7 +192,7 @@ class TracerState {
 
     void set_eval_call_info(int call_id, SEXP r_env, int frame_depth) {
         Stack& stack = get_stack();
-        Call* call = stack.peek_call(0, Function::Type::Eval);
+        Call* call = stack.peek_call(0, Function::Identity::Eval);
         if (call == nullptr) {
             Rf_error("set_eval_call_info: expected eval call on the stack");
         }

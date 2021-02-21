@@ -5,20 +5,28 @@
 
 class Function {
   public:
-    enum class Type {
+    enum class Identity {
         Eval = 1,
         EvalQ = 2,
         EvalParent = 4,
         Local = 8,
-        EvalFamily = 1 | 2 | 4 | 8,
-        Other = 16,
+        Library = 16,
+        Require = 32,
+        AttachNamespace = 64,
+        LoadNamespace = 128,
+        RequireNamespace = 256,
+        UnloadNamespace = 512,
+        Other = 1024,
+        EvalFamily = Eval | EvalQ | EvalParent | Local,
+        PackageFamily = Library | Require | AttachNamespace | LoadNamespace |
+                        RequireNamespace | UnloadNamespace,
         Any = INT_MAX
     };
 
-    explicit Function(SEXP r_op): r_op_(r_op), type_(Type::Other) {
-        optype_ = TYPEOF(r_op);
+    explicit Function(SEXP r_op): r_op_(r_op), identity_(Identity::Other) {
+        type_ = TYPEOF(r_op);
 
-        if (optype_ == BUILTINSXP || optype_ == SPECIALSXP) {
+        if (type_ == BUILTINSXP || type_ == SPECIALSXP) {
             package_name_ = "base";
             name_ = dyntrace_get_c_function_name(r_op);
         } else {
@@ -48,20 +56,20 @@ class Function {
         return r_op_;
     }
 
-    SEXPTYPE get_optype() const {
-        return optype_;
+    SEXPTYPE get_type() const {
+        return type_;
     }
 
     bool is_closure() const {
-        return optype_ == CLOSXP;
+        return type_ == CLOSXP;
     }
 
     bool is_special() const {
-        return optype_ == SPECIALSXP;
+        return type_ == SPECIALSXP;
     }
 
     bool is_builtin() const {
-        return optype_ == BUILTINSXP;
+        return type_ == BUILTINSXP;
     }
 
     bool has_name() const {
@@ -103,69 +111,27 @@ class Function {
         return qualified_name;
     }
 
-    bool is_eval_family() const {
-        return (int) (type_) | (int) (Type::EvalFamily);
+    void set_identity(Identity identity) {
+        identity_ = identity;
     }
 
-    bool is_eval() const {
-        return type_ == Type::Eval;
+    Function::Identity get_identity() const {
+        return identity_;
     }
 
-    bool is_eval_parent() const {
-        return type_ == Type::EvalParent;
-    }
+    bool has_identity(Function::Identity identity) const {
+        if (identity == identity_)
+            return true;
 
-    bool is_evalq() const {
-        return type_ == Type::EvalQ;
-    }
-
-    bool is_local() const {
-        return type_ == Type::Local;
-    }
-
-    bool is_other() const {
-        return type_ == Type::Other;
-    }
-
-    bool is_any() const {
-        return true;
-    }
-
-    void set_type(Type type) {
-        type_ = type;
-    }
-
-    Function::Type get_type() const {
-        return type_;
-    }
-
-    bool has_type(Function::Type type) const {
-        switch (type) {
-        case Type::Any:
-            return is_any();
-        case Type::Other:
-            return is_other();
-        case Type::Eval:
-            return is_eval();
-        case Type::EvalFamily:
-            return is_eval_family();
-        case Type::EvalQ:
-            return is_evalq();
-        case Type::EvalParent:
-            return is_eval_parent();
-        case Type::Local:
-            return is_local();
-        }
-
-        Rf_error("unhandled type");
+        return (int) (identity_) & (int) (identity);
     }
 
   private:
     SEXP r_op_;
-    SEXPTYPE optype_;
+    SEXPTYPE type_;
     std::string name_;
     std::string package_name_;
-    Type type_;
+    Identity identity_;
 };
 
 #endif /* EVIL_FUNCTION_H */

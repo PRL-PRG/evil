@@ -48,9 +48,9 @@ class SideEffectAnalysis: public Analysis {
             int eval_env_depth = NA_INTEGER;
             /* loop ignores first eval call because that is a dummy call
              * representing top-level  */
-            int eval_call_count = stack.count_call(Function::Type::Eval);
+            int eval_call_count = stack.count_call(Function::Identity::Eval);
             for (int i = 0; i < eval_call_count; ++i) {
-                Call* call = stack.peek_call(i, Function::Type::Eval);
+                Call* call = stack.peek_call(i, Function::Identity::Eval);
                 int call_id = call->get_id();
                 SEXP r_env = call->get_eval_environment();
 
