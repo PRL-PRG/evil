@@ -59,7 +59,7 @@ SEXP r_tracer_data_initialize(SEXP r_data) {
 
 SEXP r_function_table_initialize(SEXP r_data) {
     TracerState* state = get_tracer_state(r_data);
-    state->get_function_table().initialize();
+    state->get_function_table().handle_packages();
     return R_NilValue;
 }
 
@@ -139,4 +139,10 @@ SEXP r_tracer_data_eval_call_exit(SEXP r_data) {
     TracerState* state = get_tracer_state(r_data);
     int interp_eval = state->pop_interp_eval_count();
     return ScalarInteger(interp_eval);
+}
+
+SEXP r_tracer_data_add_package(SEXP r_data, SEXP r_package_name) {
+    TracerState* state = get_tracer_state(r_data);
+    state->get_function_table().handle_packages();
+    return R_NilValue;
 }

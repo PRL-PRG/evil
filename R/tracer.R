@@ -77,10 +77,19 @@ set_variable_callback_status <- function(context, status) {
 #' @importFrom instrumentr get_id get_frame_position
 application_load_callback <- function(context, application) {
 
-  ## NOTE: this set of counters is the global count of all operations.
-  ##       new entries on top of this will be specific to eval calls.
-  data <- get_data(context)
+    ## NOTE: this set of counters is the global count of all operations.
+    ##       new entries on top of this will be specific to eval calls.
+    data <- get_data(context)
     set_variable_callback_status(context, "deactivate")
+
+    .state$tracer_data_add_package <- function(pkgname, libname) {
+        .Call(C_tracer_data_add_package, data, pkgname)
+    }
+
+    installed_packages <- unname(installed.packages()[,1])
+    for(package in installed_packages) {
+        setHook(packageEvent(package, "onLoad"), .state$tracer_data_add_package, "append")
+    }
 }
 
 
@@ -101,6 +110,13 @@ application_unload_callback <- function(context, application) {
 
     data <- get_data(context)
     calls <- do.call(rbind, as.list(data$calls))
+
+
+    ## NOTE: remove package load hooks
+    installed_packages <- unname(installed.packages()[,1])
+    for(package in installed_packages) {
+        setHook(packageEvent(package, "onLoad"), NULL, "append")
+    }
 
     ## NOTE: if there are no eval calls, create an empty data frame
     ## with correct number of and type of columns

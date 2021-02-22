@@ -4,27 +4,12 @@
 #include <R.h>
 #include <Rinternals.h>
 #include "Function.h"
+#include <unordered_set>
+#include <unordered_map>
 
 class FunctionTable {
   public:
     FunctionTable() {
-    }
-
-    void initialize() {
-        for (SEXP r_rho = R_GlobalEnv; r_rho != R_EmptyEnv;
-             r_rho = ENCLOS(r_rho)) {
-            SEXP r_namespace = infer_namespace_(r_rho);
-
-            SEXP r_names = R_lsInternal(r_namespace, TRUE);
-
-            for (int i = 0; i < Rf_length(r_names); ++i) {
-                const char* name = CHAR(STRING_ELT(r_names, i));
-                SEXP r_obj = Rf_findVarInFrame(r_namespace, Rf_install(name));
-
-                update(r_obj, name, r_namespace);
-            }
-        }
-
         set_function_identity_(
             R_BaseNamespace, "eval", Function::Identity::Eval);
         set_function_identity_(
@@ -54,6 +39,42 @@ class FunctionTable {
         set_function_identity_(R_BaseNamespace,
                                "unloadNamespace",
                                Function::Identity::UnloadNamespace);
+    }
+
+    void handle_packages() {
+        SEXP r_package_names = R_lsInternal(R_NamespaceRegistry, TRUE);
+        for (int i = 0; i < Rf_length(r_package_names); ++i) {
+            const char* name = CHAR(STRING_ELT(r_package_names, i));
+            SEXP r_rho =
+                Rf_findVarInFrame(R_NamespaceRegistry, Rf_install(name));
+
+            if (TYPEOF(r_rho) != ENVSXP) {
+                continue;
+            }
+
+            SEXP r_namespace = infer_namespace_(r_rho);
+
+            std::string package_name = get_package_name_(r_namespace);
+
+            if (handled_packages_.find(package_name) !=
+                handled_packages_.end()) {
+                continue;
+            }
+
+            Rprintf("FunctionTable: handling package '%s'\n",
+                    package_name.c_str());
+
+            SEXP r_names = R_lsInternal(r_namespace, TRUE);
+
+            for (int i = 0; i < Rf_length(r_names); ++i) {
+                const char* name = CHAR(STRING_ELT(r_names, i));
+                SEXP r_obj = Rf_findVarInFrame(r_namespace, Rf_install(name));
+
+                update(r_obj, name, r_namespace);
+            }
+
+            handled_packages_.insert(package_name);
+        }
     }
 
     void set_function_identity_(SEXP r_rho,
@@ -122,6 +143,7 @@ class FunctionTable {
 
   private:
     std::unordered_map<SEXP, Function*> table_;
+    std::unordered_set<std::string> handled_packages_;
 
     SEXP unwrap_function_(SEXP r_value) {
         SEXP r_closure = R_NilValue;
@@ -202,6 +224,33 @@ class FunctionTable {
         }
 
         return function;
+    }
+
+    std::string get_package_name_(SEXP r_package_env) {
+        if (r_package_env == R_GlobalEnv) {
+            return "global";
+        }
+
+        else if (r_package_env == R_BaseEnv ||
+                 r_package_env == R_BaseNamespace) {
+            return "base";
+        }
+
+        else if (R_IsPackageEnv(r_package_env)) {
+            return CHAR(STRING_ELT(R_PackageEnvName(r_package_env), 0)) +
+                   strlen("package:");
+
+        }
+
+        else if (R_IsNamespaceEnv(r_package_env)) {
+            return CHAR(STRING_ELT(R_NamespaceEnvSpec(r_package_env), 0));
+        }
+
+        else {
+            return "<unknown>";
+            Rprintf("unable to get name of package environment %p\n",
+                    r_package_env);
+        }
     }
 };
 

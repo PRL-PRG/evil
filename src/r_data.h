@@ -16,7 +16,7 @@ SEXP r_tracer_data_eval_call_entry(SEXP r_data,
                                    SEXP r_frame_depth);
 SEXP r_tracer_data_eval_call_exit(SEXP r_data);
 SEXP r_function_table_initialize(SEXP r_data);
-
+SEXP r_tracer_data_add_package(SEXP r_data, SEXP r_package_name);
 #ifdef __cplusplus
 }
 #endif
