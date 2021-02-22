@@ -158,8 +158,13 @@ class TracerState {
 
             stack.push(frame);
 
-            get_environment_table().lookup(r_rho)->set_call_source(call);
+            Environment* env = get_environment_table().lookup(r_rho);
 
+            env->set_call_source(call);
+
+            if (function->has_identity(Function::Identity::EvalFamily)) {
+                env->set_receiver_eval_id(call->get_id());
+            }
         }
 
         else if (event_type == Event::Type::ClosureCallExit) {

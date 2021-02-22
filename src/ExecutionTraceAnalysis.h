@@ -26,9 +26,16 @@ class ExecutionTraceAnalysis: public Analysis {
         if (event_type == Event::Type::ClosureCallEntry) {
             const StackFrame& frame = stack.peek();
             const Call* call = frame.as_call();
+            Environment* env = environment_table.lookup(event.get_rho());
             const Function* function = call->get_function();
-            table_.record(
-                depth_, call->get_id(), "ent", function->get_qualified_name());
+            table_.record(depth_,
+                          call->get_id(),
+                          "ent",
+                          function->get_qualified_name(),
+                          env->get_id(),
+                          env->get_receiver_eval_id(),
+                          env->get_parent_eval_id(),
+                          env->get_formatted_source());
             ++depth_;
         }
 
@@ -36,15 +43,21 @@ class ExecutionTraceAnalysis: public Analysis {
             --depth_;
             const StackFrame& frame = stack.peek();
             const Call* call = frame.as_call();
+            Environment* env = environment_table.lookup(event.get_rho());
             const Function* function = call->get_function();
-            table_.record(
-                depth_, call->get_id(), "ext", function->get_qualified_name());
+            table_.record(depth_,
+                          call->get_id(),
+                          "ext",
+                          function->get_qualified_name(),
+                          env->get_id(),
+                          env->get_receiver_eval_id(),
+                          env->get_parent_eval_id(),
+                          env->get_formatted_source());
         }
 
         else if (event_type == Event::Type::VariableDefinition ||
                  event_type == Event::Type::VariableAssignment) {
             SEXP r_rho = event.get_rho();
-
             std::string varname = CHAR(PRINTNAME(event.get_variable()));
 
             /* ignore *tmp* used by R internals for intermediate computation */
@@ -64,8 +77,14 @@ class ExecutionTraceAnalysis: public Analysis {
                     stack.peek_call(i, Function::Identity::EvalFamily);
                 Environment* environment = environment_table.lookup(r_rho);
                 if (environment->get_parent_eval_id() < eval_call->get_id()) {
-                    table_.record(
-                        depth_, NA_INTEGER, event.get_short_name(), varname);
+                    table_.record(depth_,
+                                  NA_INTEGER,
+                                  event.get_short_name(),
+                                  varname,
+                                  environment->get_id(),
+                                  environment->get_receiver_eval_id(),
+                                  environment->get_parent_eval_id(),
+                                  environment->get_formatted_source());
                     return;
                 }
             }

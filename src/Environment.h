@@ -9,18 +9,23 @@ class Environment {
     enum class Source { Unknown, Package, Call, Explicit };
 
     explicit Environment(SEXP r_rho)
-        : r_rho_(r_rho)
+        : id_(Environment::get_next_id())
+        , r_rho_(r_rho)
         , source_(Source::Unknown)
         , call_(nullptr)
         , parent_eval_id_(0)
         , receiver_eval_id_(0)
         , ref_(1) {
-        //const char* name = get_package_name_(r_rho);
+        // const char* name = get_package_name_(r_rho);
         //
-        //if (name != nullptr) {
+        // if (name != nullptr) {
         //    source_ = Source::Package;
         //    package_name_ = name;
         //}
+    }
+
+    int get_id() const {
+        return id_;
     }
 
     SEXP get_env() {
@@ -29,6 +34,10 @@ class Environment {
 
     Source get_source() const {
         return source_;
+    }
+
+    Call* get_call() const {
+        return call_;
     }
 
     void set_call_source(Call* call) {
@@ -59,11 +68,28 @@ class Environment {
         parent_eval_id_ = parent_eval_id;
     }
 
+    std::string get_formatted_source() {
+        switch (get_source()) {
+        case Source::Unknown:
+            return "???";
+        case Source::Package:
+            return "package:";
+        case Source::Explicit:
+            return "explicit:" +
+                   get_call()->get_function()->get_qualified_name();
+        case Source::Call:
+            return "call:" + get_call()->get_function()->get_qualified_name();
+        }
+    }
+
     static void inc_ref(Environment* environment);
 
     static void dec_ref(Environment* environment);
 
+    static int get_next_id();
+
   private:
+    const int id_;
     SEXP r_rho_;
     Source source_;
     Call* call_;
