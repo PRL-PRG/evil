@@ -20,7 +20,7 @@ class EnvironmentTable {
     }
 
     Environment* insert(SEXP r_rho) {
-        Environment* environment = new Environment(r_rho);
+        Environment* environment = Environment::local(r_rho);
 
         auto result = table_.insert({r_rho, environment});
 
@@ -55,7 +55,7 @@ class EnvironmentTable {
         if (result != table_.end()) {
             return result->second;
         } else {
-            Environment* environment = new Environment(r_environment);
+            Environment* environment = Environment::foreign(r_environment);
             auto result = table_.insert({r_environment, environment});
             return environment;
         }

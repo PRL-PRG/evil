@@ -8,22 +8,6 @@ class Environment {
   public:
     enum class Source { Unknown, Package, Call, Explicit };
 
-    explicit Environment(SEXP r_rho)
-        : id_(Environment::get_next_id())
-        , r_rho_(r_rho)
-        , source_(Source::Unknown)
-        , call_(nullptr)
-        , parent_eval_id_(0)
-        , receiver_eval_id_(0)
-        , ref_(1) {
-        // const char* name = get_package_name_(r_rho);
-        //
-        // if (name != nullptr) {
-        //    source_ = Source::Package;
-        //    package_name_ = name;
-        //}
-    }
-
     int get_id() const {
         return id_;
     }
@@ -88,6 +72,10 @@ class Environment {
 
     static int get_next_id();
 
+    static Environment* local(SEXP r_rho);
+
+    static Environment* foreign(SEXP r_rho);
+
   private:
     const int id_;
     SEXP r_rho_;
@@ -96,6 +84,22 @@ class Environment {
     int receiver_eval_id_;
     int parent_eval_id_;
     int ref_;
+
+    Environment(int id, SEXP r_rho)
+        : id_(id)
+        , r_rho_(r_rho)
+        , source_(Source::Unknown)
+        , call_(nullptr)
+        , parent_eval_id_(0)
+        , receiver_eval_id_(0)
+        , ref_(1) {
+        // const char* name = get_package_name_(r_rho);
+        //
+        // if (name != nullptr) {
+        //    source_ = Source::Package;
+        //    package_name_ = name;
+        //}
+    }
 
     ~Environment() {
         if (call_ != nullptr) {
