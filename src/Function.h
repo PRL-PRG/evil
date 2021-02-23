@@ -135,17 +135,26 @@ class Function {
         return (int) (identity_) & (int) (identity);
     }
 
+    int get_parent_eval_id() const {
+        return parent_eval_id_;
+    }
+
+    void set_parent_eval_id(int eval_id) {
+        parent_eval_id_ = eval_id;
+    }
+
     static void inc_ref(Function* function);
 
     static void dec_ref(Function* function);
 
   private:
+    int ref_;
     SEXP r_op_;
     SEXPTYPE type_;
     std::string name_;
     std::string package_name_;
     Identity identity_;
-    int ref_;
+    int parent_eval_id_;
 
     ~Function() {
     }

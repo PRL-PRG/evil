@@ -87,17 +87,20 @@ class TracerState {
 
         if (event_type == Event::Type::GcAllocation) {
             SEXP r_object = event.get_object();
-            switch (TYPEOF(r_object)) {
-            case CLOSXP:
-                get_function_table().insert(r_object);
-                break;
-            case ENVSXP:
+            SEXPTYPE type = TYPEOF(r_object);
+
+            if (type == CLOSXP) {
+                Function* function = get_function_table().insert(r_object);
+                Call* call = get_stack().peek_call(0, Function::Identity::EvalFamily);
+                if (call != nullptr) {
+                    function->set_parent_eval_id(call->get_id());
+                }
+            }
+            else if (type == ENVSXP) {
                 get_environment_table().insert(r_object)->set_parent_eval_id(
                     get_last_eval_call_id());
-                break;
-            default:
-                break;
             }
+
         }
 
         else if (event_type == Event::Type::GcUnmark) {
