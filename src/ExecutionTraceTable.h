@@ -39,7 +39,7 @@ class ExecutionTraceTable: public Table {
              {"parent_eval_id", PROTECT(create_integer_vector(parent_eval_ids_))},
              {"source", PROTECT(create_character_vector(sources_))}});
 
-        UNPROTECT(7);
+        UNPROTECT(8);
 
         return r_data_frame;
     }
