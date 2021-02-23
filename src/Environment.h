@@ -24,6 +24,10 @@ class Environment {
         return call_;
     }
 
+    const std::string& get_package_name() {
+        return package_name_;
+    }
+
     void set_call_source(Call* call) {
         set_source_(Source::Call, call);
     }
@@ -57,7 +61,7 @@ class Environment {
         case Source::Unknown:
             return "???";
         case Source::Package:
-            return "package:";
+            return get_package_name();
         case Source::Explicit:
             return "explicit:" +
                    get_call()->get_function()->get_qualified_name();
@@ -81,6 +85,7 @@ class Environment {
     SEXP r_rho_;
     Source source_;
     Call* call_;
+    std::string package_name_;
     int receiver_eval_id_;
     int parent_eval_id_;
     int ref_;
@@ -90,15 +95,40 @@ class Environment {
         , r_rho_(r_rho)
         , source_(Source::Unknown)
         , call_(nullptr)
+        , package_name_("")
         , parent_eval_id_(0)
         , receiver_eval_id_(0)
         , ref_(1) {
-        // const char* name = get_package_name_(r_rho);
-        //
-        // if (name != nullptr) {
-        //    source_ = Source::Package;
-        //    package_name_ = name;
-        //}
+        std::string name = get_package_name_(r_rho);
+
+        if (!name.empty()) {
+            source_ = Source::Package;
+            package_name_ = name;
+        }
+    }
+
+    std::string get_package_name_(SEXP r_rho) {
+        if (r_rho == R_GlobalEnv) {
+            return "global";
+        }
+
+        else if (r_rho == R_BaseEnv) {
+            return "package:base";
+        }
+
+        else if (r_rho == R_BaseNamespace) {
+            return "namespace:base";
+        }
+
+        else if (R_IsPackageEnv(r_rho)) {
+            return CHAR(STRING_ELT(R_PackageEnvName(r_rho), 0));
+        }
+
+        else if (R_IsNamespaceEnv(r_rho)) {
+            return CHAR(STRING_ELT(R_NamespaceEnvSpec(r_rho), 0));
+        }
+
+        return "";
     }
 
     ~Environment() {
