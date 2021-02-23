@@ -2,7 +2,6 @@
 #include "data.h"
 #include "ReflectionAnalysis.h"
 #include "CodeAnalysis.h"
-#include "SideEffectAnalysis.h"
 #include "ExecutionTraceAnalysis.h"
 
 template <typename T>
@@ -35,7 +34,6 @@ void initialize_tracer_state(SEXP r_data) {
 void initialize_tracer_analyses(SEXP r_data) {
     std::vector<SEXP> analyses = {wrap(new ReflectionAnalysis()),
                                   wrap(new CodeAnalysis()),
-                                  wrap(new SideEffectAnalysis()),
                                   wrap(new ExecutionTraceAnalysis())};
 
     int count = analyses.size();
