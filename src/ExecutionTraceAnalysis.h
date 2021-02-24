@@ -78,15 +78,6 @@ class ExecutionTraceAnalysis: public Analysis {
             int parent_eval_id = environment->get_parent_eval_id();
             bool transitive = false;
 
-            trace_table_.record(depth_,
-                                NA_INTEGER,
-                                event.get_short_name(),
-                                varname,
-                                environment->get_id(),
-                                environment->get_receiver_eval_id(),
-                                environment->get_parent_eval_id(),
-                                environment->get_formatted_source());
-
             for (int i = 0; i < eval_count; ++i) {
                 Call* eval_call =
                     stack.peek_call(i, Function::Identity::EvalFamily);
@@ -100,6 +91,20 @@ class ExecutionTraceAnalysis: public Analysis {
                                          environment->get_parent_eval_id(),
                                          environment->get_receiver_eval_id(),
                                          environment->get_formatted_source());
+
+                    /* output the trace first time */
+                    if (i == 0) {
+                        trace_table_.record(
+                            depth_,
+                            NA_INTEGER,
+                            event.get_short_name(),
+                            varname,
+                            environment->get_id(),
+                            environment->get_receiver_eval_id(),
+                            environment->get_parent_eval_id(),
+                            environment->get_formatted_source());
+                    }
+
                 } else {
                     break;
                 }
