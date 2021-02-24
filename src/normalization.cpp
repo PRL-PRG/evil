@@ -615,6 +615,9 @@ public:
   bool has_dollar = false;
   bool has_user_call = false;
   bool has_block = false;
+  bool has_meta_op = false;
+
+  inline static std::array<const char*, 4> meta_op{{"substitute", "quote", "bquote", "enquote"}};
 
   bool boring() {
     return is_ignore || is_value || has_calls <= 1;
@@ -641,6 +644,8 @@ public:
       has_dollar = true;
     } else if (x->eq_name("{")) {
       has_block = true;
+    } else if (in(x->get_name(), meta_op.begin(), meta_op.size())) {
+      has_meta_op = true;
     } else if (x->eq_name("[[") || x->eq_name("[")) {
       has_bracket = true;
     } else if (x->kind() == NamedOp || x->kind() == ListVecOp || x->kind() == UnknownOp) {
@@ -688,6 +693,7 @@ SEXP r_normalize(SEXP hash, SEXP ast, SEXP trimmed_str) {
                 << "has_dollar, "
                 << "has_user_call, "
                 << "has_block, "
+                << "has_meta_op, "
                 << "normalized, "
                 << "trimmed, "
                 << "hash" << std::endl;
@@ -744,6 +750,7 @@ SEXP r_normalize(SEXP hash, SEXP ast, SEXP trimmed_str) {
       << ", " << c.has_dollar
       << ", " << c.has_user_call
 	    << ", " << c.has_block
+      << ", " << c.has_meta_op
       << ", \"" << str << "\""
       << ", \"" << CHAR(STRING_ELT(trimmed_str, 0)) <<  "\""
       << ", " << CHAR(STRING_ELT(hash,0))
