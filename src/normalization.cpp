@@ -646,6 +646,7 @@ public:
       has_block = true;
     } else if (in(x->get_name(), meta_op.begin(), meta_op.size())) {
       has_meta_op = true;
+      has_user_call = true;
     } else if (x->eq_name("[[") || x->eq_name("[")) {
       has_bracket = true;
     } else if (x->kind() == NamedOp || x->kind() == ListVecOp || x->kind() == UnknownOp) {
