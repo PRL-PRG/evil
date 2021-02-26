@@ -10,35 +10,7 @@
 class FunctionTable {
   public:
     FunctionTable() {
-        set_function_identity_(
-            R_BaseNamespace, "eval", Function::Identity::Eval);
-        set_function_identity_(
-            R_BaseNamespace, "evalq", Function::Identity::EvalQ);
-        set_function_identity_(
-            R_BaseNamespace, "eval.parent", Function::Identity::EvalParent);
-        set_function_identity_(
-            R_BaseNamespace, "local", Function::Identity::Local);
-        set_function_identity_(
-            R_BaseNamespace, "library", Function::Identity::Library);
-        set_function_identity_(
-            R_BaseNamespace, "require", Function::Identity::Require);
-        set_function_identity_(
-            R_BaseNamespace, "lazyLoad", Function::Identity::LazyLoad);
-        set_function_identity_(R_BaseNamespace,
-                               "lazyLoadDBexec",
-                               Function::Identity::LazyLoadDbExec);
-        set_function_identity_(R_BaseNamespace,
-                               "attachNamespace",
-                               Function::Identity::AttachNamespace);
-        set_function_identity_(R_BaseNamespace,
-                               "loadNamespace",
-                               Function::Identity::LoadNamespace);
-        set_function_identity_(R_BaseNamespace,
-                               "requireNamespace",
-                               Function::Identity::RequireNamespace);
-        set_function_identity_(R_BaseNamespace,
-                               "unloadNamespace",
-                               Function::Identity::UnloadNamespace);
+        initialize_identity_();
     }
 
     void handle_packages() {
@@ -112,12 +84,21 @@ class FunctionTable {
     }
 
     void remove(SEXP r_closure) {
+        Function::Identity identity = Function::Identity::Other;
+
         auto result = table_.find(r_closure);
 
         if (result != table_.end()) {
             Function* function = result->second;
+
+            identity = function->get_identity();
+
             table_.erase(result);
             Function::dec_ref(function);
+        }
+
+        if (identity != Function::Identity::Other) {
+            initialize_identity_();
         }
     }
 
@@ -251,6 +232,38 @@ class FunctionTable {
             Rprintf("unable to get name of package environment %p\n",
                     r_package_env);
         }
+    }
+
+    void initialize_identity_() {
+        set_function_identity_(
+            R_BaseNamespace, "eval", Function::Identity::Eval);
+        set_function_identity_(
+            R_BaseNamespace, "evalq", Function::Identity::EvalQ);
+        set_function_identity_(
+            R_BaseNamespace, "eval.parent", Function::Identity::EvalParent);
+        set_function_identity_(
+            R_BaseNamespace, "local", Function::Identity::Local);
+        set_function_identity_(
+            R_BaseNamespace, "library", Function::Identity::Library);
+        set_function_identity_(
+            R_BaseNamespace, "require", Function::Identity::Require);
+        set_function_identity_(
+            R_BaseNamespace, "lazyLoad", Function::Identity::LazyLoad);
+        set_function_identity_(R_BaseNamespace,
+                               "lazyLoadDBexec",
+                               Function::Identity::LazyLoadDbExec);
+        set_function_identity_(R_BaseNamespace,
+                               "attachNamespace",
+                               Function::Identity::AttachNamespace);
+        set_function_identity_(R_BaseNamespace,
+                               "loadNamespace",
+                               Function::Identity::LoadNamespace);
+        set_function_identity_(R_BaseNamespace,
+                               "requireNamespace",
+                               Function::Identity::RequireNamespace);
+        set_function_identity_(R_BaseNamespace,
+                               "unloadNamespace",
+                               Function::Identity::UnloadNamespace);
     }
 };
 
