@@ -246,7 +246,7 @@ from_match.call <- function(expr_resolved, addresses_set) {
 
         # get the name of the function called (including namespace)
         # it is actually redundant with expr_resolved_function (which is also more accurate)
-        return(as.character(expr_resolved[[1]]))
+        return(paste0(as.character(expr_resolved[[1]], collape = "::")))
       }
     }
   }
