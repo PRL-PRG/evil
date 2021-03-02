@@ -338,6 +338,9 @@ call_exit_callback <- function(context, application, package, func, call) {
         # TODO: check if the given environment is the same as the default one
     }
 
+    expr_return <- returnValue()
+
+
     # TODO: move to S3
     expr_repr <- function(e) {
         if (!is_empty(e)) {
@@ -380,6 +383,8 @@ call_exit_callback <- function(context, application, package, func, call) {
       data$unique_resolved_expressions[[expr_resolved_repr$hash]] <- expr_resolved_repr$fulltext
     }
 
+    expr_return_repr <- expr_repr(expr_return)
+
     trace <- create_call_row(
         eval_call_id,
         eval_function = call_name,
@@ -408,6 +413,12 @@ call_exit_callback <- function(context, application, package, func, call) {
         expr_resolved_nodes = get_ast_size(substitute(expr_resolved)),
         expr_resolved_function,
         expr_resolved_args_num = as.integer(expr_resolved_args_num),
+
+        expr_return = expr_return_repr$text,
+        expr_return_hash = expr_return_repr$hash,
+        expr_return_length = expr_return_repr$length,
+        expr_return_type = expr_return_repr$type,
+        expr_return_type_tag = expr_return_repr$tag,
 
         expr_parsed_expression = expr_to_string(expr_parsed_expression),
         expr_forced,
