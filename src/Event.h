@@ -15,7 +15,10 @@ class Event {
         VariableAssignment,
         VariableRemoval,
         VariableLookup,
-        GcAllocation
+        ContextEntry,
+        ContextExit,
+        GcAllocation,
+        GcUnmark
     };
 
     Type get_type() const {
@@ -24,6 +27,14 @@ class Event {
 
     SEXP get_call() {
         return r_call_;
+    }
+
+    SEXP get_op() {
+        return r_op_;
+    }
+
+    SEXP get_args() {
+        return r_args_;
     }
 
     SEXP get_rho() {
@@ -40,6 +51,14 @@ class Event {
 
     SEXP get_result() {
         return r_result_;
+    }
+
+    void* get_call_context() {
+        return call_context_;
+    }
+
+    SEXP get_object() {
+        return r_object_;
     }
 
     SEXP r_get_argument(SEXP r_argument_name, int evaluate) {
@@ -103,13 +122,18 @@ class Event {
         return library;
     }
 
+    std::string get_short_name() const;
+
     static Event eval_entry(SEXP r_expression, SEXP r_rho);
 
-    static Event closure_call_entry(SEXP r_call, SEXP r_rho);
+    static Event
+    closure_call_entry(SEXP r_call, SEXP r_op, SEXP r_args, SEXP r_rho);
 
-    static Event closure_call_exit(SEXP r_call, SEXP r_rho, SEXP r_result);
-
-    static Event gc_allocation(SEXP r_object);
+    static Event closure_call_exit(SEXP r_call,
+                                   SEXP r_op,
+                                   SEXP r_rho,
+                                   SEXP r_args,
+                                   SEXP r_result);
 
     static Event variable_definition(SEXP r_variable, SEXP r_value, SEXP r_rho);
 
@@ -119,19 +143,41 @@ class Event {
 
     static Event variable_lookup(SEXP r_variable, SEXP r_value, SEXP r_rho);
 
+    static Event context_entry(void* call_context);
+
+    static Event context_exit(void* call_context);
+
+    static Event gc_allocation(SEXP r_object);
+
+    static Event gc_unmark(SEXP r_object);
+
   private:
     Event(Event::Type type)
         : type_(type)
         , r_call_(NULL)
+        , r_op_(NULL)
+        , r_args_(NULL)
         , r_rho_(NULL)
         , r_variable_(NULL)
         , r_value_(NULL)
         , r_result_(NULL)
-        , r_object_(NULL) {
+        , call_context_(NULL)
+        , r_object_(NULL)
+        , r_expression_(NULL) {
     }
 
     Event& set_call(SEXP r_call) {
         r_call_ = r_call;
+        return *this;
+    }
+
+    Event& set_op(SEXP r_op) {
+        r_op_ = r_op;
+        return *this;
+    }
+
+    Event& set_args(SEXP r_args) {
+        r_args_ = r_args;
         return *this;
     }
 
@@ -155,6 +201,11 @@ class Event {
         return *this;
     }
 
+    Event& set_call_context(void* call_context) {
+        call_context_ = call_context;
+        return *this;
+    }
+
     Event& set_object(SEXP r_object) {
         r_object_ = r_object;
         return *this;
@@ -167,10 +218,13 @@ class Event {
 
     Type type_;
     SEXP r_call_;
+    SEXP r_op_;
+    SEXP r_args_;
     SEXP r_rho_;
     SEXP r_variable_;
     SEXP r_value_;
     SEXP r_result_;
+    void* call_context_;
     SEXP r_object_;
     SEXP r_expression_;
 };

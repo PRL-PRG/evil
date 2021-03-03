@@ -29,18 +29,7 @@ void closure_call_entry_callback(ContextSPtr context,
     SEXP r_data = context->get_data();
     TracerState& tracer_state = *get_tracer_state(r_data);
 
-    FunctionTable& function_table = tracer_state.get_function_table();
-
-    Stack& stack = tracer_state.get_stack();
-
-    Function* function = function_table.lookup(r_op);
-
-    StackFrame frame =
-        StackFrame::from_call(new Call(function, r_call, r_args, r_rho));
-
-    stack.push(frame);
-
-    Event event = Event::closure_call_entry(r_call, r_rho);
+    Event event = Event::closure_call_entry(r_call, r_op, r_args, r_rho);
 
     tracer_state.analyze(event);
 
@@ -59,32 +48,14 @@ void closure_call_exit_callback(ContextSPtr context,
     SEXP r_data = context->get_data();
     TracerState& tracer_state = *get_tracer_state(r_data);
 
-    Stack& stack = tracer_state.get_stack();
-    StackFrame& frame = stack.peek();
-    Call* call = nullptr;
-
-    if (!frame.is_call()) {
-        Rf_error("mismatched stack frame, expected call got context");
-    } else {
-        call = frame.as_call();
-        if (call->get_expression() != r_call ||
-            call->get_arguments() != r_args ||
-            call->get_environment() != r_rho) {
-            Rf_error("mismatched call on stack");
-        }
-    }
-
-    Event event = Event::closure_call_exit(r_call, r_rho, r_result);
-
-    tracer_state.analyze(event);
+    Event event =
+        Event::closure_call_exit(r_call, r_op, r_args, r_rho, r_result);
 
     for (Analysis* analysis: get_analyses(r_data)) {
         analysis->analyze(tracer_state, event);
     }
 
-    stack.pop();
-
-    delete call;
+    tracer_state.analyze(event);
 }
 
 void eval_entry_callback(ContextSPtr context,
@@ -190,9 +161,13 @@ void context_entry_callback(ContextSPtr context,
 
     TracerState& tracer_state = *get_tracer_state(r_data);
 
-    StackFrame frame = StackFrame::from_context(call_context);
-    Stack& stack = tracer_state.get_stack();
-    stack.push(frame);
+    Event event = Event::context_entry(call_context);
+
+    tracer_state.analyze(event);
+
+    for (Analysis* analysis: get_analyses(r_data)) {
+        analysis->analyze(tracer_state, event);
+    }
 }
 
 void context_exit_callback(ContextSPtr context,
@@ -202,15 +177,12 @@ void context_exit_callback(ContextSPtr context,
 
     TracerState& tracer_state = *get_tracer_state(r_data);
 
-    Stack& stack = tracer_state.get_stack();
-    StackFrame frame = stack.pop();
+    Event event = Event::context_exit(call_context);
 
-    if (!frame.is_context()) {
-        Rf_error("mismatched stack frame, expected context got call");
-    } else if (frame.as_context() != call_context) {
-        Rf_error("mismatched context on stack, expected %p got %p",
-                 call_context,
-                 frame.as_context());
+    tracer_state.analyze(event);
+
+    for (Analysis* analysis: get_analyses(r_data)) {
+        analysis->analyze(tracer_state, event);
     }
 }
 
@@ -246,6 +218,7 @@ void context_jump_callback(ContextSPtr context,
             SEXP r_rho = call->get_environment();
 
             if (call->get_function()->get_type() == CLOSXP) {
+                call->set_status(Call::Status::Interrupted);
                 closure_call_exit_callback(
                     context, application, r_call, r_op, r_args, r_rho, NULL);
             }
@@ -262,27 +235,27 @@ void gc_allocation_callback(ContextSPtr context,
 
     TracerState& tracer_state = *get_tracer_state(r_data);
 
-    if (TYPEOF(r_object) == CLOSXP) {
-        FunctionTable& function_table = tracer_state.get_function_table();
-
-        function_table.insert(r_object);
-    }
-
     Event event = Event::gc_allocation(r_object);
 
     tracer_state.analyze(event);
+
+    for (Analysis* analysis: get_analyses(r_data)) {
+        analysis->analyze(tracer_state, event);
+    }
 }
 
 void gc_unmark_callback(ContextSPtr context,
                         ApplicationSPtr application,
                         SEXP r_object) {
-    if (TYPEOF(r_object) == CLOSXP) {
-        SEXP r_data = context->get_data();
+    SEXP r_data = context->get_data();
 
-        TracerState& tracer_state = *get_tracer_state(r_data);
+    TracerState& tracer_state = *get_tracer_state(r_data);
 
-        FunctionTable& function_table = tracer_state.get_function_table();
+    Event event = Event::gc_unmark(r_object);
 
-        function_table.remove(r_object);
+    tracer_state.analyze(event);
+
+    for (Analysis* analysis: get_analyses(r_data)) {
+        analysis->analyze(tracer_state, event);
     }
 }

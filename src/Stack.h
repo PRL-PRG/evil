@@ -25,37 +25,66 @@ class Stack {
     }
 
     StackFrame pop() {
-        StackFrame frame{peek(1)};
+        StackFrame frame{peek(0)};
         stack_.pop_back();
         return frame;
     }
 
-    const StackFrame& peek(std::size_t n = 1) const {
-        return stack_[stack_.size() - n];
+    StackFrame& peek(std::size_t n = 0,
+                     Function::Identity identity = Function::Identity::Any) {
+        StackFrame& frame = stack_[stack_.size() - n - 1];
+        return frame;
     }
 
-    StackFrame& peek(std::size_t n = 1) {
-        return stack_[stack_.size() - n];
+    const StackFrame&
+    peek(std::size_t n = 0,
+         Function::Identity identity = Function::Identity::Any) const {
+        const StackFrame& frame = stack_[stack_.size() - n - 1];
+        return frame;
     }
 
-    stack_frames_t unwind(void* context) {
-        stack_frames_t unwound_frames;
+    Call* peek_call(std::size_t n = 0,
+                    Function::Identity identity = Function::Identity::Any) {
+        int index = get_call_index_(n, identity);
 
-        while (size() > 0) {
-            StackFrame& temp_frame = stack_.back();
+        if (index < 0)
+            return nullptr;
 
-            if (temp_frame.is_context() &&
-                (temp_frame.as_context() == context)) {
-                return unwound_frames;
+        StackFrame& frame = stack_[index];
+        return frame.as_call();
+    }
+
+    int count_call(Function::Identity identity = Function::Identity::Any) {
+        int count = 0;
+
+        for (int index = stack_.size() - 1; index >= 0; --index) {
+            const StackFrame& frame = stack_[index];
+            if (frame.is_call() &&
+                frame.as_call()->get_function()->has_identity(identity)) {
+                ++count;
             }
-            stack_.pop_back();
-            unwound_frames.push_back(temp_frame);
         }
-        Rf_error("cannot find matching context while unwinding\n");
+
+        return count;
     }
 
   private:
     stack_frames_t stack_;
+
+    int get_call_index_(std::size_t n, Function::Identity identity) const {
+        for (int index = stack_.size() - 1; index >= 0; --index) {
+            const StackFrame& frame = stack_[index];
+            if (frame.is_call() &&
+                frame.as_call()->get_function()->has_identity(identity)) {
+                if (n == 0) {
+                    return index;
+                }
+                --n;
+            }
+        }
+
+        return -1;
+    }
 };
 
 #endif /* PROMISEDYNTRACER_EXECUTION_CONTEXT_STACK_H */

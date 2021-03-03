@@ -36,7 +36,7 @@ force_lazy_loaded_functions <- function() {
 trace_code <- function(code,
                        envir = parent.frame(),
                        quote=TRUE,
-                       evals_to_trace=NULL) {
+                       evals_to_trace=readLines(system.file("extdata/package-evals.txt", package = "evil"))) {
 
     force_lazy_loaded_functions()
 

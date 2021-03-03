@@ -16,6 +16,7 @@ create_tracer <- function(packages) {
 
     context <- create_context(
         application_load_callback = application_load_callback,
+        application_attach_callback = application_attach_callback,
         application_unload_callback = application_unload_callback,
         call_entry_callback = call_entry_callback,
         call_exit_callback = call_exit_callback,
@@ -76,20 +77,32 @@ set_variable_callback_status <- function(context, status) {
 #' @importFrom instrumentr get_id get_frame_position
 application_load_callback <- function(context, application) {
 
-  ## NOTE: this set of counters is the global count of all operations.
-  ##       new entries on top of this will be specific to eval calls.
-  data <- get_data(context)
+    ## NOTE: this set of counters is the global count of all operations.
+    ##       new entries on top of this will be specific to eval calls.
+    data <- get_data(context)
+    set_variable_callback_status(context, "deactivate")
 
-  .Call(
-    C_tracer_data_push_eval_call,
-    data,
-    0L,
-    get_environment(application),
-    as.integer(get_frame_position(application))
-  )
+    .state$tracer_data_add_package <- function(pkgname, libname) {
+        .Call(C_tracer_data_add_package, data, pkgname)
+    }
 
-  set_variable_callback_status(context, "deactivate")
+    installed_packages <- unname(installed.packages()[,1])
+    for(package in installed_packages) {
+        setHook(packageEvent(package, "onLoad"), .state$tracer_data_add_package, "append")
+    }
 }
+
+
+#' @importFrom instrumentr get_data
+application_attach_callback <- function(context, application) {
+
+    ## NOTE: initialize function table with functions from
+    ## all package at this point because instrumented function
+    ## objects have been modified by instrumenter now.
+    data <- get_data(context)
+    .Call(C_function_table_initialize, data)
+}
+
 
 #' @importFrom instrumentr get_data
 application_unload_callback <- function(context, application) {
@@ -97,6 +110,13 @@ application_unload_callback <- function(context, application) {
 
     data <- get_data(context)
     calls <- do.call(rbind, as.list(data$calls))
+
+
+    ## NOTE: remove package load hooks
+    installed_packages <- unname(installed.packages()[,1])
+    for(package in installed_packages) {
+        setHook(packageEvent(package, "onLoad"), NULL, "append")
+    }
 
     ## NOTE: if there are no eval calls, create an empty data frame
     ## with correct number of and type of columns
@@ -126,7 +146,6 @@ application_unload_callback <- function(context, application) {
 
     dependencies <- data.frame(package = loadedNamespaces())
 
-    .Call(C_tracer_data_pop_eval_call, data)
     tables <- .Call(C_tracer_data_finalize, data)
 
     tables$code <- merge(tables$code, calls, by = "eval_call_id")
@@ -168,7 +187,7 @@ call_entry_callback <- function(context, application, package, func, call) {
 
   eval_frame_depth <- get_frame_position(call)
 
-  .Call(C_tracer_data_push_eval_call, get_data(context), get_id(call), eval_env, eval_frame_depth)
+  .Call(C_tracer_data_eval_call_entry, get_data(context), get_id(call), eval_env, eval_frame_depth)
 
   set_variable_callback_status(context, "activate")
 }
@@ -226,7 +245,7 @@ call_exit_callback <- function(context, application, package, func, call) {
     application_frame_position <- get_frame_position(application)
 
     interp_eval <- if ((call_name %in% c("eval", "evalq"))) {
-        .Call(C_tracer_data_pop_eval_call, data)
+        .Call(C_tracer_data_eval_call_exit, data)
     } else {
         NA_integer_
     }

@@ -7,4 +7,6 @@
 
 .Empty <- new.env(parent=emptyenv())
 
+.state <- new.env(parent=emptyenv())
+
 is_empty <- function(x) identical(x, .Empty)

@@ -33,6 +33,7 @@ class SideEffectAnalysis: public Analysis {
             return;
         }
 
+        Stack& stack = tracer_state.get_stack();
         int eval_call_id = tracer_state.get_last_eval_call_id();
         SEXP r_variable = event.get_variable();
         const char* variable = CHAR(PRINTNAME(r_variable));
@@ -47,9 +48,11 @@ class SideEffectAnalysis: public Analysis {
             int eval_env_depth = NA_INTEGER;
             /* loop ignores first eval call because that is a dummy call
              * representing top-level  */
-            for (int i = tracer_state.get_eval_call_count() - 1; i > 0; --i) {
-                int call_id = tracer_state.get_eval_call_id(i);
-                SEXP r_env = tracer_state.get_eval_env(i);
+            int eval_call_count = stack.count_call(Function::Identity::Eval);
+            for (int i = 0; i < eval_call_count; ++i) {
+                Call* call = stack.peek_call(i, Function::Identity::Eval);
+                int call_id = call->get_id();
+                SEXP r_env = call->get_eval_environment();
 
                 /* we don't care about local writes */
                 if (tracer_state.is_local_environment(r_rho, call_id)) {
@@ -57,7 +60,7 @@ class SideEffectAnalysis: public Analysis {
                 }
 
                 if (r_rho == r_env) {
-                    eval_env_depth = tracer_state.get_eval_call_count() - 1 - i;
+                    eval_env_depth = eval_call_count - 1 - i;
                 }
 
                 ++write_count;

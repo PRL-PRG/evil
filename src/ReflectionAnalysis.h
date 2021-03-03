@@ -19,9 +19,18 @@ class ReflectionAnalysis: public Analysis {
 
         SEXP r_call = event.get_call();
         SEXP r_rho = event.get_rho();
-        int eval_call_id = tracer_state.get_last_eval_call_id();
-        int eval_frame_depth = tracer_state.get_last_eval_frame_depth();
-        int current_frame_depth = tracer_state.get_current_frame_depth();
+
+        Stack& stack = tracer_state.get_stack();
+        Call* call = stack.peek_call(0, Function::Identity::Eval);
+
+        int current_frame_depth = stack.size();
+        int eval_call_id = 0;
+        int eval_frame_depth = 0;
+
+        if (call != nullptr) {
+            eval_call_id = call->get_id();
+            eval_frame_depth = call->get_depth();
+        }
 
         // NOTE: pos.to.env and as.environment need not be handled
         // because they look up the search path.

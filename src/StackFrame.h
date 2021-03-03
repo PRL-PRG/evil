@@ -8,7 +8,6 @@ class StackFrame {
     enum class Type { Call, Context };
 
     ~StackFrame() {
-
     }
 
     static StackFrame from_call(Call* call) {

@@ -2,10 +2,37 @@
 #define EVIL_FUNCTION_H
 
 #include <string>
+#include <climits>
+#include "Rdyntrace.h"
 
 class Function {
   public:
-    explicit Function(SEXP r_op): r_op_(r_op) {
+    enum class Identity {
+        Eval = 1,
+        EvalQ = 2,
+        EvalParent = 4,
+        Local = 8,
+        Library = 16,
+        Require = 32,
+        AttachNamespace = 64,
+        LoadNamespace = 128,
+        RequireNamespace = 256,
+        UnloadNamespace = 512,
+        LazyLoad = 1024,
+        LazyLoadDbExec = 2048,
+        NewEnv = 4096,
+        List2Env = 8192,
+        Other = 16384,
+        EvalFamily = Eval | EvalQ | EvalParent | Local,
+        PackageFamily = Library | Require | AttachNamespace | LoadNamespace |
+                        RequireNamespace | UnloadNamespace | LazyLoad |
+                        LazyLoadDbExec,
+        EnvironmentFamily = NewEnv | List2Env,
+        Any = INT_MAX
+    };
+
+    explicit Function(SEXP r_op)
+        : r_op_(r_op), identity_(Identity::Other), ref_(1) {
         type_ = TYPEOF(r_op);
 
         if (type_ == BUILTINSXP || type_ == SPECIALSXP) {
@@ -74,11 +101,63 @@ class Function {
         return package_name_;
     }
 
+    std::string get_qualified_name() const {
+        std::string qualified_name("");
+
+        if (has_package_name()) {
+            qualified_name.append(get_package_name());
+            qualified_name.append("::");
+        }
+
+        std::string name("<unknown>");
+
+        if (has_name()) {
+            name = get_name();
+        }
+
+        qualified_name.append(name);
+
+        return qualified_name;
+    }
+
+    void set_identity(Identity identity) {
+        identity_ = identity;
+    }
+
+    Function::Identity get_identity() const {
+        return identity_;
+    }
+
+    bool has_identity(Function::Identity identity) const {
+        if (identity == identity_)
+            return true;
+
+        return (int) (identity_) & (int) (identity);
+    }
+
+    int get_parent_eval_id() const {
+        return parent_eval_id_;
+    }
+
+    void set_parent_eval_id(int eval_id) {
+        parent_eval_id_ = eval_id;
+    }
+
+    static void inc_ref(Function* function);
+
+    static void dec_ref(Function* function);
+
   private:
+    int ref_;
     SEXP r_op_;
     SEXPTYPE type_;
     std::string name_;
     std::string package_name_;
+    Identity identity_;
+    int parent_eval_id_;
+
+    ~Function() {
+    }
 };
 
 #endif /* EVIL_FUNCTION_H */

@@ -3,39 +3,73 @@
 std::string event_type_to_string(const Event::Type& event_type) {
     switch (event_type) {
     case Event::Type::EvalEntry:
-        return "eval_entry";
+        return "eve";
     case Event::Type::ClosureCallEntry:
-        return "closure_call_entry";
+        return "fen";
     case Event::Type::ClosureCallExit:
-        return "closure_call_exit";
-    case Event::Type::GcAllocation:
-        return "gc_allocation";
+        return "fex";
     case Event::Type::VariableDefinition:
-        return "variable_definition";
+        return "def";
     case Event::Type::VariableAssignment:
-        return "variable_assignment";
+        return "asn";
     case Event::Type::VariableRemoval:
-        return "variable_removal";
+        return "rvl";
     case Event::Type::VariableLookup:
-        return "variable_lookup";
+        return "lkp";
+    case Event::Type::ContextEntry:
+        return "cen";
+    case Event::Type::ContextExit:
+        return "cex";
+    case Event::Type::GcAllocation:
+        return "gca";
+    case Event::Type::GcUnmark:
+        return "gcu";
     }
-
     return "unhandled";
 }
 
-Event Event::closure_call_entry(SEXP r_call, SEXP r_rho) {
-    return Event(Event::Type::ClosureCallEntry).set_call(r_call).set_rho(r_rho);
+std::string Event::get_short_name() const {
+    return event_type_to_string(type_);
 }
 
-Event Event::closure_call_exit(SEXP r_call, SEXP r_rho, SEXP r_result) {
+Event Event::closure_call_entry(SEXP r_call,
+                                SEXP r_op,
+                                SEXP r_args,
+                                SEXP r_rho) {
+    return Event(Event::Type::ClosureCallEntry)
+        .set_call(r_call)
+        .set_op(r_op)
+        .set_args(r_args)
+        .set_rho(r_rho);
+}
+
+Event Event::closure_call_exit(SEXP r_call,
+                               SEXP r_op,
+                               SEXP r_args,
+                               SEXP r_rho,
+                               SEXP r_result) {
     return Event(Event::Type::ClosureCallExit)
         .set_call(r_call)
+        .set_op(r_op)
+        .set_args(r_args)
         .set_rho(r_rho)
         .set_result(r_result);
 }
 
+Event Event::context_entry(void* call_context) {
+    return Event(Event::Type::ContextEntry).set_call_context(call_context);
+}
+
+Event Event::context_exit(void* call_context) {
+    return Event(Event::Type::ContextExit).set_call_context(call_context);
+}
+
 Event Event::gc_allocation(SEXP r_object) {
     return Event(Event::Type::GcAllocation).set_object(r_object);
+}
+
+Event Event::gc_unmark(SEXP r_object) {
+    return Event(Event::Type::GcUnmark).set_object(r_object);
 }
 
 Event Event::variable_definition(SEXP r_variable, SEXP r_value, SEXP r_rho) {
