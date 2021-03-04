@@ -101,6 +101,15 @@ test_that("eval from a thunk", {
   expect_equal(d$caller_expression, "eval(code, test_env)")
 })
 
+test_that("eval return value", {
+  d <- do_trace_eval({
+    r <- eval(1 +1)
+  })
+
+  expect_equal(d$expr_return, NA_character_)# because we convert values to NA
+  expect_equal(d$expr_return_type, "double")
+})
+
 test_that("function and function arity", {
   d <- do_trace_eval(eval(base::quote(TRUE)))
   expect_equal(d$expr_expression_function, "base::quote")
