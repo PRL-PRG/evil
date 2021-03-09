@@ -238,7 +238,7 @@ classify_environment <- function(application_frame_position,
 
 from_match.call <- function(expr_resolved, addresses_set) {
   if (is.call(expr_resolved)) {
-    addresses <- vapply(expr_resolved, injectr::sexp_address, "")
+    addresses <- vapply(Filter(function(x) !is.null(x), expr_resolved), injectr::sexp_address, "")
     for (k in addresses) {
       if (exists(k, where = addresses_set)) {
         # We don't remove the set of addresses from the hashmap; It could be used
