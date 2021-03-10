@@ -3,6 +3,10 @@ parse_evals_to_trace <- function(evals_to_trace) {
         return(NULL)
     }
 
+    if (length(evals_to_trace) == 1 && trimws(evals_to_trace, "both") == "") {
+        return(NULL)
+    }
+
     evals_to_trace <- strsplit(evals_to_trace, "::", fixed=TRUE)
     evals_to_trace <- lapply(evals_to_trace, function(x) if (length(x) == 1) c(x, NA) else x)
     evals_to_trace <- do.call(rbind, evals_to_trace)
