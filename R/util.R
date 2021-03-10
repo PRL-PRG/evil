@@ -73,9 +73,9 @@ expr_to_string <- function(e,
 
 #' @importFrom utils getSrcDirectory getSrcFilename
 get_call_srcref <- function(call) {
-  srcref <- attr(call, "srcref")
+  srcref <- getSrcref(call)
 
-  eval_call_srcref <- if (!is.null(srcref)) {
+  if (is.integer(srcref) && length(srcref) >= 6) {
     file <- getSrcFilename(srcref)
     file <- if (is.null(file)) {
       "<unknown>"
@@ -95,8 +95,6 @@ get_call_srcref <- function(call) {
   } else {
     NA_character_
   }
-
-  eval_call_srcref
 }
 
 get_loaded_package_environments <- function() {
