@@ -233,8 +233,31 @@ call_exit_callback <- function(context, application, package, func, call) {
     eval_call_frame_position <- get_frame_position(call)
 
     caller <- get_caller(call)
+    caller_def_srcdir <- getSrcDirectory(caller$definition)
+    caller_def_srcfile <- getSrcFilename(caller$definition)
     caller_package <- caller$package_name
-    if (!is.null(data$packages) && !(caller_package %in% data$packages)) {
+
+    # Hardcode R6
+    # eval in this case originated in a class rather than from
+    # a package so the caller_package is set to the class name
+    # instead. This concrete one comes from:
+    #
+    # generator_funs$get_inherit <- function() {
+    #   The NULL arg speeds up eval a tiny bit
+    #   eval(inherit, parent_env, NULL)
+    # }
+    #
+    # from: R6/R/generator_funs.R
+    #
+    print(caller_def_srcdir)
+    print(caller_def_srcfile)
+    if (length(caller_def_srcdir) == 1 && length(caller_def_srcfile) == 1) {
+      if (endsWith(caller_def_srcdir, "/R6/R") && (caller_def_srcfile == "generator_funs.R")) {
+        caller_package <- "R6"
+      }
+    }
+
+    if (caller_package == "base") {
         return()
     }
     caller_expression <- caller$call_expression
