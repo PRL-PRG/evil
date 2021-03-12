@@ -267,33 +267,6 @@ call_exit_callback <- function(context, application, package, func, call) {
     }
     enclos_env <- eval_call_env$enclos
 
-
-    envir_from_arg <- NA_integer_
-    if (is.environment(eval_env) && !is.null(caller$definition) && !is.null(caller$environment)) {
-        args_caller <- names(formals(caller$definition))
-        for (arg_caller in args_caller) {
-            arg_val <- NULL
-            arg_val <- try(get0(arg_caller, envir = caller$environment), silent = TRUE)
-            # if a caller arg is a parent  of envir
-            # (which would mean it was built with new.env probably )
-            # or is equal to envir
-            if (!is.null(arg_val) && is.environment(arg_val)) {
-                envir_from_arg <- 0L
-                cur_env <- eval_env
-                while (!identical(arg_val, cur_env)) {
-                    if (identical(cur_env, emptyenv())) {
-                        envir_from_arg <- NA_integer_
-                        break
-                    }
-                    envir_from_arg <- envir_from_arg + 1L
-                    cur_env <- parent.env(cur_env)
-                }
-            }
-        }
-    }
-
-    # browser()
-
     # eval: expr, envir, enclos
     # evalq: expr, envir, enclos
     # eval.parent: expr, n
@@ -445,7 +418,6 @@ call_exit_callback <- function(context, application, package, func, call) {
         envir_expression = expr_to_string(envir_expression),
         envir_forced,
         envir_type = sexp_typeof(eval_env),
-        envir_from_arg,
 
         expr_match_call,
 

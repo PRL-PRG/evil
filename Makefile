@@ -24,5 +24,5 @@ test:
 lintr:
 	$(R) --slave -e "lintr::lint_package()"
 
-install: clean
+install:
 	$(R) CMD INSTALL .
