@@ -212,8 +212,11 @@ call_exit_callback <- function(context, application, package, func, call) {
     else if (call_name == "match.call") {
         retval <- returnValue()
         # data$match.call is rather used as a set than a hashmap
-        for (k in 1:length(retval)) { # cannot directly iterate a call list
-            data$match.call[[injectr::sexp_address(retval[[k]])]] <- TRUE
+        for (k in seq_along(retval)) { # cannot directly iterate a call list
+          rv <- retval[[k]]
+          if (!is.null(rv)) {
+            data$match.call[[injectr::sexp_address(rv)]] <- TRUE
+          }
         }
         return()
     }
@@ -249,8 +252,6 @@ call_exit_callback <- function(context, application, package, func, call) {
     #
     # from: R6/R/generator_funs.R
     #
-    print(caller_def_srcdir)
-    print(caller_def_srcfile)
     if (length(caller_def_srcdir) == 1 && length(caller_def_srcfile) == 1) {
       if (endsWith(caller_def_srcdir, "/R6/R") && (caller_def_srcfile == "generator_funs.R")) {
         caller_package <- "R6"
@@ -263,7 +264,6 @@ call_exit_callback <- function(context, application, package, func, call) {
     caller_expression <- caller$call_expression
     caller_function <- caller$function_name
     caller_srcref <- get_call_srcref(caller_expression)
-
 
     application_frame_position <- get_frame_position(application)
 
