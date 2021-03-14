@@ -371,7 +371,13 @@ call_exit_callback <- function(context, application, package, func, call) {
                 tag = sexp_typeof(e, tag = TRUE)
             )
         } else {
-            list(text = NA_character_, hash = NA_character_, length = NA_integer_, type = NA_character_)
+            list(
+                text = NA_character_,
+                hash = NA_character_,
+                length = NA_integer_,
+                type = NA_character_,
+                tag = NA_character_
+            )
         }
     }
 
