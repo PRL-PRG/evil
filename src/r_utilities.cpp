@@ -8,7 +8,10 @@ SEXP sexp_typeof(SEXP x) {
 }
 
 SEXP mark_parsed_expression(SEXP x, SEXP parse_fun_name) {
-    Rf_setAttrib(x, R_ParsedExpressionAttrib, parse_fun_name);
+    int type = TYPEOF(x);
+    if (type == LANGSXP || type == EXPRSXP) {
+        Rf_setAttrib(x, R_ParsedExpressionAttrib, parse_fun_name);
+    }
     return x;
 }
 
