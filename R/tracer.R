@@ -126,20 +126,20 @@ application_unload_callback <- function(context, application) {
 
     data$calls <- NULL
 
-    n_rows <- length(data$unique_resolved_expressions)
-    if (n_rows != 0) {
-        expr_df <- as.data.frame(matrix("", ncol = 2, nrow = n_rows))
-        names(expr_df) <- c("expr_resolved_hash", "expr_resolved")
-        i <- 1
-        for (hash in ls(data$unique_resolved_expressions)) {
-            #cat("\nHash = ", hash, " and v =", data$unique_resolved_expressions[[hash]], "\n")
-            expr_df[i, "expr_resolved_hash"] <- hash
-            expr_df[i, "expr_resolved"] <- data$unique_resolved_expressions[[hash]]
-            i <- i + 1
-        }
-    }
-    else {
-        expr_df <- data.frame(expr_resolved_hash = character(0), expr_resolved = character(0))
+    expr_df <- if (length(data$unique_resolved_expressions) != 0) {
+        exprs <- as.list(data$unique_resolved_expressions)
+        exprs <- sapply(exprs, function(x) {
+          if (is.null(x)) "NULL"
+          else if (!is.character(x)) paste("INVALID:", typeof(x))
+          else x
+        })
+
+        data.frame(
+          expr_resolved_hash=names(exprs),
+          expr_resolved=exprs
+        )
+    } else {
+        data.frame(expr_resolved_hash = character(0), expr_resolved = character(0))
     }
 
     data$unique_resolved_expressions <- NULL
