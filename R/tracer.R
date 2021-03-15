@@ -168,7 +168,7 @@ call_entry_callback <- function(context, application, package, func, call) {
   caller <- get_caller(call)
   caller_package <- caller$package_name
   data <- get_data(context)
-  if (!is.null(data$packages) && !(caller_package %in% data$packages)) {
+  if (caller_package %in% .base_packages) {
     return()
   }
 
@@ -221,20 +221,6 @@ call_exit_callback <- function(context, application, package, func, call) {
         return()
     }
 
-    eval_call_id <- get_id(call)
-    eval_function <- get_name(func)
-    eval_call_env <- get_environment(call)
-    eval_call_expression <- get_expression(call)
-    eval_call_srcref <- {
-        csid <- attr(eval_call_expression, "csid")
-        if (!is.null(csid)) {
-            csid
-        } else {
-            get_call_srcref(eval_call_expression)
-        }
-    }
-    eval_call_frame_position <- get_frame_position(call)
-
     caller <- get_caller(call)
     caller_def_srcdir <- getSrcDirectory(caller$definition)
     caller_def_srcfile <- getSrcFilename(caller$definition)
@@ -258,9 +244,24 @@ call_exit_callback <- function(context, application, package, func, call) {
       }
     }
 
-    if (caller_package == "base") {
+    if (caller_package %in% .base_packages) {
         return()
     }
+
+    eval_call_id <- get_id(call)
+    eval_function <- get_name(func)
+    eval_call_env <- get_environment(call)
+    eval_call_expression <- get_expression(call)
+    eval_call_srcref <- {
+        csid <- attr(eval_call_expression, "csid")
+        if (!is.null(csid)) {
+            csid
+        } else {
+            get_call_srcref(eval_call_expression)
+        }
+    }
+    eval_call_frame_position <- get_frame_position(call)
+
     caller_expression <- caller$call_expression
     caller_function <- caller$function_name
     caller_srcref <- get_call_srcref(caller_expression)
