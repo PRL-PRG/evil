@@ -59,7 +59,9 @@ wrap_function_evals <- function(fun, csid_prefix) {
     injectr:::reassign_function_body(fun, body)
 }
 
-wrap_evals <- function(expr, csid_prefix, id=1L) {
+wrap_evals <- function(expr, csid_prefix) {
+  id <- 1L
+  wrap <- function(expr) {
     if (typeof(expr) == "language") {
         fun_name <- as.character(expr[[1L]])
         if (fun_name %in% .EvalFunctions ||
@@ -69,14 +71,17 @@ wrap_evals <- function(expr, csid_prefix, id=1L) {
              as.character(expr[[3L]]) %in% .EvalFunctions)) {
             csid <- paste0(csid_prefix, id)
             attr(expr, "csid") <- csid
-            id <- id + 1L
+            id <<- id + 1L
         } else {
-            for (i in seq(length(expr))) {
+            for (i in seq_along(expr)) {
                 if (typeof(expr[[i]]) == "language") {
-                    expr[[i]] <- wrap_evals(expr[[i]], csid_prefix, id)
+                    expr[[i]] <- wrap(expr[[i]])
                 }
             }
         }
     }
     expr
+  }
+
+  wrap(expr)
 }
