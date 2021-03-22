@@ -33,8 +33,8 @@ class FunctionTable {
                 continue;
             }
 
-            Rprintf("FunctionTable: handling package '%s'\n",
-                    package_name.c_str());
+            // Rprintf("FunctionTable: handling package '%s'\n",
+            //         package_name.c_str());
 
             SEXP r_names = R_lsInternal(r_namespace, TRUE);
 

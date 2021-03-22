@@ -33,7 +33,7 @@ setup_eval_wrapping_hook <- function(evals_to_trace) {
             }
         }
 
-        cat("Wrapped", wrapped, "/", length(funs_names), "functions from", package_name, "\n")
+        ## cat("Wrapped", wrapped, "/", length(funs_names), "functions from", package_name, "\n")
 
         setHook(packageEvent(package_name, "onLoad"), NULL, "replace")
     }
