@@ -7,8 +7,8 @@ sexp_typeof <- function(x, tag = FALSE) {
   }
 }
 
-mark_parsed_expression <- function(x, parse_fun_name) {
-  .Call(C_mark_parsed_expression, x, parse_fun_name)
+mark_parsed_expression <- function(x, parse_call) {
+  .Call(C_mark_parsed_expression, x, parse_call)
 }
 
 get_ast_size <- function(expr) {
@@ -50,6 +50,8 @@ expr_to_string <- function(e,
 
   if (is.null(e) || is_empty(e)) {
     NA_character_
+  } else if (is.character(e)) {
+    paste0(e, collapse="\n")
   } else if (is.expression(e) && length(e) == 1) {
     expr_to_string(e[[1]])
   } else {

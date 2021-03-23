@@ -7,10 +7,6 @@ create_tracer <- function(packages) {
         "base::eval.parent",
         "base::local",
 
-        "base::parse",
-        "base::str2expression",
-        "base::str2lang",
-
         "base::match.call"
     )
 
@@ -90,6 +86,17 @@ application_load_callback <- function(context, application) {
     for(package in installed_packages) {
         setHook(packageEvent(package, "onLoad"), .state$tracer_data_add_package, "append")
     }
+
+    # taint results from parsing functions
+    parse_funs_names <- c("parse", "str2expression", "str2lang")
+    data$parse_funs <- lapply(parse_funs_names, function(name) {
+      fun <- get(name, envir=baseenv(), mode="function")
+      fun_dup <- injectr::create_duplicate(fun)
+      code <- substitute(evil:::mark_parsed_expression(returnValue(), deparse1(match.call())))
+      injectr::inject_code(code=code, fun=fun, where="onexit")
+      fun_dup
+    })
+    names(data$parse_funs) <- parse_funs_names
 }
 
 
@@ -109,6 +116,13 @@ application_unload_callback <- function(context, application) {
     set_variable_callback_status(context, "reinstate")
 
     data <- get_data(context)
+    parse_funs <- data$parse_funs
+    for (name in names(parse_funs)) {
+      fun = get(name, envir=baseenv(), mode="function")
+      fun_orig = parse_funs[[name]]
+      injectr:::reassign_function_body(fun, body(fun_orig))
+    }
+
     calls <- do.call(rbind, as.list(data$calls))
 
 
@@ -203,13 +217,7 @@ call_exit_callback <- function(context, application, package, func, call) {
     call_name <- get_name(func)
     data <- get_data(context)
 
-    if (call_name %in% c("parse", "str2expression", "str2lang")) {
-        expression <- get_expression(call)
-        retval <- returnValue()
-        mark_parsed_expression(retval, expression)
-        return()
-    }
-    else if (call_name == "match.call") {
+    if (call_name == "match.call") {
         retval <- returnValue()
         # data$match.call is rather used as a set than a hashmap
         for (k in seq_along(retval)) { # cannot directly iterate a call list

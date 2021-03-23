@@ -217,39 +217,6 @@ test_that("function and function arity", {
 #   expect_true(is.na(r$data$calls$expr_resolved_type))
 # })
 
-# test_that("resolve parse", {
-#   withr::local_options(list(keep.source = TRUE, keep.parse.data = TRUE))
-#
-#   f <- function(g, x) {
-#     eval(g(x))
-#   }
-#
-#   g1 <- function(y) {
-#     parse(text = paste0("identity(", y, ")"))
-#   }
-#   g2 <- function(y) {
-#     str2expression(paste0("identity(", y, ")"))
-#   }
-#   g3 <- function(y) {
-#     str2lang(paste0("identity(", y, ")"))
-#   }
-#
-#   d <- do_trace_eval(f(g1, 1))
-#   expect_equal(d$expr_resolved, "identity(1)")
-#   expect_starts_with(d$expr_parsed_expression, "parse(text")
-#
-#   d <- do_trace_eval(f(g2, 2))
-#   expect_equal(d$expr_resolved, "identity(2)")
-#   expect_starts_with(d$expr_parsed_expression, "str2expression(")
-#
-#   d <- do_trace_eval(f(g3, 3))
-#   expect_equal(d$expr_resolved, "identity(3)")
-#   expect_starts_with(d$expr_parsed_expression, "str2lang(")
-#
-#   1
-# })
-
-
 test_that("basic eval", {
   withr::local_options(list(keep.source = TRUE, keep.parse.data = TRUE))
 
