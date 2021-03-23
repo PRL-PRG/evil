@@ -71,6 +71,14 @@ trace_code <- function(code,
 
     result <- instrumentr::trace_code(context, code, envir, quote = FALSE)
     data <- instrumentr::get_data(context)
+
+    require(dplyr)
+    data$tables$writes <- left_join(
+        data$tables$writes,
+        select(data$tables$calls, eval_call_id, eval_call_srcref),
+        by=c("eval_id"="eval_call_id")
+    )
+
     list(result = result, tables = data$tables)
 }
 
