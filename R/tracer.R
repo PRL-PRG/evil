@@ -337,10 +337,12 @@ call_exit_callback <- function(context, application, package, func, call) {
         expr <- get_expression(arg)
 
         envir_forced <- is_evaluated(arg)
-        if (!identical(expr, .DefaultArgs[[eval_function]]$envir)) {
-            envir_expression <- expr
+        if (identical(expr, .DefaultArgs[[eval_function]]$envir) &&
+              identical(sys.frame(-2), eval_call_env$envir)) {
+          envir_expression <- NA
+        } else {
+          envir_expression <- expr
         }
-        # TODO: check if the given environment is the same as the default one
     }
 
     if (eval_function %in% c("eval", "evalq")) {
