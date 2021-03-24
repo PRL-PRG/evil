@@ -706,24 +706,23 @@ SEXP r_normalize(SEXP hash, SEXP ast, SEXP trimmed_str) {
   else if (eq(c.topcall,"{MANY"))         std::cout << "{BLOCK}" ;
   else if (eq(c.topcall,"function"))      std::cout << "FUN ";
   else if (c.is_assign && c.boring())     std::cout << "<-";
-  else if (c.has_dollar && c.boring())    std::cout << "$" ;
+  else if ((c.has_dollar || c.has_bracket) && c.boring())    std::cout << "$" ;
   else if (c.has_var && c.has_calls == 0) std::cout << "X";
   else if (c.has_calls == 1) {
     if (!c.has_user_call) {
       std::cout << "HUH " << str;
     } else {
-      if (c.has_dollar)                   std::cout << "F($)" ;
+      if (c.has_dollar || c.has_bracket)  std::cout << "F($)" ;
       else if (c.has_var)                 std::cout << "F(X)" ;
       else                                std::cout << "F()" ;
     }
   } else if (!c.has_user_call) {
-    if (c.has_dollar) {
+    if (c.has_dollar || c.has_bracket) {
       if (c.has_assigns)                  std::cout << "$<-";
       else                                std::cout << "$";
     } else if (c.has_assigns)             std::cout << "<-";
     else if (c.has_var)                   std::cout << "X";
     else if(c.has_block)                  std::cout << "{BLOCK}";
-    else if(c.has_bracket)                std::cout << "[]";
     else {
       std::cout << "ERROR " << str
 		<< " has_var=" << c.has_var

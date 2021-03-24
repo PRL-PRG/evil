@@ -39,7 +39,7 @@ test_that("match.call is well detected", {
   })
 
   expect_false(is.na(calls$expr_match_call))
-  expect_equal(calls$expr_match_call, "g")
+  expect_equal(calls$expr_match_call, "match.call")
 })
 
 

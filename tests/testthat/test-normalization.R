@@ -60,7 +60,6 @@ test_that("Superfluous parenthesis", {
 })
 
 test_that("NA coercion", {
-  # That can be tricky!
   expect_equal(normalize_expr(quote(c(1, NA))), "0")
   expect_equal(normalize_expr(quote(c(1, NA, NA))), "0")
   expect_equal(normalize_expr(quote(c(NA, 1))), "0")
