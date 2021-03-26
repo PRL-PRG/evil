@@ -1,3 +1,12 @@
+## TODO this is a known bug
+## we cannot attach an attribute to a symbol
+## test_that("parse variable", {
+##   do_trace_eval({
+##     p <- str2lang("sin")
+##   })
+##   expect_equal(attr(p, "._evil_parsed_expression"), 'str2lang(s = "sin")')
+## })
+
 test_that("parse taints the result", {
    do_trace_eval({
      p <- parse(text="1+1")

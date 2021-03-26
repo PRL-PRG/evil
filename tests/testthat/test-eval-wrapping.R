@@ -11,6 +11,17 @@ test_that("wrap_eval works", {
   expect_equal(r, expr)
 })
 
+test_that("wrapping works locally", {
+  f <- function() {
+    withr::defer(format(1))
+    withr::deferred_run()
+  }
+
+  setup_eval_wrapping_hook("withr")
+  calls <- do_trace_eval(f(), evals_to_trace="packages")
+  expect_equal(calls$eval_call_srcref, "::withr::execute_handlers::1")
+})
+
 test_that("wrapping works", {
   test <- function() {
     f <- function() {
@@ -18,18 +29,12 @@ test_that("wrapping works", {
       withr::deferred_run()
     }
 
-    evil::trace_code(f(), evals_to_trace=c("withr::execute_handlers"))
+    evil::setup_eval_wrapping_hook("withr")
+    evil::trace_code(f(), evals_to_trace="package")
   }
 
   r <- callr::r(test)
   expect_equal(r$tables$calls$eval_call_srcref, "::withr::execute_handlers::1")
-})
-
-test_that("tracing code gets wrapped as well", {
-  # TODO: add support for global, base
-  # TODO: test with NULL - tracing all
-  r <- trace_code(eval(1), evals_to_trace="global")
-  expect_equal(r$tables$calls$eval_call_srcref, "::global::main::1")
 })
 
 test_that("evals to trace accepts packages", {
@@ -50,19 +55,3 @@ test_that("evals to trace accepts mix of packages and function names", {
   expect_equal(r$fun, c("f", NA, "h"))
 })
 
-test_that("see_if", {
-  calls <- do_trace_eval({
-    assertthat::see_if(is.character("A"))
-  })
-
-  expect_equal(nrow(calls), 2)
-  expect_true(
-    all(
-      calls$eval_call_srcref %in%
-        c(
-          "::assertthat::see_if::1",
-          "::assertthat::see_if::2"
-        )
-    )
-  )
-})

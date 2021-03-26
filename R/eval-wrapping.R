@@ -4,11 +4,25 @@ create_csid_prefix <- function(package_name, fun_name) {
     paste0("::", package_name, "::", fun_name, "::")
 }
 
+#' @export
+setup_eval_wrapping_hook_from_file <- function(file) {
+  setup_eval_wrapping_hook(parse_evals_to_trace(readLines(file)))
+}
+
 #' @param evals_to_trace a data frame with package and fun. If fun is NA, all
 #'   functions from the corresponding package will be wrapped
+#' @export
 setup_eval_wrapping_hook <- function(evals_to_trace) {
-    if (is.null(evals_to_trace) || !is.data.frame(evals_to_trace) || nrow(evals_to_trace) == 0) {
+    if (is.null(evals_to_trace)) {
         return(NULL)
+    }
+
+    if (is.character(evals_to_trace)) {
+      evals_to_trace <- data.frame(package=evals_to_trace, fun=NA)
+    }
+
+    if (!is.data.frame(evals_to_trace) || nrow(evals_to_trace) == 0) {
+      return(NULL)
     }
 
     traced_packages <- unique(evals_to_trace$package)

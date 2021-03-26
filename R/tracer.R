@@ -1,6 +1,6 @@
 
 #' @importFrom instrumentr create_context set_data
-create_tracer <- function(packages) {
+create_tracer <- function(evals_to_trace) {
     functions <- c(
         "base::eval",
         "base::evalq",
@@ -34,7 +34,7 @@ create_tracer <- function(packages) {
     )
 
     data <- new.env(parent = emptyenv())
-    data$packages <- packages
+    data$evals_to_trace <- evals_to_trace
     .Call(C_tracer_data_initialize, data)
     data$calls <- new.env(parent = emptyenv())
     data$match.call <- new.env(parent = emptyenv())
@@ -182,7 +182,8 @@ call_entry_callback <- function(context, application, package, func, call) {
   caller <- get_caller(call)
   caller_package <- caller$package_name
   data <- get_data(context)
-  if (caller_package %in% .base_packages) {
+
+  if (!should_trace(caller_package, data$evals_to_trace)) {
     return()
   }
 
@@ -252,8 +253,8 @@ call_exit_callback <- function(context, application, package, func, call) {
       }
     }
 
-    if (caller_package %in% .base_packages) {
-        return()
+    if (!should_trace(caller_package, data$evals_to_trace)) {
+      return()
     }
 
     eval_call_id <- get_id(call)
@@ -468,4 +469,20 @@ call_exit_callback <- function(context, application, package, func, call) {
     )
 
     assign(as.character(get_id(arg)), trace, envir = get_data(context)$calls)
+}
+
+should_trace <- function(caller_package, evals_to_trace) {
+  switch(
+    evals_to_trace,
+    all=TRUE,
+    base={
+      caller_package %in% .base_packages
+    },
+    global={
+      caller_package == "global"
+    },
+    packages={
+      caller_package != "global" && !(caller_package %in% .base_packages)
+    }
+  )
 }

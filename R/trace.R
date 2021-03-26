@@ -30,8 +30,12 @@ force_lazy_loaded_functions <- function() {
     NULL
 }
 
-#' @param eval_to_trace - a vector of <package> or <package>::<function> to
-#'   trace, or "global" or NULL
+#' @param eval_to_trace :
+#' "" or "all" - all evals,
+#' "base" - evals from base packages only,
+#' "global" - evals from code,
+#' "packages" - evals from packages other than base
+#'
 #' @export
 #' @importFrom methods is
 #' @importFrom instrumentr set_application_load_callback
@@ -40,26 +44,21 @@ force_lazy_loaded_functions <- function() {
 trace_code <- function(code,
                        envir = parent.frame(),
                        quote=TRUE,
-                       evals_to_trace=readLines(system.file("extdata/package-evals.txt", package = "evil"))) {
+                       evals_to_trace=c("all", "base", "global", "packages")) {
 
     force_lazy_loaded_functions()
 
-    evals_to_trace <- parse_evals_to_trace(evals_to_trace)
-    packages <- NULL
-
-    if (!is.null(evals_to_trace)) {
-        packages <- unique(evals_to_trace$package)
-        evals_to_trace <- subset(evals_to_trace, package != "global")
+    evals_to_trace <- trimws(evals_to_trace)
+    evals_to_trace <- if (length(evals_to_trace) == 1 && evals_to_trace == "") {
+        "all"
+    } else {
+        match.arg(evals_to_trace)
     }
 
-    context <- create_tracer(packages)
+    context <- create_tracer(evals_to_trace)
 
     if (!is(context, "instrumentr_context")) {
         stop("context is not a valid instrumentr context")
-    }
-
-    if (!is.null(packages) && !is.character(packages)) {
-        stop("expected null or a character vector of package names for argument 'package'")
     }
 
     if (quote) {
@@ -67,7 +66,6 @@ trace_code <- function(code,
     }
 
     code <- wrap_evals(code, create_csid_prefix("global", "main"))
-    setup_eval_wrapping_hook(evals_to_trace)
 
     result <- instrumentr::trace_code(context, code, envir, quote = FALSE)
     data <- instrumentr::get_data(context)

@@ -1,9 +1,17 @@
-do_trace_eval <- function(expr) {
-  r <- trace_code(expr)
+do_trace_eval <- function(expr, ...) {
+  r <- trace_code(substitute(expr), quote=FALSE, envir=parent.frame(), ...)
 
   if(is_error(r$result)) stop(r$result$error$message)
 
   r$tables$calls
+}
+
+do_trace_writes <- function(expr, ...) {
+  r <- trace_code(substitute(expr), quote=FALSE, envir=parent.frame(), ...)
+
+  if(is_error(r$result)) stop(r$result$error$message)
+
+  r$tables$writes
 }
 
 expect_starts_with <- function(s1, s2) {

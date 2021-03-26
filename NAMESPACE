@@ -2,6 +2,8 @@
 
 export(normalize)
 export(normalize_expr)
+export(setup_eval_wrapping_hook)
+export(setup_eval_wrapping_hook_from_file)
 export(trace_code)
 export(write_trace)
 importFrom(digest,sha1)
