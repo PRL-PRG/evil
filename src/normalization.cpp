@@ -528,41 +528,49 @@ public:
 
   /* This is the heart of simplification as all intersting things are calls. */
   Exp* doCall(Call* x) {
-    Vec args;
-    args.reserve(x-> get_args().size());
-    for(Exp* t : x-> get_args()) args.push_back(simplify(t));
+      Vec args;
+      args.reserve(x->get_args().size());
+      for (Exp* t: x->get_args())
+          args.push_back(simplify(t));
 
-    args = subsume(args);
+      args = subsume(args);
 
-    if (x->kind() == UnknownOp) { // anon function
-      Exp* anon = simplify(x->get_anon());
-      return new Call(nullptr, anon, args);
-    } else if (x->kind() == ModelFrameOp) {
-      return new Call(x, args);
-    } else if  (x->kind() == ArithOp ||x->kind() == LogicOp) {
-      if (args.size() == 1) return args[0];
-      Sym* op = new Sym("OP");
-      return new Call(op, op, args);
-    } else if  (x->kind() == NamedOp) { // named function
-      if (x->eq_name("(") && args.size() == 1) return args[0];
-      else if((x->eq_name("integer") || x->eq_name("double") ||
-	       x->eq_name("numeric")) && args.size() == 1 && args[0]->is_num() )
-	return new Num();
-      else if(x->eq_name("character")  && args.size() == 1 &&
-	      args[0]->is_num() )
-	return new Str();
-      else if(x->eq_name("structure") && args.size() == 1 &&
-         !(args[0]->is_other() || args[0]->is_statements()))
-	return args[0];
-      else if(x->eq_name("{")) {
-	if(args.size() == 1) return args[0]; // Elide block with only 1 statement
-	else if(args.size() == 0) return new Call(x, args);
-	Vec empty_args;
-	return new Call(new Sym("{MANY"), x->get_anon(), empty_args);
-      }
-      return new Call(x, args);
-    } else if  (x->kind() == ListVecOp)  // c() or list()
-      return (args.size() == 1)?  args[0] :  new Call(x, args);
+      if (x->kind() == UnknownOp) { // anon function
+          Exp* anon = simplify(x->get_anon());
+          return new Call(nullptr, anon, args);
+      } else if (x->kind() == ModelFrameOp) {
+          return new Call(x, args);
+      } else if (x->kind() == ArithOp || x->kind() == LogicOp) {
+          if (args.size() == 1)
+              return args[0];
+          Sym* op = new Sym("OP");
+          return new Call(op, op, args);
+      } else if (x->kind() == NamedOp) { // named function
+          if (x->eq_name("(") && args.size() == 1)
+              return args[0];
+          else if ((x->eq_name("integer") || x->eq_name("double") ||
+                    x->eq_name("numeric")) &&
+                   args.size() == 1 && args[0]->is_num())
+              return new Num();
+          else if (x->eq_name("character") && args.size() == 1 &&
+                   args[0]->is_num())
+              return new Str();
+          else if (x->eq_name("structure") && args.size() == 1 &&
+                   !(args[0]->is_other() || args[0]->is_statements()))
+              return args[0];
+          else if (x->eq_name("{")) {
+              if (args.size() == 1)
+                  return args[0]; // Elide block with only 1 statement
+              else if (args.size() == 0)
+                  return new Call(x, args);
+              /*Vec empty_args;
+              return new Call(new Sym("{MANY"), x->get_anon(), empty_args);*/
+              // We need to keep all the statements to have correct counters at the end
+              return new Call(x, args);
+          }
+          return new Call(x, args);
+      } else if (x->kind() == ListVecOp) // c() or list()
+          return (args.size() == 1) ? args[0] : new Call(x, args);
   }
 
   /* Subsume takes a vector of simplified Exp and removes all entries that are
@@ -616,6 +624,7 @@ public:
   bool has_user_call = false;
   bool has_block = false;
   bool has_meta_op = false;
+  bool has_control_loop = false; //break or next
 
   inline static std::array<const char*, 4> meta_op{{"substitute", "quote", "bquote", "enquote"}};
 
@@ -649,6 +658,9 @@ public:
       has_user_call = true;
     } else if (x->eq_name("[[") || x->eq_name("[")) {
       has_bracket = true;
+    }
+    else if(x->eq_name("break") || x->eq_name("next")) { 
+      has_control_loop = true;
     } else if (x->kind() == NamedOp || x->kind() == ListVecOp || x->kind() == UnknownOp) {
       has_calls++;
       has_user_call = true;
@@ -695,6 +707,7 @@ SEXP r_normalize(SEXP hash, SEXP ast, SEXP trimmed_str) {
                 << "has_user_call, "
                 << "has_block, "
                 << "has_meta_op, "
+                << "has_control_loop, "
                 << "normalized, "
                 << "trimmed, "
                 << "hash" << std::endl;
@@ -703,7 +716,7 @@ SEXP r_normalize(SEXP hash, SEXP ast, SEXP trimmed_str) {
   if (c.is_ignore)                        std::cout << "Ignore" ;
   else if (c.is_value)                    std::cout << "V" ;
   else if (c.is_model)                    std::cout << "model.frame" ;
-  else if (eq(c.topcall,"{MANY"))         std::cout << "{BLOCK}" ;
+  else if (eq(c.topcall,"{"))         std::cout << "{BLOCK}" ;
   else if (eq(c.topcall,"function"))      std::cout << "FUN ";
   else if (c.is_assign && c.boring())     std::cout << "<-";
   else if ((c.has_dollar || c.has_bracket) && c.boring())    std::cout << "$" ;
@@ -723,6 +736,7 @@ SEXP r_normalize(SEXP hash, SEXP ast, SEXP trimmed_str) {
     } else if (c.has_assigns)             std::cout << "<-";
     else if (c.has_var)                   std::cout << "X";
     else if(c.has_block)                  std::cout << "{BLOCK}";
+    else if(c.has_control_loop)           std::cout << "goto";
     else {
       std::cout << "ERROR " << str
 		<< " has_var=" << c.has_var
@@ -751,6 +765,7 @@ SEXP r_normalize(SEXP hash, SEXP ast, SEXP trimmed_str) {
       << ", " << c.has_user_call
 	    << ", " << c.has_block
       << ", " << c.has_meta_op
+      << ", " << c.has_control_loop
       << ", \"" << str << "\""
       << ", \"" << CHAR(STRING_ELT(trimmed_str, 0)) <<  "\""
       << ", " << CHAR(STRING_ELT(hash,0))

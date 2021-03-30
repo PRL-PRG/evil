@@ -80,7 +80,7 @@ test_that("Blocks", {
   expect_equal(normalize_expr(quote({})), "{()")
   expect_equal(normalize_expr(quote({sin(1 + 1)})), "0")
   expect_equal(normalize_expr(quote({1+1; x * 2})), "X") # We still subsumes in blocks
-  expect_equal(normalize_expr(quote({f(1); x * 2})), "{MANY()")
+  expect_equal(normalize_expr(quote({f(1); x * 2})), "{(f(0), X)")
 })
 
 
@@ -110,3 +110,4 @@ test_that("Structure is  simplified", {
   expect_equal(normalize_expr(quote(structure(f(1 + 1), tag = "plop"))), "structure(f(0), S)")
   expect_equal(normalize_expr(quote(structure(123, tag = r))), "X")
 })
+
