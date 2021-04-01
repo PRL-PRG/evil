@@ -747,9 +747,16 @@ SEXP r_normalize(SEXP hash, SEXP ast, SEXP trimmed_str) {
   } else {
     if (c.has_user_call)                  std::cout << "F(F(";
     if (c.has_assigns)                    std::cout << "<- ";
-    if (c.has_block)                      std::cout << "{BLOCK} ";
-    if (c.has_fundef)                     std::cout << "FUN";
+    else if (c.has_var)                        std::cout << "X";
+    else {
+      if (c.has_block)                      std::cout << "{BLOCK} ";
+      if (c.has_fundef)                     std::cout << "FUN";
+    }
     if (c.has_user_call)                  std::cout << "))";
+    if (!c.has_user_call) {
+      if (c.has_block)                      std::cout << "{BLOCK} ";
+      if (c.has_fundef)                     std::cout << "FUN";
+    }
   }
   std::cout << ", " << (c.topcall? c.topcall : "")
 	    << ", " << c.is_model
