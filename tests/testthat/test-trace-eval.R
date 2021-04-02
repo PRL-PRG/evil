@@ -46,6 +46,23 @@ test_that("tracing only global evals", {
   expect_equal(calls$eval_call_srcref, c("::global::main::1", "::global::main::2"))
 })
 
+test_that("test 3dot", {
+  g <- function(a, ...) {
+    eval(a, ...)
+  }
+
+  f <- function() {
+    x <- 1
+    g(quote(x), envir = environment())
+
+    g(quote(1))
+  }
+
+  calls <- do_trace_eval(f())
+
+  expect_equal(calls$envir_expression, c("environment()", NA))
+})
+
 ## test_that("tracing just global evals", {
 ##   withr::with_tempfile("tf", {
 ##     writeLines("eval(1)", tf)

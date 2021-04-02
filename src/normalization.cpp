@@ -563,10 +563,8 @@ public:
                   return args[0]; // Elide block with only 1 statement
               else if (args.size() == 0)
                   return new Call(x, args);
-              /*Vec empty_args;
-              return new Call(new Sym("{MANY"), x->get_anon(), empty_args);*/
-              // We need to keep all the statements to have correct counters at the end
-              return new Call(x, args);
+              Vec empty_args;
+              return new Call(new Sym("{MANY"), x->get_anon(), empty_args);
           }
           return new Call(x, args);
       } else if (x->kind() == ListVecOp) // c() or list()
@@ -716,7 +714,7 @@ SEXP r_normalize(SEXP hash, SEXP ast, SEXP trimmed_str) {
   if (c.is_ignore)                        std::cout << "Ignore" ;
   else if (c.is_value)                    std::cout << "V" ;
   else if (c.is_model)                    std::cout << "model.frame" ;
-  else if (eq(c.topcall,"{"))         std::cout << "{BLOCK}" ;
+  else if (eq(c.topcall,"{MANY"))         std::cout << "{BLOCK}" ;
   else if (eq(c.topcall,"function"))      std::cout << "FUN ";
   else if (c.is_assign && c.boring())     std::cout << "<-";
   else if ((c.has_dollar || c.has_bracket) && c.boring())    std::cout << "$" ;

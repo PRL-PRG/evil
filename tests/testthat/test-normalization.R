@@ -80,7 +80,7 @@ test_that("Blocks", {
   expect_equal(normalize_expr(quote({})), "{()")
   expect_equal(normalize_expr(quote({sin(1 + 1)})), "0")
   expect_equal(normalize_expr(quote({1+1; x * 2})), "X") # We still subsumes in blocks
-  expect_equal(normalize_expr(quote({f(1); x * 2})), "{(f(0), X)")
+  expect_equal(normalize_expr(quote({f(1); x * 2})), "{MANY()")
 })
 
 
