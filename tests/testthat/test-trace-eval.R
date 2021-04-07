@@ -60,7 +60,7 @@ test_that("test 3dot", {
 
   calls <- do_trace_eval(f())
 
-  expect_equal(calls$envir_expression, c("environment()", NA))
+  expect_equal(calls$envir_expression[order(calls$eval_call_id)], c("<environment>", "NA"))
 })
 
 ## test_that("tracing just global evals", {
