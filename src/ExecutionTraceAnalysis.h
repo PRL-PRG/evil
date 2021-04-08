@@ -85,6 +85,11 @@ class ExecutionTraceAnalysis: public Analysis {
                 bool in_envir = eval_call->get_eval_environment() == r_rho;
 
                 if (parent_eval_id < eval_call->get_id()) {
+
+                    if (varname.find_first_of("env::") == 0) {
+                        return;
+                    }
+
                     writes_table_.record(eval_call->get_id(),
                                          event.get_short_name(),
                                          transitive,
