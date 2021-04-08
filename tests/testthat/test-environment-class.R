@@ -5,6 +5,15 @@ test_that("default argument classes", {
 
     calls <- do_trace_eval(f())
 
+    expect_equal(calls$environment_class, "caller-0-")
+
+    g <- function() {
+        eval(1, parent.frame())
+    }
+
+    f <- function() { g() }
+    calls <- do_trace_eval(f())
+
     expect_equal(calls$environment_class, "caller-1-")
 })
 
@@ -25,7 +34,7 @@ test_that("default argument classes up", {
 
     calls <- do_trace_eval(i())
 
-    expect_equal(calls$environment_class[order(calls$eval_call_id)], c("caller-3-", "caller-1-"))
+    expect_equal(calls$environment_class[order(calls$eval_call_id)], c("caller-2-", "caller-0-"))
 })
 
 test_that("new env", {
@@ -39,7 +48,7 @@ test_that("new env", {
 
     calls <- do_trace_eval(f())
 
-    expect_equal(calls$environment_class[order(calls$eval_call_id)], c("new+caller-1-", "new+caller-15-empty"))
+    expect_equal(calls$environment_class[order(calls$eval_call_id)], c("new+caller-0-", "new+caller-15-empty"))
 })
 
 test_that("global env", {
@@ -50,7 +59,7 @@ test_that("global env", {
 
     calls <- do_trace_eval(f())
 
-    expect_equal(calls$environment_class[order(calls$eval_call_id)], c("caller-15-global", "caller-2-"))
+    expect_equal(calls$environment_class[order(calls$eval_call_id)], c("caller-15-global", "caller-1-"))
 })
 
 test_that("base env", {
@@ -82,7 +91,7 @@ test_that("sys frame env", {
 
     calls <- do_trace_eval(f())
 
-    expect_equal(calls$environment_class, "caller-2-")
+    expect_equal(calls$environment_class, "caller-1-")
 
     calls <- do_trace_eval(g())
 
@@ -99,7 +108,7 @@ test_that("list2env", {
 
     calls <- do_trace_eval(f())
 
-    expect_equal(calls$environment_class, "new-caller-1-")
+    expect_equal(calls$environment_class, "new+caller-0-")
 
     f <- function() {
         e <-list2env(list(x = 3, y = 5), envir = environment())
@@ -109,6 +118,6 @@ test_that("list2env", {
 
     calls <- do_trace_eval(f())
 
-    expect_equal(calls$environment_class, "caller-1-")
+    expect_equal(calls$environment_class, "caller-0-")
 
 })
