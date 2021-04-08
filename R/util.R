@@ -227,7 +227,7 @@ classify_environment <- function(application_frame_position,
   if (index == 0) {
     ## check bases cases or package environment
     if (!is.null(specific_env_name)) {
-      return(paste("caller", parent_count_str, specific_env_name, sep = "-"))
+      return(specific_env_name)
     }
 
     parent_class <-
@@ -238,14 +238,10 @@ classify_environment <- function(application_frame_position,
         parent.env(eval_env)
       )
     return(paste("new", parent_class, sep = "+"))
-  } else if (index == -1) {
-    ## check bases cases
-    if (!is.null(specific_env_name)) {
-      return(specific_env_name)
-    }
-    ## this means that there was a loop in the frames
+  } else if(index == -1) {
     return(paste("loop", parent_count_str, sep = "-"))
-  } else {
+  }
+  else {
     ## this means the eval_env is one of the parent caller's environments
     return(paste("caller", parent_count_str, specific_env_name, sep = "-"))
   }
