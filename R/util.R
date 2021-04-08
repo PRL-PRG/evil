@@ -213,6 +213,8 @@ classify_environment <- function(application_frame_position,
     parent_count <- parent_count + 1
   }
 
+  parent_count_str <- format(parent_count, scientific = FALSE)
+
   specific_env_name <- specific_env(environmentName(eval_env))
 
   ## this means the eval_env did not belong to any of the parent callers
@@ -221,7 +223,7 @@ classify_environment <- function(application_frame_position,
   if (index == 0) {
     ## check bases cases or package environment
     if (!is.null(specific_env_name)) {
-      return(paste("caller", parent_count, specific_env_name, sep = "-"))
+      return(paste("caller", parent_count_str, specific_env_name, sep = "-"))
     }
 
     parent_class <-
@@ -238,10 +240,10 @@ classify_environment <- function(application_frame_position,
       return(specific_env_name)
     }
     ## this means that there was a loop in the frames
-    return("loop")
+    return(paste("loop", parent_count_str, sep = "-")
   } else {
     ## this means the eval_env is one of the parent caller's environments
-    return(paste("caller", parent_count, specific_env_name, sep = "-"))
+    return(paste("caller", parent_count_str, specific_env_name, sep = "-"))
   }
 
   return("unhandled")
