@@ -82,6 +82,8 @@ class ExecutionTraceAnalysis: public Analysis {
                 Call* eval_call =
                     stack.peek_call(i, Function::Identity::EvalFamily);
 
+                bool in_envir = eval_call->get_eval_environment() == r_rho;
+
                 if (parent_eval_id < eval_call->get_id()) {
                     writes_table_.record(eval_call->get_id(),
                                          event.get_short_name(),
@@ -90,7 +92,8 @@ class ExecutionTraceAnalysis: public Analysis {
                                          environment->get_id(),
                                          environment->get_parent_eval_id(),
                                          environment->get_receiver_eval_id(),
-                                         environment->get_formatted_source());
+                                         environment->get_formatted_source(),
+                                         in_envir);
 
                     /* output the trace first time */
                     if (i == 0) {
