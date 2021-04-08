@@ -60,18 +60,18 @@ class Environment {
         switch (get_source()) {
         case Source::Unknown:
              if (get_env() == dyntrace_get_replace_funs_table()) {
-                 return "..R_ReplaceFunsTable";
+                 return "internal:R_ReplaceFunsTable";
             // } else if (get_env() == R_S4_extends_table) {
-            //     return "..R_S4_extends_table";
+            //     return "internal:R_S4_extends_table";
             // } else if (get_env() == CEntryTable) {
-            //     return "..CEntryTable";
+            //     return "internal:CEntryTable";
             // } else if (get_env() == R_NamespaceRegistry) {
-            //     return "..R_NamespaceRegistry";
+            //     return "internal:R_NamespaceRegistry";
              } else {
                 return "???";
              }
         case Source::Package:
-            return get_package_name();
+            return "pkg:" + get_package_name();
         case Source::Explicit:
             return "explicit:" +
                    get_call()->get_function()->get_qualified_name();
