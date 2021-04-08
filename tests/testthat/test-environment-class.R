@@ -1,3 +1,17 @@
+
+# We need to compute how many frames test_that adds...
+# we expect testhat to execute the tests in one file in order
+test_that("init", {
+    f <- function() {
+        eval(1, globalenv())
+    }
+    calls <- do_trace_eval(f())
+    n <-as.integer(strsplit(calls$environment_class, "-", fixed = TRUE)[[1]][[2]])
+    assign("nb_testthat_frames", n, envir = globalenv())
+    expect_true(nb_testthat_frames %in% c(14, 15))
+})
+
+
 test_that("default argument classes", {
     f <- function() {
         eval(1)
@@ -48,7 +62,7 @@ test_that("new env", {
 
     calls <- do_trace_eval(f())
 
-    expect_equal(calls$environment_class[order(calls$eval_call_id)], c("new+caller-0-", "new+caller-15-empty"))
+    expect_equal(calls$environment_class[order(calls$eval_call_id)], c("new+caller-0-", paste0("new+caller-", nb_testthat_frames, "-empty")))
 })
 
 test_that("global env", {
@@ -59,7 +73,7 @@ test_that("global env", {
 
     calls <- do_trace_eval(f())
 
-    expect_equal(calls$environment_class[order(calls$eval_call_id)], c("caller-15-global", "caller-1-"))
+    expect_equal(calls$environment_class[order(calls$eval_call_id)], c(paste0("caller-", nb_testthat_frames, "-global"), "caller-1-"))
 })
 
 test_that("base env", {
@@ -69,7 +83,7 @@ test_that("base env", {
 
     calls <- do_trace_eval(f())
 
-    expect_equal(calls$environment_class, c("caller-15-base"))
+    expect_equal(calls$environment_class, paste0("caller-", nb_testthat_frames, "-base"))
 
     f <- function() {
         eval(1, .BaseNamespaceEnv)
@@ -77,7 +91,7 @@ test_that("base env", {
 
     calls <- do_trace_eval(f())
 
-    expect_equal(calls$environment_class, c("caller-15-base"))
+    expect_equal(calls$environment_class, paste0("caller-", nb_testthat_frames, "-base"))
 })
 
 test_that("sys frame env", {
@@ -96,7 +110,7 @@ test_that("sys frame env", {
     calls <- do_trace_eval(g())
 
     # would be ... caller-1 ... byt testthat creates 14 additional frames (and from base, not global)
-    expect_equal(calls$environment_class, "new+new+new+caller-15-base")
+    expect_equal(calls$environment_class, paste0("new+new+new+caller-", nb_testthat_frames, "-base"))
 })
 
 test_that("list2env", {
