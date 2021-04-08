@@ -244,7 +244,7 @@ classify_environment <- function(application_frame_position,
       return(specific_env_name)
     }
     ## this means that there was a loop in the frames
-    return(paste("loop", parent_count_str, sep = "-")
+    return(paste("loop", parent_count_str, sep = "-"))
   } else {
     ## this means the eval_env is one of the parent caller's environments
     return(paste("caller", parent_count_str, specific_env_name, sep = "-"))
