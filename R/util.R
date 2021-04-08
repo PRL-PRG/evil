@@ -216,6 +216,10 @@ classify_environment <- function(application_frame_position,
   parent_count_str <- format(parent_count, scientific = FALSE)
 
   specific_env_name <- specific_env(environmentName(eval_env))
+  if (identical(eval_env, callee_env)) {
+    # Seems it means we are inside the wrapper of primitive eval...
+    specific_env_name <- paste0(specific_env_name, "_callee")
+  }
 
   ## this means the eval_env did not belong to any of the parent callers
   ## if it is not a base case or a package environment
