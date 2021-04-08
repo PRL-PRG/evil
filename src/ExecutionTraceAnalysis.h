@@ -90,6 +90,10 @@ class ExecutionTraceAnalysis: public Analysis {
                         return;
                     }
 
+                    if (r_rho == dyntrace_get_replace_funs_table()) {
+                        return;
+                    }
+
                     writes_table_.record(eval_call->get_id(),
                                          event.get_short_name(),
                                          transitive,
