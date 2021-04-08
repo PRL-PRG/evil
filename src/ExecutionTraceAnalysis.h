@@ -29,14 +29,14 @@ class ExecutionTraceAnalysis: public Analysis {
             const Call* call = frame.as_call();
             Environment* env = environment_table.lookup(event.get_rho());
             const Function* function = call->get_function();
-            trace_table_.record(depth_,
-                                call->get_id(),
-                                "ent",
-                                function->get_qualified_name(),
-                                env->get_id(),
-                                env->get_receiver_eval_id(),
-                                env->get_parent_eval_id(),
-                                env->get_formatted_source());
+            // trace_table_.record(depth_,
+            //                     call->get_id(),
+            //                     "ent",
+            //                     function->get_qualified_name(),
+            //                     env->get_id(),
+            //                     env->get_receiver_eval_id(),
+            //                     env->get_parent_eval_id(),
+            //                     env->get_formatted_source());
             ++depth_;
         }
 
@@ -46,14 +46,14 @@ class ExecutionTraceAnalysis: public Analysis {
             const Call* call = frame.as_call();
             Environment* env = environment_table.lookup(event.get_rho());
             const Function* function = call->get_function();
-            trace_table_.record(depth_,
-                                call->get_id(),
-                                "ext",
-                                function->get_qualified_name(),
-                                env->get_id(),
-                                env->get_receiver_eval_id(),
-                                env->get_parent_eval_id(),
-                                env->get_formatted_source());
+            // trace_table_.record(depth_,
+            //                     call->get_id(),
+            //                     "ext",
+            //                     function->get_qualified_name(),
+            //                     env->get_id(),
+            //                     env->get_receiver_eval_id(),
+            //                     env->get_parent_eval_id(),
+            //                     env->get_formatted_source());
         }
 
         else if (event_type == Event::Type::VariableDefinition ||
@@ -95,18 +95,18 @@ class ExecutionTraceAnalysis: public Analysis {
                                          environment->get_formatted_source(),
                                          in_envir);
 
-                    /* output the trace first time */
-                    if (i == 0) {
-                        trace_table_.record(
-                            depth_,
-                            NA_INTEGER,
-                            event.get_short_name(),
-                            varname,
-                            environment->get_id(),
-                            environment->get_receiver_eval_id(),
-                            environment->get_parent_eval_id(),
-                            environment->get_formatted_source());
-                    }
+                    // /* output the trace first time */
+                    // if (i == 0) {
+                    //     trace_table_.record(
+                    //         depth_,
+                    //         NA_INTEGER,
+                    //         event.get_short_name(),
+                    //         varname,
+                    //         environment->get_id(),
+                    //         environment->get_receiver_eval_id(),
+                    //         environment->get_parent_eval_id(),
+                    //         environment->get_formatted_source());
+                    // }
 
                 } else {
                     break;
@@ -118,11 +118,12 @@ class ExecutionTraceAnalysis: public Analysis {
     }
 
     std::vector<Table*> get_tables() override {
-        return {&trace_table_, &writes_table_};
+        // return {&trace_table_, &writes_table_};
+        return {&writes_table_};
     }
 
   private:
-    ExecutionTraceTable trace_table_;
+    // ExecutionTraceTable trace_table_;
     WritesTable writes_table_;
     int depth_;
 

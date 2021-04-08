@@ -59,7 +59,17 @@ class Environment {
     std::string get_formatted_source() {
         switch (get_source()) {
         case Source::Unknown:
-            return "???";
+             if (get_env() == dyntrace_get_replace_funs_table()) {
+                 return "..R_ReplaceFunsTable";
+            // } else if (get_env() == R_S4_extends_table) {
+            //     return "..R_S4_extends_table";
+            // } else if (get_env() == CEntryTable) {
+            //     return "..CEntryTable";
+            // } else if (get_env() == R_NamespaceRegistry) {
+            //     return "..R_NamespaceRegistry";
+             } else {
+                return "???";
+             }
         case Source::Package:
             return get_package_name();
         case Source::Explicit:
