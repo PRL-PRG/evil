@@ -227,7 +227,7 @@ classify_environment <- function(eval_call_frame_position,
     frames_addresses <- lapply(frames, injectr::sexp_address)
     index <- match(eval_env_addr, frames_addresses, nomatch = 0)
     if(index > 0 ) {
-      return(paste("loop", parent_count_str, format(index_env, scientific = FALSE), environmentName(eval_env), sep = "-"))
+      return(paste("loop", parent_count_str, format(index, scientific = FALSE), environmentName(eval_env), sep = "-"))
     }
   }
 
