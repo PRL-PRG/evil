@@ -178,9 +178,8 @@ specific_env <- function(env_name) {
   return(env_name)
 }
 
-classify_environment <- function(application_frame_position,
-                                 ## nolint
-                                 eval_call_frame_position,
+#' @export
+classify_environment <- function(eval_call_frame_position,
                                  callee_env,
                                  eval_env) {
   ## check if environment is a caller environment
@@ -219,6 +218,7 @@ classify_environment <- function(application_frame_position,
   if (identical(eval_env, callee_env)) {
     # Seems it means we are inside the wrapper of primitive eval...
     # parent_count will be also -1
+    # That only happens if the eval variant is local
     specific_env_name <- paste0(specific_env_name, "_callee")
   }
 
@@ -242,7 +242,6 @@ classify_environment <- function(application_frame_position,
 
     parent_class <-
       classify_environment(
-        application_frame_position,
         eval_call_frame_position,
         callee_env,
         parent.env(eval_env)

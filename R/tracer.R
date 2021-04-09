@@ -292,7 +292,6 @@ call_exit_callback <- function(context, application, package, func, call) {
     # TODO resolve environments if it is an integer (sys.call)
     if (is.environment(eval_env)) {
         environment_class <- classify_environment(
-            application_frame_position,
             eval_call_frame_position,
             eval_call_env,
             eval_env
