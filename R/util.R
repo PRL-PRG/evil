@@ -218,7 +218,17 @@ classify_environment <- function(application_frame_position,
   specific_env_name <- specific_env(environmentName(eval_env))
   if (identical(eval_env, callee_env)) {
     # Seems it means we are inside the wrapper of primitive eval...
+    # parent_count will be also -1
     specific_env_name <- paste0(specific_env_name, "_callee")
+  }
+
+  if(index == -1) {
+    eval_env_addr <- injectr::sexp_address(eval_env)
+    frames_addresses <- lapply(frames, injectr::sexp_address)
+    index <- match(eval_env_addr, frames_addresses, nomatch = 0)
+    if(index_env > 0 ) {
+      return(paste("loop", parent_count_str, format(index_env, scientific = FALSE), environmentName(eval_env), sep = "-"))
+    }
   }
 
   ## this means the eval_env did not belong to any of the parent callers
@@ -238,8 +248,6 @@ classify_environment <- function(application_frame_position,
         parent.env(eval_env)
       )
     return(paste("new", parent_class, sep = "+"))
-  } else if(index == -1) {
-    return(paste("loop", parent_count_str, sep = "-"))
   }
   else {
     ## this means the eval_env is one of the parent caller's environments
