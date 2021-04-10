@@ -264,6 +264,7 @@ class FunctionTable {
         set_function_identity_(R_BaseNamespace,
                                "unloadNamespace",
                                Function::Identity::UnloadNamespace);
+//        set_function_identity_(R_BaseNamespace, "new.env", Function::Identity::NewEnv);
     }
 };
 
