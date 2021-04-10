@@ -90,7 +90,7 @@ class ExecutionTraceAnalysis: public Analysis {
                         return;
                     }
 
-                    if (r_rho == dyntrace_get_replace_funs_table()) {
+                    if (r_rho == dyntrace_get_replace_funs_table() || r_rho == dyntrace_get_s4_extends_table()) {
                         return;
                     }
 

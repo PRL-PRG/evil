@@ -4,6 +4,8 @@
 #include <string>
 #include "Call.h"
 
+extern "C" SEXP R_NamespaceRegistry;
+
 class Environment {
   public:
     enum class Source { Unknown, Package, Call, Explicit };
@@ -61,12 +63,12 @@ class Environment {
         case Source::Unknown:
              if (get_env() == dyntrace_get_replace_funs_table()) {
                  return "internal:R_ReplaceFunsTable";
-            // } else if (get_env() == R_S4_extends_table) {
-            //     return "internal:R_S4_extends_table";
+             } else if (get_env() == dyntrace_get_s4_extends_table()) {
+                 return "internal:R_S4_extends_table";
             // } else if (get_env() == CEntryTable) {
             //     return "internal:CEntryTable";
-            // } else if (get_env() == R_NamespaceRegistry) {
-            //     return "internal:R_NamespaceRegistry";
+             } else if (get_env() == R_NamespaceRegistry) {
+                 return "internal:R_NamespaceRegistry";
              } else {
                 return "???";
              }
