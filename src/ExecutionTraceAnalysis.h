@@ -85,14 +85,23 @@ class ExecutionTraceAnalysis: public Analysis {
                 bool in_envir = eval_call->get_eval_environment() == r_rho;
 
                 if (parent_eval_id < eval_call->get_id()) {
-
-                    if (varname.find_first_of("env::") == 0) {
-                        return;
-                    }
-
-                    if (r_rho == dyntrace_get_replace_funs_table() || r_rho == dyntrace_get_s4_extends_table()) {
-                        return;
                     int env_depth = compute_env_depth(stack, r_rho);
+                    std::string env_class = environment->get_formatted_source();
+                    if (environment->get_source() == Environment::Source::Unknown) {
+                        SEXP parent_env;
+                        PROTECT(parent_env = ENCLOS(r_rho));
+                        if (is_S4_env(r_rho)) {
+                            env_class += "S4";
+                        } else if (is_R6_env(r_rho)) {
+                            env_class = compute_R6_env_name(r_rho);
+                        } else if (r_rho == userHooksEnv_) {
+                            env_class = ".userHooksEnv";
+                        } else if (parent_env == R_EmptyEnv) {
+                            env_class += "Empty";
+                        } else {
+                            env_class += environment_name(parent_env);
+                        }
+                        UNPROTECT(1);
                     }
 
                     writes_table_.record(eval_call->get_id(),
@@ -102,7 +111,7 @@ class ExecutionTraceAnalysis: public Analysis {
                                          environment->get_id(),
                                          environment->get_parent_eval_id(),
                                          environment->get_receiver_eval_id(),
-                                         environment->get_formatted_source(),
+                                         env_class,
                                          env_depth,
                                          in_envir);
 
@@ -141,6 +150,49 @@ class ExecutionTraceAnalysis: public Analysis {
     bool is_tmp_val_symbol_(const std::string& name) {
         return name == "*tmp*";
     }
+
+    SEXP userHooksEnv_ = Rf_eval(lang3(install("get"), mkString(".userHooksEnv"), R_GlobalEnv), R_GlobalEnv);
+
+    std::string compute_R6_env_name(SEXP rho) {
+        SEXP attr;
+        PROTECT(attr = Rf_getAttrib(rho, install("class")));
+        std::string acc = "";
+
+        if (TYPEOF(attr) == STRSXP) {
+            acc = "R6:";
+            for (int i=0; i<XLENGTH(attr); i++) {
+                acc += CHAR(STRING_ELT(attr, i));
+                if (i < XLENGTH(attr) - 1) {
+                    acc += ",";
+                }
+            }
+        }
+        UNPROTECT(1);
+        return acc;
+    }
+
+    bool is_R6_env(SEXP rho) {
+        SEXP attr;
+        bool res;
+        PROTECT(attr = Rf_getAttrib(rho, install("class")));
+        res = TYPEOF(attr) == STRSXP && XLENGTH(attr) > 0;
+        UNPROTECT(1);
+        return res;
+    }
+
+    bool is_S4_env(SEXP rho) {
+        SEXP parent;
+        bool res = false;
+
+        PROTECT(parent = ENCLOS(rho));
+        if (parent != R_NilValue) {
+            res = Rf_findVarInFrame3(parent, install(".MTable"), FALSE) != R_UnboundValue;
+            res = res || Rf_findVarInFrame3(parent, install(".AllMTable"), FALSE) != R_UnboundValue;
+        }
+        UNPROTECT(1);
+        return res;
+    }
+
     int compute_env_depth(Stack &stack, SEXP r_rho) {
         int depth = 0;
 
@@ -156,6 +208,39 @@ class ExecutionTraceAnalysis: public Analysis {
         }
 
         return NA_INTEGER;
+    }
+
+    std::string classify_environment(Call* eval_call, SEXP r_rho) {
+        SEXP expr, res;
+        std::string env_class = "???";
+
+        Rprintf("C: %d, %p, %p\n", eval_call->get_depth(), eval_call->get_environment(), r_rho);
+        PROTECT(expr = lang4(lang3(install("::"),
+                                   install("evil"),
+                                   install("classify_environment")),
+                             ScalarInteger(eval_call->get_depth()),
+                             eval_call->get_environment(),
+                             r_rho));
+        int error;
+        PROTECT(res = R_tryEval(expr, eval_call->get_environment(), &error));
+        if (!error) {
+            env_class = CHAR(STRING_ELT(res, 0));
+        }
+        UNPROTECT(2);
+
+        return env_class;
+    }
+
+    std::string environment_name(SEXP env) {
+        if (R_IsPackageEnv(env) == TRUE) {
+            // cf. builtin.c:432 do_envirName
+            return CHAR(STRING_ELT(R_PackageEnvName(env), 0));
+        } else if (R_IsNamespaceEnv(env) == TRUE) {
+            // cf. builtin.c:434 do_envirName
+            return CHAR(STRING_ELT(R_NamespaceEnvSpec(env), 0));
+        } else {
+            return "";
+        }
     }
 };
 
