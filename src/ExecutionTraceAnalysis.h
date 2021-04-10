@@ -92,6 +92,7 @@ class ExecutionTraceAnalysis: public Analysis {
 
                     if (r_rho == dyntrace_get_replace_funs_table() || r_rho == dyntrace_get_s4_extends_table()) {
                         return;
+                    int env_depth = compute_env_depth(stack, r_rho);
                     }
 
                     writes_table_.record(eval_call->get_id(),
@@ -102,6 +103,7 @@ class ExecutionTraceAnalysis: public Analysis {
                                          environment->get_parent_eval_id(),
                                          environment->get_receiver_eval_id(),
                                          environment->get_formatted_source(),
+                                         env_depth,
                                          in_envir);
 
                     // /* output the trace first time */
@@ -138,6 +140,22 @@ class ExecutionTraceAnalysis: public Analysis {
 
     bool is_tmp_val_symbol_(const std::string& name) {
         return name == "*tmp*";
+    }
+    int compute_env_depth(Stack &stack, SEXP r_rho) {
+        int depth = 0;
+
+        for (int n = 1; n < stack.size(); ++n) {
+            Call *call = stack.peek_call(n);
+            if (call != nullptr) {
+                ++depth;
+                SEXP call_env = call->get_eval_environment();
+                if (call_env == r_rho) {
+                    return depth;
+                }
+            }
+        }
+
+        return NA_INTEGER;
     }
 };
 

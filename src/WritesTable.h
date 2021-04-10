@@ -14,6 +14,7 @@ class WritesTable: public Table {
                 int parent_eval_id,
                 int receiver_eval_id,
                 const std::string& source,
+                int depth,
                 int in_envir) {
         eval_ids_.push_back(eval_id);
         event_.push_back(event);
@@ -23,6 +24,7 @@ class WritesTable: public Table {
         parent_eval_id_.push_back(parent_eval_id);
         receiver_eval_id_.push_back(receiver_eval_id);
         source_.push_back(source);
+        depth_.push_back(depth);
         in_envir_.push_back(in_envir);
     }
 
@@ -36,9 +38,10 @@ class WritesTable: public Table {
              {"parent_eval_id", PROTECT(create_integer_vector(parent_eval_id_))},
              {"receiver_eval_id", PROTECT(create_integer_vector(receiver_eval_id_))},
              {"source", PROTECT(create_character_vector(source_))},
-             {"in_envir_", PROTECT(create_integer_vector(in_envir_))}});
+             {"depth", PROTECT(create_integer_vector(depth_))},
+             {"in_envir", PROTECT(create_integer_vector(in_envir_))}});
 
-        UNPROTECT(9);
+        UNPROTECT(10);
 
         return r_data_frame;
     }
@@ -52,6 +55,7 @@ class WritesTable: public Table {
     std::vector<int> parent_eval_id_;
     std::vector<int> receiver_eval_id_;
     std::vector<std::string> source_;
+    std::vector<int> depth_;
     std::vector<int> in_envir_;
 };
 
