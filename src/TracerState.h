@@ -154,6 +154,9 @@ class TracerState {
 
             Stack& stack = get_stack();
             Function* function = get_function_table().lookup(r_op);
+            if (!function->has_name() && TYPEOF(CAR(r_call)) == SYMSXP) {
+                function->set_name(CHAR(PRINTNAME(CAR(r_call))));
+            }
 
             Call* call =
                 new Call(function, r_call, r_args, r_rho, stack.size());
