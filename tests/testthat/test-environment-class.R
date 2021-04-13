@@ -130,5 +130,16 @@ test_that("enclosure", {
 
     calls <- do_trace_eval(f())
 
+
+    expect_equal(calls$enclosure_class, "caller-0-")
+
+    f <- function() {
+        y <- 1
+        df <- list(x = 3)
+        eval(quote(x + y), df)
+    }
+
+    calls <- do_trace_eval(f())
+
     expect_equal(calls$enclosure_class, "caller-0-")
 })
