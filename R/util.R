@@ -272,5 +272,9 @@ from_match.call <- function(expr_resolved, addresses_set) {
       }
     }
   }
+  # A symbol, a numeric, a string
+  else if(!is.null(expr_resolved) && exists(injectr::sexp_address(expr_resolved), where=addresses_set) {
+    return("match.call")
+  }
   return(NA_character_)
 }
