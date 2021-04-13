@@ -302,7 +302,7 @@ call_exit_callback <- function(context, application, package, func, call) {
     enclos_env <- eval_call_env$enclos
 
     enclosure_class <- NA_character_
-    if(sexp_typeof(eval_env) %in% c("list", "NULL") && is.environment(enclos_env)) {
+    if(sexp_typeof(eval_env) %in% c("list", "NULL", "pairlist") && is.environment(enclos_env)) {
       enclosure_class <- tryCatch({
         classify_environment(
           eval_call_frame_position,
