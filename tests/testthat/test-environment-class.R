@@ -120,3 +120,15 @@ test_that("list2env", {
     expect_equal(calls$environment_class, "caller-0-")
 
 })
+
+test_that("enclosure", {
+    f <- function() {
+        y <- 1
+        df <- list(x = 3)
+        eval(quote(x + y), df, environment())
+    }
+
+    calls <- do_trace_eval(f())
+
+    expect_equal(calls$enclosure_class, "caller-0-")
+})

@@ -288,7 +288,7 @@ call_exit_callback <- function(context, application, package, func, call) {
     envir_name <- if (eval_function == "eval.parent") "p" else "envir"
 
     eval_env <- get(envir_name, envir = eval_call_env)
-    environment_class <- NA
+    environment_class <- NA_character_
     # TODO resolve environments if it is an integer (sys.call)
     if (is.environment(eval_env)) {
       environment_class <- tryCatch({
@@ -300,6 +300,17 @@ call_exit_callback <- function(context, application, package, func, call) {
       }, error=function(e) "error")
     }
     enclos_env <- eval_call_env$enclos
+
+    enclosure_class <- NA_character_
+    if(sexp_typeof(eval_env) %in% c("list", "NULL") && is.environment(enclos_env)) {
+      enclosure_class <- tryCatch({
+        classify_environment(
+          eval_call_frame_position,
+          eval_call_env,
+          enclos_env
+        )
+      }, error=function(e) "error")
+    }
 
     # eval: expr, envir, enclos
     # evalq: expr, envir, enclos
@@ -466,6 +477,7 @@ call_exit_callback <- function(context, application, package, func, call) {
         enclos_expression = expr_to_string(enclos_expression),
         enclos_forced,
         enclos_type = sexp_typeof(enclos_env),
+        enclosure_class = enclosure_class,
         interp_eval = interp_eval
     )
 
