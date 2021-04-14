@@ -194,13 +194,14 @@ class ExecutionTraceAnalysis: public Analysis {
     }
 
     int compute_env_depth(Stack &stack, SEXP r_rho) {
-        int depth = 0;
+        // so the caller is 0
+        int depth = -1;
 
         for (int n = 1; n < stack.size(); ++n) {
             Call *call = stack.peek_call(n);
             if (call != nullptr) {
                 ++depth;
-                SEXP call_env = call->get_eval_environment();
+                SEXP call_env = call->get_environment();
                 if (call_env == r_rho) {
                     return depth;
                 }
