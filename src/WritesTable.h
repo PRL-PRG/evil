@@ -10,6 +10,7 @@ class WritesTable: public Table {
                 const std::string& event,
                 int transitive,
                 const std::string& variable,
+                int type,
                 int env_id,
                 int parent_eval_id,
                 int receiver_eval_id,
@@ -20,6 +21,7 @@ class WritesTable: public Table {
         event_.push_back(event);
         transitive_.push_back(transitive);
         variable_.push_back(variable);
+        type_.push_back(type);
         env_ids_.push_back(env_id);
         parent_eval_id_.push_back(parent_eval_id);
         receiver_eval_id_.push_back(receiver_eval_id);
@@ -34,6 +36,7 @@ class WritesTable: public Table {
              {"event", PROTECT(create_character_vector(event_))},
              {"transitive", PROTECT(create_integer_vector(transitive_))},
              {"variable", PROTECT(create_character_vector(variable_))},
+             {"type", PROTECT(create_integer_vector(type_))},
              {"env_id", PROTECT(create_integer_vector(env_ids_))},
              {"parent_eval_id", PROTECT(create_integer_vector(parent_eval_id_))},
              {"receiver_eval_id", PROTECT(create_integer_vector(receiver_eval_id_))},
@@ -41,7 +44,7 @@ class WritesTable: public Table {
              {"depth", PROTECT(create_integer_vector(depth_))},
              {"in_envir", PROTECT(create_integer_vector(in_envir_))}});
 
-        UNPROTECT(10);
+        UNPROTECT(11);
 
         return r_data_frame;
     }
@@ -51,6 +54,7 @@ class WritesTable: public Table {
     std::vector<std::string> event_;
     std::vector<int> transitive_;
     std::vector<std::string> variable_;
+    std::vector<int> type_;
     std::vector<int> env_ids_;
     std::vector<int> parent_eval_id_;
     std::vector<int> receiver_eval_id_;

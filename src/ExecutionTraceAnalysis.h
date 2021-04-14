@@ -61,6 +61,7 @@ class ExecutionTraceAnalysis: public Analysis {
                  event_type == Event::Type::VariableRemoval) {
             SEXP r_rho = event.get_rho();
             std::string varname = CHAR(PRINTNAME(event.get_variable()));
+            int vartype = TYPEOF(event.get_value());
 
             /* ignore *tmp* used by R internals for intermediate computation */
             if (is_tmp_val_symbol_(varname)) {
@@ -108,6 +109,7 @@ class ExecutionTraceAnalysis: public Analysis {
                                          event.get_short_name(),
                                          transitive,
                                          varname,
+                                         vartype,
                                          environment->get_id(),
                                          environment->get_parent_eval_id(),
                                          environment->get_receiver_eval_id(),
