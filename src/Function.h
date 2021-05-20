@@ -22,12 +22,20 @@ class Function {
         LazyLoadDbExec = 2048,
         NewEnv = 4096,
         List2Env = 8192,
+        Parse = 1000, // incorrect here. Should be powers of 2
+        Str2lang, 
+        Str2expression,
+        Substitute,
+        Quote,
+        Enquote,
+        Match_call
         Other = 16384,
         EvalFamily = Eval | EvalQ | EvalParent | Local,
         PackageFamily = Library | Require | AttachNamespace | LoadNamespace |
                         RequireNamespace | UnloadNamespace | LazyLoad |
                         LazyLoadDbExec,
         EnvironmentFamily = NewEnv | List2Env,
+        ProvenanceFamily = Parse | Str2lang | Str2expression | Substitute | Quote | Enquote | Match_call,
         Any = INT_MAX
     };
 

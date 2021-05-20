@@ -265,6 +265,22 @@ class FunctionTable {
                                "unloadNamespace",
                                Function::Identity::UnloadNamespace);
 //        set_function_identity_(R_BaseNamespace, "new.env", Function::Identity::NewEnv);
+        set_function_identity_(R_BaseNamespace,
+                                "parse",
+                                Function::Identity::Parse);
+        set_function_identity_(
+            R_BaseNamespace, "str2lang", Function::Identity::Str2lang);
+        set_function_identity_(
+            R_BaseNamespace, "str2expression", Function::Identity::Str2expression);
+        set_function_identity_(
+            R_BaseNamespace, "substitute", Function::Identity::Substitute);
+        set_function_identity_(
+            R_BaseNamespace, "quote", Function::Identity::Quote);
+        set_function_identity_(
+            R_BaseNamespace, "enquote", Function::Identity::Enquote);
+        set_function_identity_(
+            R_BaseNamespace, "match.call", Function::Identity::Match_call);
+
     }
 };
 
