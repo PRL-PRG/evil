@@ -13,6 +13,11 @@ enum class ProvenanceKind {
 
 class ProvenanceTable: public Table {
   private:
+    // Rather should be a vector of sets (or...) to handle that 
+    // an expression can have several origins
+    // Or one column per possible origin and then true false
+    // Or the arguments if it is the origin, and NA otherwise
+    // As there is one list of arguments per origin
     std::vector<ProvenanceKind> parse_;
     std::vector<int> eval_ids_;
     std::vector<std::string> arguments_;
@@ -40,6 +45,27 @@ class ProvenanceTable: public Table {
         }
     }
 
+    static const ProvenanceKind identity_to_provenance(Function::Identity identity) {
+        switch (identity)
+        {
+        case Function::Identity::Enquote :
+            return ProvenanceKind::enquote;
+        case Function::Identity::Quote:
+            return ProvenanceKind::quote;
+        case Function::Identity::Parse:
+            return ProvenanceKind::parse;
+        case Function::Identity::Str2expression:
+            return ProvenanceKind::str2expression;
+        case Function::Identity::Str2lang:
+            return ProvenanceKind::str2lang;
+        
+        default:
+            // should never happen
+            // R error here
+            break;
+        }
+    }
+
     void record(int eval_id, 
         ProvenanceKind kind,
         const std::string& arguments) {
@@ -49,13 +75,18 @@ class ProvenanceTable: public Table {
         }
 
     SEXP as_data_frame() override {
+        std::vector<std::string> provenance_strs(parse_.size());
+        for(int i = 0; i < parse_.size(); i ++) {
+            provenance_strs[i] = provenance_to_string(parse_[i]);
+        }
+
         SEXP r_data_frame = create_data_frame(
             {{"eval_id", PROTECT(create_integer_vector(eval_ids_))},
-             {"provenance",
-              PROTECT(create_integer_vector(
-                  parse_))}, // probably convert to string here already?
+             {"provenance", PROTECT(create_character_vector(provenance_strs))}, 
              {"provenance_args", PROTECT(create_character_vector(arguments_))}});
-        UNPROTECT(2);
+
+
+        UNPROTECT(3);
 
         return r_data_frame;
     }

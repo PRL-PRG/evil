@@ -28,7 +28,7 @@ class Function {
         Substitute,
         Quote,
         Enquote,
-        Match_call
+        Match_call,
         Other = 16384,
         EvalFamily = Eval | EvalQ | EvalParent | Local,
         PackageFamily = Library | Require | AttachNamespace | LoadNamespace |
