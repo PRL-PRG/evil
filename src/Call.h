@@ -32,7 +32,7 @@ class Call {
         return function_;
     }
 
-    SEXP get_expression() {
+    SEXP get_expression() const {
         return r_call_;
     }
 
@@ -40,7 +40,7 @@ class Call {
         return r_args_;
     }
 
-    SEXP get_environment() {
+    SEXP get_environment() const {
         return r_rho_;
     }
 
