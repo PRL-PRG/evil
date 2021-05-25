@@ -9,8 +9,21 @@
 #include "Analysis.h"
 #include "ProvenanceTable.h"
 
-
-
+// deparse options
+#define KEEPINTEGER 1
+#define QUOTEEXPRESSIONS 2
+#define SHOWATTRIBUTES 4
+#define USESOURCE 8
+#define WARNINCOMPLETE 16
+#define DELAYPROMISES 32
+#define KEEPNA 64
+#define S_COMPAT 128
+#define HEXNUMERIC 256
+#define DIGITS17 512
+#define NICE_NAMES 1024
+extern "C" {
+    SEXP Rf_deparse1(SEXP call, Rboolean abbrev, int opts);
+}
 
 
 class ProvenanceAnalysis: public Analysis {
@@ -99,15 +112,11 @@ class ProvenanceAnalysis: public Analysis {
 
     std::string deparse(const SEXP expr, const SEXP env) {
         std::string deparsed = "ERROR";
-        SEXP call = PROTECT(lang2(install("deparse1"), expr));
-        int error; 
         SEXP res;
-        PROTECT(res = R_tryEval(call, env, &error));
-       
-        if(!error) {
-            deparsed = CHAR(STRING_ELT(res, 0));
-        }
-        UNPROTECT(2);
+
+        PROTECT(res = Rf_deparse1(expr, FALSE, KEEPINTEGER | KEEPNA | DIGITS17));
+        deparsed = CHAR(STRING_ELT(res, 0));
+        UNPROTECT(1);
         return deparsed;
     }
 
