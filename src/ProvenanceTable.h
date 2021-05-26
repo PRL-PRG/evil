@@ -21,6 +21,7 @@ class ProvenanceTable: public Table {
     std::vector<ProvenanceKind> parse_;
     std::vector<int> eval_ids_;
     std::vector<std::string> arguments_;
+    std::vector<int> nb_provenances_;// How many provenances does it match
 
   public:
     ProvenanceTable(): Table("provenances") {
@@ -73,10 +74,12 @@ class ProvenanceTable: public Table {
 
     void record(int eval_id, 
         ProvenanceKind kind,
-        const std::string& arguments) {
+        const std::string& arguments,
+        int nb_provenances) {
             eval_ids_.push_back(eval_id);
             parse_.push_back(kind);
             arguments_.push_back(arguments);
+            nb_provenances_.push_back(nb_provenances);
         }
 
     SEXP as_data_frame() override {
@@ -88,10 +91,11 @@ class ProvenanceTable: public Table {
         SEXP r_data_frame = create_data_frame(
             {{"eval_id", PROTECT(create_integer_vector(eval_ids_))},
              {"provenance", PROTECT(create_character_vector(provenance_strs))}, 
-             {"provenance_args", PROTECT(create_character_vector(arguments_))}});
+             {"provenance_args", PROTECT(create_character_vector(arguments_))},
+             {"nb_provenances", PROTECT(create_integer_vector(nb_provenances_))}});
 
 
-        UNPROTECT(3);
+        UNPROTECT(4);
 
         return r_data_frame;
     }

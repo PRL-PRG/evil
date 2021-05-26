@@ -4,6 +4,7 @@
 #include <vector>
 #include <string>
 #include <unordered_map>
+#include <tuple>
 #include <utility> 
 #include "r_init.h"
 #include "Analysis.h"
@@ -28,9 +29,11 @@ extern "C" {
 
 class ProvenanceAnalysis: public Analysis {
     private:
+        inline static int provenance_id = 0;
         ProvenanceTable provenance_table_;
-        // or rather a tuple with type and arguments?
-        std::unordered_map<SEXP*, std::pair<ProvenanceKind, std::string> > addresses;
+        // Kind of provenance function, argument list,
+        // unique id of the provenance
+        std::unordered_map<SEXP*, std::tuple<ProvenanceKind, std::string, int> > addresses;
     public:
         ProvenanceAnalysis(): Analysis() {}
 
@@ -52,8 +55,9 @@ class ProvenanceAnalysis: public Analysis {
 
                     ProvenanceKind provenance =  ProvenanceTable::identity_to_provenance(function->get_identity());
                     std::string arguments = deparse(call->get_expression(), call->get_environment());
-
-                    auto payload = std::make_pair(provenance, arguments);
+                    
+                    // For one provenance, one provenance id
+                    auto payload = std::make_tuple(provenance, arguments, get_provenance_id());
 
                     // Get address of the value or of the elements if it is a complex expression
 
@@ -93,7 +97,7 @@ class ProvenanceAnalysis: public Analysis {
                     Rprintf("Now in eval! We have %d addresses recorded\n", addresses.size());
                     
                     for(auto it = addresses.cbegin(); it != addresses.cend(); it++) {
-                        Rprintf("Address %p with arguments %s\n", it->first, it->second.second.c_str());
+                        Rprintf("Address %p with arguments %s\n", it->first, std::get<1>(it->second).c_str());
                     }
                     // Check if the expression address contains any address saved previously.
                     SEXP expr_promise = event.r_get_argument(Rf_install("expr"), 0);
@@ -144,11 +148,14 @@ class ProvenanceAnalysis: public Analysis {
                         }
                     }
                     // if yes, record
+                    //TODO: count the number of provenances
                     provenance_table_.record(call->get_id(),
-                        res->second.first,
-                        res->second.second);
+                        std::get<0>(res->second),
+                        std::get<1>(res->second).c_str(),
+                        1); 
+                        
 
-                    Rprintf("Detected origin of expression: %s", res->second.second.c_str());
+                    Rprintf("Detected origin of expression: %s", std::get<1>(res->second).c_str());
 
                     // TODO: the expression can be composite and each part of it could possibly
                     // come from different origins
@@ -171,6 +178,12 @@ class ProvenanceAnalysis: public Analysis {
         deparsed = CHAR(STRING_ELT(res, 0));
         UNPROTECT(1);
         return deparsed;
+    }
+
+private:
+
+    static int get_provenance_id() {
+        return ++provenance_id;
     }
 
 };
