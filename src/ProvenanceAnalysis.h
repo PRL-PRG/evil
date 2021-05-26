@@ -33,7 +33,7 @@ class ProvenanceAnalysis: public Analysis {
         ProvenanceTable provenance_table_;
         // Kind of provenance function, argument list,
         // unique id of the provenance
-        std::unordered_map<SEXP*, std::tuple<ProvenanceKind, std::string, int> > addresses;
+        std::unordered_map<SEXP, std::tuple<ProvenanceKind, std::string, int> > addresses;
     public:
         ProvenanceAnalysis(): Analysis() {}
 
@@ -49,9 +49,10 @@ class ProvenanceAnalysis: public Analysis {
                 if(function->has_identity(Function::Identity::ProvenanceFamily)) {
                     // Get the return value
                     SEXP result = event.get_result();
-                    Rprintf("Result is %s, with address %p\n", 
+                    Rprintf("Result is %s, with address %p, with type %s\n", 
                         deparse(result, call->get_environment()).c_str(),
-                        &result);
+                        &result,
+                        CHAR(STRING_ELT(sexp_typeof(result), 0)));
 
                     ProvenanceKind provenance =  ProvenanceTable::identity_to_provenance(function->get_identity());
                     std::string arguments = deparse(call->get_expression(), call->get_environment());
@@ -66,27 +67,31 @@ class ProvenanceAnalysis: public Analysis {
                     case STRSXP:
                         for(int i = 0; i < XLENGTH(result); i++) {
                             SEXP el = STRING_ELT(result, i);
-                            addresses[&el] = payload ;
+                            addresses[el] = payload ;
                         }
                         break;
 
                     case VECSXP:
-                    //case EXPRSXP: // similar internal representation
+                    case EXPRSXP: // similar internal representation
+                        Rprintf("Detecting vector or expression\n");
                         for(int i = 0; i < XLENGTH(result); i++) {
                             SEXP el = VECTOR_ELT(result, i);
-                            addresses[&el] = payload;
+                            addresses[el] = payload;
                         }
                         break;
 
                     case LISTSXP:
+                    case LANGSXP: {
+                        Rprintf("Detecting language or pairlist\n");
                         for(SEXP cons = result; cons != R_NilValue; cons = CDR(cons)) {
                             SEXP el = CAR(cons);
-                            addresses[&el] = payload;
-                        }
+                            Rprintf("Adding address %p with SEXP %s\n", el, deparse(el, call->get_environment()));
+                            addresses[el] = payload;
+                        } }
                         break;
                     
                     default: // simple values
-                        addresses[&result] = payload;
+                        addresses[result] = payload;
                         break;
                     }
 
@@ -97,14 +102,16 @@ class ProvenanceAnalysis: public Analysis {
                     Rprintf("Now in eval! We have %d addresses recorded\n", addresses.size());
                     
                     for(auto it = addresses.cbegin(); it != addresses.cend(); it++) {
-                        Rprintf("Address %p with arguments %s\n", it->first, std::get<1>(it->second).c_str());
+                        Rprintf("Address %p with arguments %s and provenance id %d\n", 
+                        it->first, std::get<1>(it->second).c_str(),
+                        std::get<2>(it->second));
                     }
                     // Check if the expression address contains any address saved previously.
                     SEXP expr_promise = event.r_get_argument(Rf_install("expr"), 0);
                     SEXP expr_arg = dyntrace_get_promise_value(expr_promise);
                     Rprintf("New address %p for %s\n", &expr_arg, deparse(expr_arg, call->get_environment()).c_str());
 
-                    auto res = addresses.find(&expr_arg);
+                    auto res = addresses.find(expr_arg);
                     
                     if(res == addresses.end()) {// Not found
                         // try to look inside
@@ -113,7 +120,7 @@ class ProvenanceAnalysis: public Analysis {
                             case STRSXP:
                             for(int i = 0; i < XLENGTH(expr_arg); i++) {
                                 SEXP el = STRING_ELT(expr_arg, i);
-                                res = addresses.find(&el);
+                                res = addresses.find(el);
                                 if(res != addresses.end()) {
                                     break;
                                 }
@@ -124,7 +131,7 @@ class ProvenanceAnalysis: public Analysis {
                             case EXPRSXP:
                             for(int i = 0; i < XLENGTH(expr_arg); i++) {
                                 SEXP el = VECTOR_ELT(expr_arg, i);
-                                res = addresses.find(&el);
+                                res = addresses.find(el);
                                 if(res != addresses.end()) {
                                     break;
                                 }
@@ -134,7 +141,7 @@ class ProvenanceAnalysis: public Analysis {
                             case LISTSXP:
                             for(SEXP cons = expr_arg; cons != R_NilValue; cons = CDR(cons)) {
                                 SEXP el = CAR(cons);
-                                res = addresses.find(&el);
+                                res = addresses.find(el);
                                 if(res != addresses.end()) {
                                     break;
                                 }
@@ -155,7 +162,7 @@ class ProvenanceAnalysis: public Analysis {
                         1); 
                         
 
-                    Rprintf("Detected origin of expression: %s", std::get<1>(res->second).c_str());
+                    Rprintf("Detected origin of expression: %s\n", std::get<1>(res->second).c_str());
 
                     // TODO: the expression can be composite and each part of it could possibly
                     // come from different origins
