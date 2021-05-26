@@ -46,6 +46,9 @@ class ProvenanceAnalysis: public Analysis {
                 if(function->has_identity(Function::Identity::ProvenanceFamily)) {
                     // Get the return value
                     SEXP result = event.get_result();
+                    Rprintf("Result is %s, with address %p\n", 
+                        deparse(result, call->get_environment()).c_str(),
+                        &result);
 
                     ProvenanceKind provenance =  ProvenanceTable::identity_to_provenance(function->get_identity());
                     std::string arguments = deparse(call->get_expression(), call->get_environment());
@@ -64,7 +67,7 @@ class ProvenanceAnalysis: public Analysis {
                         break;
 
                     case VECSXP:
-                    case EXPRSXP: // similar internal representation
+                    //case EXPRSXP: // similar internal representation
                         for(int i = 0; i < XLENGTH(result); i++) {
                             SEXP el = VECTOR_ELT(result, i);
                             addresses[&el] = payload;
@@ -82,20 +85,70 @@ class ProvenanceAnalysis: public Analysis {
                         addresses[&result] = payload;
                         break;
                     }
+
+                    Rprintf("Detected provenance function %s\n", arguments.c_str());
                 }
 
                 if(function->has_identity(Function::Identity::EvalFamily)) {
+                    Rprintf("Now in eval! We have %d addresses recorded\n", addresses.size());
+                    
+                    for(auto it = addresses.cbegin(); it != addresses.cend(); it++) {
+                        Rprintf("Address %p with arguments %s\n", it->first, it->second.second.c_str());
+                    }
                     // Check if the expression address contains any address saved previously.
-                    SEXP expr_arg = event.r_get_argument(Rf_install("expr"), 0);
+                    SEXP expr_promise = event.r_get_argument(Rf_install("expr"), 0);
+                    SEXP expr_arg = dyntrace_get_promise_value(expr_promise);
+                    Rprintf("New address %p for %s\n", &expr_arg, deparse(expr_arg, call->get_environment()).c_str());
+
                     auto res = addresses.find(&expr_arg);
                     
                     if(res == addresses.end()) {// Not found
-                        return;
+                        // try to look inside
+                        Rprintf("Looking inside the expression\n");
+                        switch(TYPEOF(expr_arg)) {
+                            case STRSXP:
+                            for(int i = 0; i < XLENGTH(expr_arg); i++) {
+                                SEXP el = STRING_ELT(expr_arg, i);
+                                res = addresses.find(&el);
+                                if(res != addresses.end()) {
+                                    break;
+                                }
+                            }
+                            break;
+
+                            case VECSXP:
+                            case EXPRSXP:
+                            for(int i = 0; i < XLENGTH(expr_arg); i++) {
+                                SEXP el = VECTOR_ELT(expr_arg, i);
+                                res = addresses.find(&el);
+                                if(res != addresses.end()) {
+                                    break;
+                                }
+                            }
+                            break;
+
+                            case LISTSXP:
+                            for(SEXP cons = expr_arg; cons != R_NilValue; cons = CDR(cons)) {
+                                SEXP el = CAR(cons);
+                                res = addresses.find(&el);
+                                if(res != addresses.end()) {
+                                    break;
+                                }
+                            }
+                            break;
+                        }
+                        
+                        if(res == addresses.end()) {
+                            Rprintf("Not found\n");
+                            return;
+                        }
                     }
                     // if yes, record
                     provenance_table_.record(call->get_id(),
                         res->second.first,
                         res->second.second);
+
+                    Rprintf("Detected origin of expression: %s", res->second.second.c_str());
 
                     // TODO: the expression can be composite and each part of it could possibly
                     // come from different origins

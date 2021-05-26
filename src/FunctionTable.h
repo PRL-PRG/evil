@@ -57,7 +57,7 @@ class FunctionTable {
 
         if (TYPEOF(r_fun) != CLOSXP) {
             Rf_error(
-                "set_function_identity_: expected CLOSXP after unwrapping");
+                "set_function_identity_: expected CLOSXP after unwrapping %s", name);
         }
 
         Function* fun = lookup(r_fun);
@@ -272,10 +272,12 @@ class FunctionTable {
             R_BaseNamespace, "str2lang", Function::Identity::Str2lang);
         set_function_identity_(
             R_BaseNamespace, "str2expression", Function::Identity::Str2expression);
-        set_function_identity_(
-            R_BaseNamespace, "substitute", Function::Identity::Substitute);
-        set_function_identity_(
-            R_BaseNamespace, "quote", Function::Identity::Quote);
+
+        // Those are 
+        // set_function_identity_(
+        //     R_BaseEnv, "substitute", Function::Identity::Substitute);
+        // set_function_identity_(
+        //     R_BaseEnv, "quote", Function::Identity::Quote);
         set_function_identity_(
             R_BaseNamespace, "enquote", Function::Identity::Enquote);
         set_function_identity_(

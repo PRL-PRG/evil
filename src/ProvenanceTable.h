@@ -58,10 +58,15 @@ class ProvenanceTable: public Table {
             return ProvenanceKind::str2expression;
         case Function::Identity::Str2lang:
             return ProvenanceKind::str2lang;
+        case Function::Identity::Substitute:
+            return ProvenanceKind::substitute;
+        case Function::Identity::Match_call:
+            return ProvenanceKind::match_call;
         
         default:
             // should never happen
             // R error here
+            error("Unexpected provenance!\n");
             break;
         }
     }
