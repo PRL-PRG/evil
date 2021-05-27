@@ -198,6 +198,17 @@ class ProvenanceAnalysis: public Analysis {
                     // come from different origins
                 }
             }
+            else if(event_type == Event::Type::SpecialCallExit) {
+                const StackFrame& frame = stack.peek();
+                const Call* call = frame.as_call();
+                const Function* function = call->get_function();
+                
+                Rprintf("Now seeing a special function!\n");
+
+                if(function->has_identity(Function::Identity::ProvenanceFamily)) {
+                        Rprintf("Seeing an interesting special function!\n");
+                }
+            }
 
             // Probably add a hook for GC desallocation, to remove for our table
 
