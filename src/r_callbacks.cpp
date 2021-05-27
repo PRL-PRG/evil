@@ -6,9 +6,19 @@ SEXP r_get_builtin_call_entry_callback() {
         (void*) (builtin_call_entry_callback), R_NilValue, R_NilValue);
 }
 
+SEXP r_get_builtin_call_exit_callback() {
+    return R_MakeExternalPtr(
+        (void*) (builtin_call_exit_callback), R_NilValue, R_NilValue);
+}
+
 SEXP r_get_special_call_entry_callback() {
     return R_MakeExternalPtr(
         (void*) (special_call_entry_callback), R_NilValue, R_NilValue);
+}
+
+SEXP r_get_special_call_exit_callback() {
+    return R_MakeExternalPtr(
+        (void*) (special_call_exit_callback), R_NilValue, R_NilValue);
 }
 
 SEXP r_get_closure_call_entry_callback() {

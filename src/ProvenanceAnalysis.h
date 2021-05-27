@@ -4,6 +4,7 @@
 #include <vector>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <tuple>
 #include <utility> 
 #include "r_init.h"
@@ -73,7 +74,7 @@ class ProvenanceAnalysis: public Analysis {
 
                     case VECSXP:
                     case EXPRSXP: // similar internal representation
-                        Rprintf("Detecting vector or expression\n");
+                        //Rprintf("Detecting vector or expression\n");
                         for(int i = 0; i < XLENGTH(result); i++) {
                             SEXP el = VECTOR_ELT(result, i);
                             addresses[el] = payload;
@@ -82,11 +83,13 @@ class ProvenanceAnalysis: public Analysis {
 
                     case LISTSXP:
                     case LANGSXP: {
-                        Rprintf("Detecting language or pairlist\n");
+                        //Rprintf("Detecting language or pairlist\n");
                         for(SEXP cons = result; cons != R_NilValue; cons = CDR(cons)) {
                             SEXP el = CAR(cons);
-                            Rprintf("Adding address %p with SEXP %s\n", el, deparse(el, call->get_environment()));
+                            // Also add cons in the addresses?
+                            //Rprintf("Adding address %p with SEXP %s\n", el, deparse(el, call->get_environment()));
                             addresses[el] = payload;
+                            addresses[cons] = payload;
                         } }
                         break;
                     
@@ -101,28 +104,34 @@ class ProvenanceAnalysis: public Analysis {
                 if(function->has_identity(Function::Identity::EvalFamily)) {
                     Rprintf("Now in eval! We have %d addresses recorded\n", addresses.size());
                     
-                    for(auto it = addresses.cbegin(); it != addresses.cend(); it++) {
-                        Rprintf("Address %p with arguments %s and provenance id %d\n", 
-                        it->first, std::get<1>(it->second).c_str(),
-                        std::get<2>(it->second));
-                    }
+                    // for(auto it = addresses.cbegin(); it != addresses.cend(); it++) {
+                    //     Rprintf("Address %p with arguments %s and provenance id %d\n", 
+                    //     it->first, std::get<1>(it->second).c_str(),
+                    //     std::get<2>(it->second));
+                    // }
                     // Check if the expression address contains any address saved previously.
                     SEXP expr_promise = event.r_get_argument(Rf_install("expr"), 0);
                     SEXP expr_arg = dyntrace_get_promise_value(expr_promise);
                     Rprintf("New address %p for %s\n", &expr_arg, deparse(expr_arg, call->get_environment()).c_str());
 
+                    // to store multiple provenances
+                    std::unordered_set<ProvenanceKind> kind;
+                    std::unordered_set<std::string> args;
+                    std::unordered_set<int> provenances;
+
                     auto res = addresses.find(expr_arg);
                     
                     if(res == addresses.end()) {// Not found
                         // try to look inside
-                        Rprintf("Looking inside the expression\n");
                         switch(TYPEOF(expr_arg)) {
                             case STRSXP:
                             for(int i = 0; i < XLENGTH(expr_arg); i++) {
                                 SEXP el = STRING_ELT(expr_arg, i);
                                 res = addresses.find(el);
                                 if(res != addresses.end()) {
-                                    break;
+                                    kind.insert(std::get<0>(res->second));
+                                    args.insert(std::get<1>(res->second));
+                                    provenances.insert(std::get<2>(res->second));
                                 }
                             }
                             break;
@@ -133,7 +142,9 @@ class ProvenanceAnalysis: public Analysis {
                                 SEXP el = VECTOR_ELT(expr_arg, i);
                                 res = addresses.find(el);
                                 if(res != addresses.end()) {
-                                    break;
+                                    kind.insert(std::get<0>(res->second));
+                                    args.insert(std::get<1>(res->second));
+                                    provenances.insert(std::get<2>(res->second));
                                 }
                             }
                             break;
@@ -141,9 +152,18 @@ class ProvenanceAnalysis: public Analysis {
                             case LISTSXP:
                             for(SEXP cons = expr_arg; cons != R_NilValue; cons = CDR(cons)) {
                                 SEXP el = CAR(cons);
+                                // Also add the cons address?
                                 res = addresses.find(el);
                                 if(res != addresses.end()) {
-                                    break;
+                                    kind.insert(std::get<0>(res->second));
+                                    args.insert(std::get<1>(res->second));
+                                    provenances.insert(std::get<2>(res->second));
+                                }
+                                res = addresses.find(cons);
+                                if(res != addresses.end()) {
+                                    kind.insert(std::get<0>(res->second));
+                                    args.insert(std::get<1>(res->second));
+                                    provenances.insert(std::get<2>(res->second));
                                 }
                             }
                             break;
@@ -154,12 +174,22 @@ class ProvenanceAnalysis: public Analysis {
                             return;
                         }
                     }
+                    else { //Found
+                        kind.insert(std::get<0>(res->second));
+                        args.insert(std::get<1>(res->second));
+                        provenances.insert(std::get<2>(res->second));
+                    }
+
+                    std::string arg_str;
+                    for(auto it = args.cbegin(); it != args.cend(); it++) {
+                        arg_str += *it + " ; ";
+                    }
                     // if yes, record
                     //TODO: count the number of provenances
                     provenance_table_.record(call->get_id(),
-                        std::get<0>(res->second),
-                        std::get<1>(res->second).c_str(),
-                        1); 
+                        *kind.begin(),// Just the first one currently
+                        arg_str.c_str(),
+                        provenances.size()); 
                         
 
                     Rprintf("Detected origin of expression: %s\n", std::get<1>(res->second).c_str());

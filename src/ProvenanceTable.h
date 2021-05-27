@@ -24,6 +24,12 @@ class ProvenanceTable: public Table {
     std::vector<int> nb_provenances_;// How many provenances does it match
 
     // TODO: add the srcref of the provenances?
+    // vector of set of arguments, provenances, provenance id
+    // one column per possible type, with NA if there is not, 
+    // or concatenation of the arguments
+    // Column with number of different addresses (in terms of calls, not sites) for one given
+    // provenance kind
+    // plus column of the srcref?
 
   public:
     ProvenanceTable(): Table("provenances") {

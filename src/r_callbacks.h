@@ -7,7 +7,9 @@
 extern "C" {
 #endif
 SEXP r_get_builtin_call_entry_callback();
+SEXP r_get_builtin_call_exit_callback();
 SEXP r_get_special_call_entry_callback();
+SEXP r_get_special_call_exit_callback();
 SEXP r_get_closure_call_entry_callback();
 SEXP r_get_closure_call_exit_callback();
 SEXP r_get_eval_entry_callback();

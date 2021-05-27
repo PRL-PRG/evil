@@ -14,12 +14,30 @@ void builtin_call_entry_callback(ContextSPtr context,
                                  SEXP r_args,
                                  SEXP r_rho);
 
+void builtin_call_exit_callback(ContextSPtr context,
+                                 ApplicationSPtr application,
+                                 SEXP r_call,
+                                 SEXP r_op,
+                                 SEXP r_args,
+                                 SEXP r_rho,
+                                 SEXP r_result);
+
+
 void special_call_entry_callback(ContextSPtr context,
                                  ApplicationSPtr application,
                                  SEXP r_call,
                                  SEXP r_op,
                                  SEXP r_args,
                                  SEXP r_rho);
+
+void special_call_exit_callback(ContextSPtr context,
+                                 ApplicationSPtr application,
+                                 SEXP r_call,
+                                 SEXP r_op,
+                                 SEXP r_args,
+                                 SEXP r_rho,
+                                 SEXP r_result);
+
 
 void closure_call_entry_callback(ContextSPtr context,
                                  ApplicationSPtr application,

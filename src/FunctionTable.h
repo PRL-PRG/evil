@@ -143,6 +143,10 @@ class FunctionTable {
                 }
             }
             break;
+        case BUILTINSXP:
+        case SPECIALSXP:
+            r_closure = r_value;
+            break;
         default:
             break;
         }

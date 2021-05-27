@@ -211,6 +211,35 @@ class TracerState {
 
             Call::dec_ref(call);
         }
+        else if (event_type == Event::Type::SpecialCallExit) {
+             SEXP r_call = event.get_call();
+            SEXP r_op = event.get_op();
+            SEXP r_args = event.get_args();
+            SEXP r_rho = event.get_rho();
+            SEXP r_result = event.get_result();
+
+            Stack& stack = get_stack();
+            StackFrame frame = stack.pop();
+            Call* call = nullptr;
+
+            if (!frame.is_call()) {
+                Rf_error("mismatched stack frame, expected call got context");
+            } else {
+                call = frame.as_call();
+                if (call->get_expression() != r_call ||
+                    call->get_arguments() != r_args ||
+                    call->get_environment() != r_rho) {
+                    Rf_error("mismatched call on stack");
+                }
+            }
+
+            call->set_status(Call::Status::Inactive);
+
+            Function* function = call->get_function();
+
+            // There is not function in the eval or environment family here
+            Call::dec_ref(call);
+        }
     }
 
     void set_eval_call_info(int call_id, SEXP r_env, int frame_depth) {
