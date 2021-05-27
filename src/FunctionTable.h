@@ -55,9 +55,11 @@ class FunctionTable {
         SEXP r_fun =
             unwrap_function_(Rf_findVarInFrame(r_rho, Rf_install(name)));
 
-        if (TYPEOF(r_fun) != CLOSXP) {
+        if (TYPEOF(r_fun) != CLOSXP && TYPEOF(r_fun) != SPECIALSXP) {
             Rf_error(
-                "set_function_identity_: expected CLOSXP after unwrapping %s", name);
+                "set_function_identity_: expected CLOSXP or SPECIALSXP after unwrapping %s. Got %s",
+                 name,
+                 CHAR(STRING_ELT(sexp_typeof(r_fun), 0)));
         }
 
         Function* fun = lookup(r_fun);
@@ -278,10 +280,10 @@ class FunctionTable {
             R_BaseNamespace, "str2expression", Function::Identity::Str2expression);
 
         // Those are 
-        // set_function_identity_(
-        //     R_BaseEnv, "substitute", Function::Identity::Substitute);
-        // set_function_identity_(
-        //     R_BaseEnv, "quote", Function::Identity::Quote);
+        set_function_identity_(
+            R_BaseNamespace, "substitute", Function::Identity::Substitute);
+        set_function_identity_(
+            R_BaseNamespace, "quote", Function::Identity::Quote);
         set_function_identity_(
             R_BaseNamespace, "enquote", Function::Identity::Enquote);
         set_function_identity_(

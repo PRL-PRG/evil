@@ -202,11 +202,12 @@ class ProvenanceAnalysis: public Analysis {
                 const StackFrame& frame = stack.peek();
                 const Call* call = frame.as_call();
                 const Function* function = call->get_function();
-                
-                Rprintf("Now seeing a special function!\n");
 
                 if(function->has_identity(Function::Identity::ProvenanceFamily)) {
-                        Rprintf("Seeing an interesting special function!\n");
+                        Rprintf("Seeing an interesting special function %s!\nFull call is %s\n",
+                         function->get_name().c_str(),
+                         deparse(call->get_expression(), call->get_environment()).c_str()
+                    );
                 }
             }
 

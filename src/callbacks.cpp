@@ -29,7 +29,16 @@ void special_call_entry_callback(ContextSPtr context,
                                  SEXP r_op,
                                  SEXP r_args,
                                  SEXP r_rho) {
-                                     
+    SEXP r_data = context->get_data();
+    TracerState& tracer_state = *get_tracer_state(r_data);
+
+    Event event = Event::special_call_entry(r_call, r_op, r_args, r_rho);
+
+    tracer_state.analyze(event);
+
+    for (Analysis* analysis: get_analyses(r_data)) {
+        analysis->analyze(tracer_state, event);
+    }                                 
 
 }
 
@@ -254,6 +263,11 @@ void context_jump_callback(ContextSPtr context,
             if (call->get_function()->get_type() == CLOSXP) {
                 call->set_status(Call::Status::Interrupted);
                 closure_call_exit_callback(
+                    context, application, r_call, r_op, r_args, r_rho, NULL);
+            }
+            else if (call->get_function()->get_type() == SPECIALSXP) {
+                call->set_status(Call::Status::Interrupted);
+                special_call_exit_callback(
                     context, application, r_call, r_op, r_args, r_rho, NULL);
             }
         }

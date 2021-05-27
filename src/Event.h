@@ -11,6 +11,7 @@ class Event {
         EvalEntry,
         ClosureCallEntry,
         ClosureCallExit,
+        SpecialCallEntry,
         SpecialCallExit,
         VariableDefinition,
         VariableAssignment,
@@ -135,6 +136,9 @@ class Event {
                                    SEXP r_rho,
                                    SEXP r_args,
                                    SEXP r_result);
+
+    static Event
+    special_call_entry(SEXP r_call, SEXP r_op, SEXP r_args, SEXP r_rho);
 
     static Event special_call_exit(SEXP r_call,
                                    SEXP r_op,

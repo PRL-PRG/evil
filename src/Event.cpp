@@ -8,6 +8,8 @@ std::string event_type_to_string(const Event::Type& event_type) {
         return "fen";
     case Event::Type::ClosureCallExit:
         return "fex";
+    case Event::Type::SpecialCallEntry:
+        return "sen";
     case Event::Type::SpecialCallExit:
         return "sex";
     case Event::Type::VariableDefinition:
@@ -56,6 +58,17 @@ Event Event::closure_call_exit(SEXP r_call,
         .set_args(r_args)
         .set_rho(r_rho)
         .set_result(r_result);
+}
+
+Event Event::special_call_entry(SEXP r_call,
+                                SEXP r_op,
+                                SEXP r_args,
+                                SEXP r_rho) {
+    return Event(Event::Type::SpecialCallEntry)
+        .set_call(r_call)
+        .set_op(r_op)
+        .set_args(r_args)
+        .set_rho(r_rho);
 }
 
 Event Event::special_call_exit(SEXP r_call,

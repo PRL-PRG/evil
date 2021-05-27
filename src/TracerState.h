@@ -211,8 +211,30 @@ class TracerState {
 
             Call::dec_ref(call);
         }
+        else if(event_type == Event::Type::SpecialCallEntry) {
+            SEXP r_call = event.get_call();
+            SEXP r_op = event.get_op();
+            SEXP r_args = event.get_args();
+            SEXP r_rho = event.get_rho();
+
+            Stack& stack = get_stack();
+            Function* function = get_function_table().lookup(r_op);
+            if (!function->has_name() && TYPEOF(CAR(r_call)) == SYMSXP) {
+                function->set_name(CHAR(PRINTNAME(CAR(r_call))));
+            }
+
+            Call* call =
+                new Call(function, r_call, r_args, r_rho, stack.size());
+            StackFrame frame = StackFrame::from_call(call);
+
+            stack.push(frame);
+
+            Environment* env = get_environment_table().lookup(r_rho);
+
+            env->set_call_source(call);
+        }
         else if (event_type == Event::Type::SpecialCallExit) {
-             SEXP r_call = event.get_call();
+            SEXP r_call = event.get_call();
             SEXP r_op = event.get_op();
             SEXP r_args = event.get_args();
             SEXP r_rho = event.get_rho();
