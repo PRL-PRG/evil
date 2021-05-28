@@ -35,14 +35,22 @@ class ProvenanceAnalysis: public Analysis {
         // Kind of provenance function, argument list,
         // unique id of the provenance
         std::unordered_map<SEXP, std::tuple<ProvenanceKind, std::string, int> > addresses;
+        // to store multiple provenances
+        size_t set_size;
+        const static size_t nb_kinds = static_cast<int>(ProvenanceKind::match_call) + 1;
+        std::vector<int> kind;
+        std::unordered_set<std::string> args;
+        std::unordered_set<int> provenances;
     public:
-        ProvenanceAnalysis(): Analysis() {}
+        ProvenanceAnalysis(): Analysis(),
+         set_size(10),
+         kind(nb_kinds), args(set_size), provenances(set_size) {}
 
         void analyze(TracerState& tracer_state, Event& event) override {
             Event::Type event_type = event.get_type();
             Stack& stack = tracer_state.get_stack();
 
-            if(event_type == Event::Type::ClosureCallExit) {
+            if(event_type == Event::Type::ClosureCallExit || event_type == Event::Type::SpecialCallExit) {
                 const StackFrame& frame = stack.peek();
                 const Call* call = frame.as_call();
                 const Function* function = call->get_function();
@@ -59,13 +67,14 @@ class ProvenanceAnalysis: public Analysis {
                     std::string arguments = deparse(call->get_expression(), call->get_environment());
                     
                     // For one provenance, one provenance id
+                    // i.e. one provenance = one call, not one site
                     auto payload = std::make_tuple(provenance, arguments, get_provenance_id());
 
                     // Get address of the value or of the elements if it is a complex expression
 
                     switch (TYPEOF(result))
                     {
-                    case STRSXP:
+                    case STRSXP: // That should not happen!
                         for(int i = 0; i < XLENGTH(result); i++) {
                             SEXP el = STRING_ELT(result, i);
                             addresses[el] = payload ;
@@ -93,7 +102,7 @@ class ProvenanceAnalysis: public Analysis {
                         } }
                         break;
                     
-                    default: // simple values
+                    default: // simple values // that should not happen
                         addresses[result] = payload;
                         break;
                     }
@@ -114,10 +123,10 @@ class ProvenanceAnalysis: public Analysis {
                     SEXP expr_arg = dyntrace_get_promise_value(expr_promise);
                     Rprintf("New address %p for %s\n", &expr_arg, deparse(expr_arg, call->get_environment()).c_str());
 
-                    // to store multiple provenances
-                    std::unordered_set<ProvenanceKind> kind;
-                    std::unordered_set<std::string> args;
-                    std::unordered_set<int> provenances;
+                    
+
+                    // multiple provenances
+                    clear_sets();
 
                     auto res = addresses.find(expr_arg);
                     
@@ -129,9 +138,7 @@ class ProvenanceAnalysis: public Analysis {
                                 SEXP el = STRING_ELT(expr_arg, i);
                                 res = addresses.find(el);
                                 if(res != addresses.end()) {
-                                    kind.insert(std::get<0>(res->second));
-                                    args.insert(std::get<1>(res->second));
-                                    provenances.insert(std::get<2>(res->second));
+                                  update_provenances(res->second);
                                 }
                             }
                             break;
@@ -142,28 +149,26 @@ class ProvenanceAnalysis: public Analysis {
                                 SEXP el = VECTOR_ELT(expr_arg, i);
                                 res = addresses.find(el);
                                 if(res != addresses.end()) {
-                                    kind.insert(std::get<0>(res->second));
-                                    args.insert(std::get<1>(res->second));
-                                    provenances.insert(std::get<2>(res->second));
+                                   update_provenances(res->second);
                                 }
                             }
                             break;
 
+                            // Her,e we could even traverse further into
+                            // the tree of the SEXP, and not only visit 
+                            // the roots
                             case LISTSXP:
+                            case LANGSXP:
                             for(SEXP cons = expr_arg; cons != R_NilValue; cons = CDR(cons)) {
                                 SEXP el = CAR(cons);
                                 // Also add the cons address?
                                 res = addresses.find(el);
                                 if(res != addresses.end()) {
-                                    kind.insert(std::get<0>(res->second));
-                                    args.insert(std::get<1>(res->second));
-                                    provenances.insert(std::get<2>(res->second));
+                                   update_provenances(res->second);
                                 }
                                 res = addresses.find(cons);
                                 if(res != addresses.end()) {
-                                    kind.insert(std::get<0>(res->second));
-                                    args.insert(std::get<1>(res->second));
-                                    provenances.insert(std::get<2>(res->second));
+                                 update_provenances(res->second);
                                 }
                             }
                             break;
@@ -175,9 +180,7 @@ class ProvenanceAnalysis: public Analysis {
                         }
                     }
                     else { //Found
-                        kind.insert(std::get<0>(res->second));
-                        args.insert(std::get<1>(res->second));
-                        provenances.insert(std::get<2>(res->second));
+                      update_provenances(res->second);
                     }
 
                     std::string arg_str;
@@ -185,34 +188,21 @@ class ProvenanceAnalysis: public Analysis {
                         arg_str += *it + " ; ";
                     }
                     // if yes, record
-                    //TODO: count the number of provenances
                     provenance_table_.record(call->get_id(),
-                        *kind.begin(),// Just the first one currently
+                        get_representative(),
                         arg_str.c_str(),
                         provenances.size()); 
                         
 
                     Rprintf("Detected origin of expression: %s\n", std::get<1>(res->second).c_str());
-
-                    // TODO: the expression can be composite and each part of it could possibly
-                    // come from different origins
                 }
             }
-            else if(event_type == Event::Type::SpecialCallExit) {
-                const StackFrame& frame = stack.peek();
-                const Call* call = frame.as_call();
-                const Function* function = call->get_function();
+            else if(event_type == Event::Type::GcUnmark) {
+                // if the SEXP is reclaimed by the GC, we can remove it from
+                // the hash table
 
-                if(function->has_identity(Function::Identity::ProvenanceFamily)) {
-                        Rprintf("Seeing an interesting special function %s!\nFull call is %s\n",
-                         function->get_name().c_str(),
-                         deparse(call->get_expression(), call->get_environment()).c_str()
-                    );
-                }
+                addresses.erase(event.get_object);
             }
-
-            // Probably add a hook for GC desallocation, to remove for our table
-
         }
 
     std::vector<Table*> get_tables() override {
@@ -233,6 +223,30 @@ private:
 
     static int get_provenance_id() {
         return ++provenance_id;
+    }
+
+    void clear_sets() {
+        set_size = std::max(set_size,kind.size(), provenances.size(), args.size());
+        provenances.clear();
+        args.clear();
+        
+        std::fill(kind.begin(), kind.end(), 0);
+        provenances.reserve(set_size);
+        args.reserve(set_size);
+    }
+
+    void insert_kind(ProvenanceKind k) {
+        kind[static_cast<int>(k)] += 1;
+    }
+
+    ProvenanceKind get_representative() const {
+        return *max_element(kind.cbegin(), kind.cend());
+    }
+
+    void update_provenances(std::tuple<ProvenanceKind, std::string, int>) {
+        insert_kind(std::get<0>(res->second));
+        args.insert(std::get<1>(res->second));
+        provenances.insert(std::get<2>(res->second));
     }
 
 };

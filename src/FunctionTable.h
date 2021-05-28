@@ -278,8 +278,6 @@ class FunctionTable {
             R_BaseNamespace, "str2lang", Function::Identity::Str2lang);
         set_function_identity_(
             R_BaseNamespace, "str2expression", Function::Identity::Str2expression);
-
-        // Those are 
         set_function_identity_(
             R_BaseNamespace, "substitute", Function::Identity::Substitute);
         set_function_identity_(
@@ -288,7 +286,14 @@ class FunctionTable {
             R_BaseNamespace, "enquote", Function::Identity::Enquote);
         set_function_identity_(
             R_BaseNamespace, "match.call", Function::Identity::Match_call);
-
+        set_function_identity_(
+            R_BaseNamespace, "call", Function::Identity::Call);
+        // set_function_identity_(
+        //     R_BaseNamespace, "as.call", Function::Identity::AsCall);
+        set_function_identity_(
+            R_BaseNamespace, "expression", Function::Identity::Expression);
+        set_function_identity_(
+            R_BaseNamespace, "as.expression", Function::Identity::AsExpression);
     }
 };
 

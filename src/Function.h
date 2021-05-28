@@ -29,13 +29,18 @@ class Function {
         Quote = 1 << 18,
         Enquote = 1 << 19,
         Match_call = 1 << 20,
-        Other = 1 << 21,
+        Call = 1 << 21,
+        AsCall = 1 << 22,
+        Expression = 1 << 23,
+        AsExpression = 1 << 24,
+        Other = 1 << 25,
         EvalFamily = Eval | EvalQ | EvalParent | Local,
         PackageFamily = Library | Require | AttachNamespace | LoadNamespace |
                         RequireNamespace | UnloadNamespace | LazyLoad |
                         LazyLoadDbExec,
         EnvironmentFamily = NewEnv | List2Env,
-        ProvenanceFamily = Parse | Str2lang | Str2expression | Substitute | Quote | Enquote | Match_call,
+        ProvenanceFamily = Parse | Str2lang | Str2expression | Substitute | Quote | 
+            Enquote | Match_call | Call | AsCall,
         Any = INT_MAX
     };
 

@@ -8,8 +8,12 @@ enum class ProvenanceKind {
     substitute,
     quote,
     enquote,
-    match_call
-};
+    call,
+    as_call,
+    expression,
+    as_expression,
+    match_call // keep it the last
+};// also add as.name and as.symbol?
 
 class ProvenanceTable: public Table {
   private:
