@@ -6,6 +6,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <tuple>
+#include <algorithm>
 #include <utility> 
 #include "r_init.h"
 #include "Analysis.h"
@@ -58,10 +59,10 @@ class ProvenanceAnalysis: public Analysis {
                 if(function->has_identity(Function::Identity::ProvenanceFamily)) {
                     // Get the return value
                     SEXP result = event.get_result();
-                    Rprintf("Result is %s, with address %p, with type %s\n", 
-                        deparse(result, call->get_environment()).c_str(),
-                        &result,
-                        CHAR(STRING_ELT(sexp_typeof(result), 0)));
+                    // Rprintf("Result is %s, with address %p, with type %s\n", 
+                    //     deparse(result, call->get_environment()).c_str(),
+                    //     &result,
+                    //     CHAR(STRING_ELT(sexp_typeof(result), 0)));
 
                     ProvenanceKind provenance =  ProvenanceTable::identity_to_provenance(function->get_identity());
                     std::string arguments = deparse(call->get_expression(), call->get_environment());
@@ -102,16 +103,16 @@ class ProvenanceAnalysis: public Analysis {
                         } }
                         break;
                     
-                    default: // simple values // that should not happen
+                    default: // simple values // that should only happen for symbols
                         addresses[result] = payload;
                         break;
                     }
 
-                    Rprintf("Detected provenance function %s\n", arguments.c_str());
+                    // Rprintf("Detected provenance function %s\n", arguments.c_str());
                 }
 
                 if(function->has_identity(Function::Identity::EvalFamily)) {
-                    Rprintf("Now in eval! We have %d addresses recorded\n", addresses.size());
+                    // Rprintf("Now in eval! We have %d addresses recorded\n", addresses.size());
                     
                     // for(auto it = addresses.cbegin(); it != addresses.cend(); it++) {
                     //     Rprintf("Address %p with arguments %s and provenance id %d\n", 
@@ -121,7 +122,7 @@ class ProvenanceAnalysis: public Analysis {
                     // Check if the expression address contains any address saved previously.
                     SEXP expr_promise = event.r_get_argument(Rf_install("expr"), 0);
                     SEXP expr_arg = dyntrace_get_promise_value(expr_promise);
-                    Rprintf("New address %p for %s\n", &expr_arg, deparse(expr_arg, call->get_environment()).c_str());
+                    // Rprintf("New address %p for %s\n", &expr_arg, deparse(expr_arg, call->get_environment()).c_str());
 
                     
 
@@ -175,7 +176,7 @@ class ProvenanceAnalysis: public Analysis {
                         }
                         
                         if(res == addresses.end()) {
-                            Rprintf("Not found\n");
+                            // Rprintf("Not found\n");
                             return;
                         }
                     }
@@ -185,7 +186,7 @@ class ProvenanceAnalysis: public Analysis {
 
                     std::string arg_str;
                     for(auto it = args.cbegin(); it != args.cend(); it++) {
-                        arg_str += *it + " ; ";
+                        arg_str += *it + " ;";
                     }
                     // if yes, record
                     provenance_table_.record(call->get_id(),
@@ -194,14 +195,14 @@ class ProvenanceAnalysis: public Analysis {
                         provenances.size()); 
                         
 
-                    Rprintf("Detected origin of expression: %s\n", std::get<1>(res->second).c_str());
+                    // Rprintf("Detected origin of expression: %s\n", std::get<1>(res->second).c_str());
                 }
             }
             else if(event_type == Event::Type::GcUnmark) {
                 // if the SEXP is reclaimed by the GC, we can remove it from
                 // the hash table
 
-                addresses.erase(event.get_object);
+                addresses.erase(event.get_object());
             }
         }
 
@@ -226,7 +227,7 @@ private:
     }
 
     void clear_sets() {
-        set_size = std::max(set_size,kind.size(), provenances.size(), args.size());
+        set_size = std::max({set_size, provenances.size(), args.size()});
         provenances.clear();
         args.clear();
         
@@ -240,13 +241,13 @@ private:
     }
 
     ProvenanceKind get_representative() const {
-        return *max_element(kind.cbegin(), kind.cend());
+        return static_cast<ProvenanceKind>(std::distance(kind.cbegin(), max_element(kind.cbegin(), kind.cend())));
     }
 
-    void update_provenances(std::tuple<ProvenanceKind, std::string, int>) {
-        insert_kind(std::get<0>(res->second));
-        args.insert(std::get<1>(res->second));
-        provenances.insert(std::get<2>(res->second));
+    void update_provenances(const std::tuple<ProvenanceKind, std::string, int>& res) {
+        insert_kind(std::get<0>(res));
+        args.insert(std::get<1>(res));
+        provenances.insert(std::get<2>(res));
     }
 
 };

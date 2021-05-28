@@ -53,8 +53,19 @@ class ProvenanceTable: public Table {
             return "quote";
         case ProvenanceKind::enquote:
             return "enquote";
+        case ProvenanceKind::call:
+            return "call";
+        case ProvenanceKind::as_call:
+            return "as.call";
+        case ProvenanceKind::expression:
+            return "expression";
+        case ProvenanceKind::as_expression:
+            return "as.expression";
         case ProvenanceKind::match_call:
             return "match.call";
+
+        default:
+            error("Provenance does not exist.\n");
         }
     }
 
@@ -75,6 +86,14 @@ class ProvenanceTable: public Table {
             return ProvenanceKind::substitute;
         case Function::Identity::Match_call:
             return ProvenanceKind::match_call;
+        case Function::Identity::Expression:
+            return ProvenanceKind::expression;
+        case Function::Identity::AsExpression:
+            return ProvenanceKind::as_expression;
+        case Function::Identity::Call:
+            return ProvenanceKind::call;
+        case Function::Identity::AsCall:
+            return ProvenanceKind::as_call;
         
         default:
             // should never happen

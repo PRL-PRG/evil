@@ -14,6 +14,14 @@ do_trace_writes <- function(expr, ...) {
   r$tables$writes
 }
 
+do_trace_provenances <- function(expr, ...) {
+  r <- trace_code(substitute(expr), quote=FALSE, envir=parent.frame(), ...)
+
+  if(is_error(r$result)) stop(r$result$error$message)
+
+  r$tables$provenances
+}
+
 expect_starts_with <- function(s1, s2) {
   
   as1 <- quasi_label(rlang::enquo(s1), label = "s1")
