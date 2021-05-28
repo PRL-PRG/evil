@@ -10,3 +10,34 @@ test_that("parse is detected", {
     expect_equal(provs$provenance_args, "parse(text = \"1 + 1\") ;")
     expect_equal(provs$nb_provenances, 1)
 })
+
+test_that("substitute is detected", {
+    f <- function() {
+        x <- substitute(1)
+        eval(x)
+    }
+
+    provs <- do_trace_provenances(f())
+
+    expect_equal(provs$provenance, "substitute")
+    expect_equal(provs$provenance_args, "substitute(1) ;")
+    expect_equal(provs$nb_provenances, 1)
+})
+
+test_that("match.call and symbols", {
+    g <- function(a1, a2) {
+      mf <- match.call()
+      eval(mf[[2]], parent.frame()) 
+    }
+
+    f <- function() {
+        x <- 1
+        g(x, 3)
+    }
+
+    provs <- do_trace_provenances(f())
+
+    expect_equal(provs$provenance, "match.call")
+    expect_equal(provs$provenance_args, "match.call() ;")
+    expect_equal(provs$nb_provenances, 1)
+})
