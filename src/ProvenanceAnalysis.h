@@ -186,7 +186,7 @@ class ProvenanceAnalysis: public Analysis {
 
                     std::string arg_str;
                     for(auto it = args.cbegin(); it != args.cend(); it++) {
-                        arg_str += *it + " ;";
+                        arg_str += *it + "; ";
                     }
                     // if yes, record
                     provenance_table_.record(call->get_id(),
