@@ -240,6 +240,8 @@ private:
         kind[static_cast<int>(k)] += 1;
     }
 
+    // TODO: pick first the provenance of the root of the expression
+    // If there is no identified provenance for the root, then the most common provenance
     ProvenanceKind get_representative() const {
         return static_cast<ProvenanceKind>(std::distance(kind.cbegin(), max_element(kind.cbegin(), kind.cend())));
     }

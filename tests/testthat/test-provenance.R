@@ -41,3 +41,16 @@ test_that("match.call and symbols", {
     expect_equal(provs$provenance_args, "match.call() ;")
     expect_equal(provs$nb_provenances, 1)
 })
+
+test_that("expression", {
+    f <- function() {
+        x <- expression(1)
+        eval(x)
+    }
+
+    provs <- do_trace_provenances(f())
+
+    expect_equal(provs$provenance, "expression")
+    expect_equal(provs$provenance_args, "expression(1) ;")
+    expect_equal(provs$nb_provenances, 1)
+})
