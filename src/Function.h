@@ -40,7 +40,7 @@ class Function {
                         LazyLoadDbExec,
         EnvironmentFamily = NewEnv | List2Env,
         ProvenanceFamily = Parse | Str2lang | Str2expression | Substitute | Quote | 
-            Enquote | Match_call | Call | AsCall,
+            Enquote | Match_call | Call | AsCall | Expression | AsExpression,
         Any = INT_MAX
     };
 
