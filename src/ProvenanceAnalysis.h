@@ -44,7 +44,9 @@ class ProvenanceAnalysis: public Analysis {
         std::unordered_set<std::string> args;
         std::unordered_set<int> provenances;
         std::string root_kind;
-
+        inline static const std::unordered_set<std::string> provenance_functions = 
+        {"parse", "str2lang", "str2expression", "substitute", "quote", "enquote", "match.call",
+        "call", "expresssion", "as.expression"};
     public:
         ProvenanceAnalysis(): Analysis(),
          set_size(10),
@@ -128,22 +130,49 @@ class ProvenanceAnalysis: public Analysis {
                     // multiple provenances
                     clear_sets();
 
-                    inspect_sexp(expr_arg, 3, true);
+                    bool found = inspect_sexp(expr_arg, 3, true);
+
                     
+                    if(found) {
+                         std::string arg_str;
+                        for(auto it = args.cbegin(); it != args.cend(); it++) {
+                            arg_str += *it + "; ";
+                        }
+                        provenance_table_.record(call->get_id(),
+                            get_representative(),
+                            arg_str.c_str(),
+                            provenances.size()); 
+                         // Rprintf("Detected origin of expression: %s\n", std::get<1>(res->second).c_str());
 
-
-                    std::string arg_str;
-                    for(auto it = args.cbegin(); it != args.cend(); it++) {
-                        arg_str += *it + "; ";
-                    }
-                    // if yes, record
-                    provenance_table_.record(call->get_id(),
-                        get_representative(),
-                        arg_str.c_str(),
-                        provenances.size()); 
+                    } else {
+                        // Not found 
+                        // But the current approach does not detect 
+                        // eval(parse(text = "1"))
+                        // so let's look inside the argument directly
+                        // NOTE: we still won't detect eval(f(x)) where f has parse in
+                        // its body
+                        SEXP expr_expr = dyntrace_get_promise_expression(expr_promise);
                         
+                        if(TYPEOF(expr_expr) != LANGSXP) {
+                            // Not found!
+                            return;
+                        }
+                        
+                        SEXP first_call = CAR(expr_expr);
+                        if(TYPEOF(first_call) != SYMSXP) {
+                            return;
+                        }
 
-                    // Rprintf("Detected origin of expression: %s\n", std::get<1>(res->second).c_str());
+                        std::string function_name = CHAR(PRINTNAME(first_call));
+
+                        if(provenance_functions.find(function_name) != provenance_functions.end()) {
+                            provenance_table_.record(call->get_id(),
+                                function_name,
+                                deparse(expr_expr, call->get_environment()),
+                                1); 
+                        }
+                    }
+
                 }
             }
             else if(event_type == Event::Type::GcUnmark) {
@@ -177,10 +206,12 @@ class ProvenanceAnalysis: public Analysis {
     }
 
   private:
-    void inspect_sexp(SEXP sexp, int depth, bool root = false) {
+    bool inspect_sexp(SEXP sexp, int depth, bool root = false) {
         if (sexp == R_NilValue || depth == 0) {
-            return;
+            return false;
         }
+
+        bool found= false;
 
         // Remember everything
         // indeed, substitute(1) will return a double, not a langsxp
@@ -188,9 +219,13 @@ class ProvenanceAnalysis: public Analysis {
         if (res != addresses.end()) {
             update_provenances(res->second);
             if(root) {
+                // This will actually rarely happen
+                // if the root has something inserted in,
+                // then it will actually be a new object
                 root_kind = std::get<0>(res->second);
-                Rprintf("Detected a root with a known origin: %s\n", root_kind.c_str());
+                // Rprintf("Detected a root with a known origin: %s\n", root_kind.c_str());
             }
+            found = true;
         }
 
         // Now we look inside the expression
@@ -199,20 +234,21 @@ class ProvenanceAnalysis: public Analysis {
         case EXPRSXP: {
             for (int i = 0; i < XLENGTH(sexp); i++) {
                 SEXP el = VECTOR_ELT(sexp, i);
-                inspect_sexp(el, depth - 1);
+                found |= inspect_sexp(el, depth - 1);
             }
         } break;
 
         case LISTSXP:
         case LANGSXP: {
-            inspect_sexp(CDR(sexp), depth);
+            found |= inspect_sexp(CDR(sexp), depth);
             SEXP el = CAR(sexp);
-            inspect_sexp(el, depth - 1);
+            found |= inspect_sexp(el, depth - 1);
         } break;
 
         default: // do nothing
             break;
         }
+        return found;
     }
 
     static int get_provenance_id() {
