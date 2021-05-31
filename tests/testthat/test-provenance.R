@@ -68,3 +68,14 @@ test_that("Multiple provenances", {
     expect_equal(provs$provenance_args, "quote(4); parse(text = \"1 ; 2\"); ")
     expect_equal(provs$nb_provenances, 2)
 })
+
+test_that("inside eval", {
+    f <- function() {
+        eval(parse(text = "1"))
+    }
+
+    provs <- do_trace_provenances(f())
+    expect_equal(provs$provenance, "parse")
+    expect_equal(provs$provenance_args, "parse(text = \"1\"); ")
+    expect_equal(provs$nb_provenances, 1)
+})

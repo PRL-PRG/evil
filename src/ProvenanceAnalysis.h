@@ -168,7 +168,7 @@ class ProvenanceAnalysis: public Analysis {
                         if(provenance_functions.find(function_name) != provenance_functions.end()) {
                             provenance_table_.record(call->get_id(),
                                 function_name,
-                                deparse(expr_expr, call->get_environment()),
+                                deparse(expr_expr, call->get_environment()) + "; ",
                                 1); 
                         }
                     }
