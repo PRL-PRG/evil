@@ -7,6 +7,7 @@
 #include <unordered_set>
 #include <tuple>
 #include <algorithm>
+#include <optional>
 #include <utility> 
 #include "r_init.h"
 #include "Analysis.h"
@@ -35,13 +36,15 @@ class ProvenanceAnalysis: public Analysis {
         ProvenanceTable provenance_table_;
         // Kind of provenance function, argument list,
         // unique id of the provenance
-        std::unordered_map<SEXP, std::tuple<ProvenanceKind, std::string, int> > addresses;
+        std::unordered_map<SEXP, std::tuple<std::string, std::string, int> > addresses;
         // to store multiple provenances
-        size_t set_size;
         const static size_t nb_kinds = static_cast<int>(ProvenanceKind::match_call) + 1;
-        std::vector<int> kind;
+        size_t set_size;
+        std::unordered_map<std::string, int> kind;
         std::unordered_set<std::string> args;
         std::unordered_set<int> provenances;
+        std::string root_kind;
+
     public:
         ProvenanceAnalysis(): Analysis(),
          set_size(10),
@@ -55,33 +58,33 @@ class ProvenanceAnalysis: public Analysis {
                 const StackFrame& frame = stack.peek();
                 const Call* call = frame.as_call();
                 const Function* function = call->get_function();
-
+                
+                
+                //if(function->has_identity(Function::Identity::ProvenanceFamily)) {
                 if(function->has_identity(Function::Identity::ProvenanceFamily)) {
                     // Get the return value
                     SEXP result = event.get_result();
+
+
                     // Rprintf("Result is %s, with address %p, with type %s\n", 
                     //     deparse(result, call->get_environment()).c_str(),
                     //     &result,
                     //     CHAR(STRING_ELT(sexp_typeof(result), 0)));
 
-                    ProvenanceKind provenance =  ProvenanceTable::identity_to_provenance(function->get_identity());
+                    std::string provenance =  ProvenanceTable::provenance_to_string(ProvenanceTable::identity_to_provenance(function->get_identity()));
                     std::string arguments = deparse(call->get_expression(), call->get_environment());
                     
                     // For one provenance, one provenance id
                     // i.e. one provenance = one call, not one site
                     auto payload = std::make_tuple(provenance, arguments, get_provenance_id());
 
+                    // Always put the address of the root
+                    addresses[result] = payload;
+
                     // Get address of the value or of the elements if it is a complex expression
 
                     switch (TYPEOF(result))
                     {
-                    case STRSXP: // That should not happen!
-                        for(int i = 0; i < XLENGTH(result); i++) {
-                            SEXP el = STRING_ELT(result, i);
-                            addresses[el] = payload ;
-                        }
-                        break;
-
                     case VECSXP:
                     case EXPRSXP: // similar internal representation
                         //Rprintf("Detecting vector or expression\n");
@@ -102,10 +105,6 @@ class ProvenanceAnalysis: public Analysis {
                             addresses[cons] = payload;
                         } }
                         break;
-                    
-                    default: // simple values // that should only happen for symbols
-                        addresses[result] = payload;
-                        break;
                     }
 
                     // Rprintf("Detected provenance function %s\n", arguments.c_str());
@@ -122,67 +121,16 @@ class ProvenanceAnalysis: public Analysis {
                     // Check if the expression address contains any address saved previously.
                     SEXP expr_promise = event.r_get_argument(Rf_install("expr"), 0);
                     SEXP expr_arg = dyntrace_get_promise_value(expr_promise);
-                    // Rprintf("New address %p for %s\n", &expr_arg, deparse(expr_arg, call->get_environment()).c_str());
+                    // Rprintf("New address %p for %s\n", expr_arg, deparse(expr_arg, call->get_environment()).c_str());
 
                     
 
                     // multiple provenances
                     clear_sets();
 
-                    auto res = addresses.find(expr_arg);
+                    inspect_sexp(expr_arg, 3, true);
                     
-                    if(res == addresses.end()) {// Not found
-                        // try to look inside
-                        switch(TYPEOF(expr_arg)) {
-                            case STRSXP:
-                            for(int i = 0; i < XLENGTH(expr_arg); i++) {
-                                SEXP el = STRING_ELT(expr_arg, i);
-                                res = addresses.find(el);
-                                if(res != addresses.end()) {
-                                  update_provenances(res->second);
-                                }
-                            }
-                            break;
 
-                            case VECSXP:
-                            case EXPRSXP:
-                            for(int i = 0; i < XLENGTH(expr_arg); i++) {
-                                SEXP el = VECTOR_ELT(expr_arg, i);
-                                res = addresses.find(el);
-                                if(res != addresses.end()) {
-                                   update_provenances(res->second);
-                                }
-                            }
-                            break;
-
-                            // Her,e we could even traverse further into
-                            // the tree of the SEXP, and not only visit 
-                            // the roots
-                            case LISTSXP:
-                            case LANGSXP:
-                            for(SEXP cons = expr_arg; cons != R_NilValue; cons = CDR(cons)) {
-                                SEXP el = CAR(cons);
-                                // Also add the cons address?
-                                res = addresses.find(el);
-                                if(res != addresses.end()) {
-                                   update_provenances(res->second);
-                                }
-                                res = addresses.find(cons);
-                                if(res != addresses.end()) {
-                                 update_provenances(res->second);
-                                }
-                            }
-                            break;
-                        }
-                        
-                        if(res == addresses.end()) {
-                            // Rprintf("Not found\n");
-                            return;
-                        }
-                    }
-                    else { //Found
-                      update_provenances(res->second);
-                    }
 
                     std::string arg_str;
                     for(auto it = args.cbegin(); it != args.cend(); it++) {
@@ -204,6 +152,14 @@ class ProvenanceAnalysis: public Analysis {
 
                 addresses.erase(event.get_object());
             }
+            else if(event_type == Event::Type::BuiltinCallExit) {
+                const StackFrame& frame = stack.peek();
+                const Call* call = frame.as_call();
+                const Function* function = call->get_function();
+                Rprintf("Now in builtin %s with expression %s\n", 
+                function->get_name().c_str(),
+                deparse(call->get_expression(), call->get_environment()).c_str());
+            }
         }
 
     std::vector<Table*> get_tables() override {
@@ -220,7 +176,44 @@ class ProvenanceAnalysis: public Analysis {
         return deparsed;
     }
 
-private:
+  private:
+    void inspect_sexp(SEXP sexp, int depth, bool root = false) {
+        if (sexp == R_NilValue || depth == 0) {
+            return;
+        }
+
+        // Remember everything
+        // indeed, substitute(1) will return a double, not a langsxp
+        auto res = addresses.find(sexp);
+        if (res != addresses.end()) {
+            update_provenances(res->second);
+            if(root) {
+                root_kind = std::get<0>(res->second);
+                Rprintf("Detected a root with a known origin: %s\n", root_kind.c_str());
+            }
+        }
+
+        // Now we look inside the expression
+        switch (TYPEOF(sexp)) {
+        case VECSXP:
+        case EXPRSXP: {
+            for (int i = 0; i < XLENGTH(sexp); i++) {
+                SEXP el = VECTOR_ELT(sexp, i);
+                inspect_sexp(el, depth - 1);
+            }
+        } break;
+
+        case LISTSXP:
+        case LANGSXP: {
+            inspect_sexp(CDR(sexp), depth);
+            SEXP el = CAR(sexp);
+            inspect_sexp(el, depth - 1);
+        } break;
+
+        default: // do nothing
+            break;
+        }
+    }
 
     static int get_provenance_id() {
         return ++provenance_id;
@@ -228,26 +221,38 @@ private:
 
     void clear_sets() {
         set_size = std::max({set_size, provenances.size(), args.size()});
+        kind.clear();
         provenances.clear();
         args.clear();
+        root_kind.clear();
         
-        std::fill(kind.begin(), kind.end(), 0);
+        kind.reserve(nb_kinds);
         provenances.reserve(set_size);
         args.reserve(set_size);
     }
 
-    void insert_kind(ProvenanceKind k) {
-        kind[static_cast<int>(k)] += 1;
-    }
 
     // TODO: pick first the provenance of the root of the expression
     // If there is no identified provenance for the root, then the most common provenance
-    ProvenanceKind get_representative() const {
-        return static_cast<ProvenanceKind>(std::distance(kind.cbegin(), max_element(kind.cbegin(), kind.cend())));
+    // ProvenanceKind get_representative() const {
+    //     return static_cast<ProvenanceKind>(std::distance(kind.cbegin(), max_element(kind.cbegin(), kind.cend())));
+    // }
+
+    std::string get_representative() const {
+        if(!root_kind.empty()) {
+            return root_kind;
+        } else {
+            return std::get<0>(*std::max_element(kind.begin(), kind.end(),
+                             [](const std::tuple<std::string, int> &p1,
+                                const std::tuple<std::string, int> &p2)
+                             {
+                                 return std::get<1>(p1) < std::get<1>(p2);
+                             }));
+        } 
     }
 
-    void update_provenances(const std::tuple<ProvenanceKind, std::string, int>& res) {
-        insert_kind(std::get<0>(res));
+    void update_provenances(const std::tuple<std::string, std::string, int>& res) {
+        kind[std::get<0>(res)] = 1 +  kind[std::get<0>(res)];
         args.insert(std::get<1>(res));
         provenances.insert(std::get<2>(res));
     }

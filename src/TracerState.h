@@ -262,6 +262,57 @@ class TracerState {
             // There is not function in the eval or environment family here
             Call::dec_ref(call);
         }
+        else if(event_type == Event::Type::BuiltinCallEntry) {
+            SEXP r_call = event.get_call();
+            SEXP r_op = event.get_op();
+            SEXP r_args = event.get_args();
+            SEXP r_rho = event.get_rho();
+
+            Stack& stack = get_stack();
+            Function* function = get_function_table().lookup(r_op);
+            if (!function->has_name() && TYPEOF(CAR(r_call)) == SYMSXP) {
+                function->set_name(CHAR(PRINTNAME(CAR(r_call))));
+            }
+
+            Call* call =
+                new Call(function, r_call, r_args, r_rho, stack.size());
+            StackFrame frame = StackFrame::from_call(call);
+
+            stack.push(frame);
+
+            Environment* env = get_environment_table().lookup(r_rho);
+
+            env->set_call_source(call);
+        }
+        else if (event_type == Event::Type::BuiltinCallExit) {
+            SEXP r_call = event.get_call();
+            SEXP r_op = event.get_op();
+            SEXP r_args = event.get_args();
+            SEXP r_rho = event.get_rho();
+            SEXP r_result = event.get_result();
+
+            Stack& stack = get_stack();
+            StackFrame frame = stack.pop();
+            Call* call = nullptr;
+
+            if (!frame.is_call()) {
+                Rf_error("mismatched stack frame, expected call got context");
+            } else {
+                call = frame.as_call();
+                if (call->get_expression() != r_call ||
+                    call->get_arguments() != r_args ||
+                    call->get_environment() != r_rho) {
+                    Rf_error("mismatched call on stack");
+                }
+            }
+
+            call->set_status(Call::Status::Inactive);
+
+            Function* function = call->get_function();
+
+            // There is not function in the eval or environment family here
+            Call::dec_ref(call);
+        }
     }
 
     void set_eval_call_info(int call_id, SEXP r_env, int frame_depth) {

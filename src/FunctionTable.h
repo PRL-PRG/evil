@@ -55,9 +55,10 @@ class FunctionTable {
         SEXP r_fun =
             unwrap_function_(Rf_findVarInFrame(r_rho, Rf_install(name)));
 
-        if (TYPEOF(r_fun) != CLOSXP && TYPEOF(r_fun) != SPECIALSXP) {
+        if (TYPEOF(r_fun) != CLOSXP && TYPEOF(r_fun) != SPECIALSXP && 
+            TYPEOF(r_fun) != BUILTINSXP) {
             Rf_error(
-                "set_function_identity_: expected CLOSXP or SPECIALSXP after unwrapping %s. Got %s",
+                "set_function_identity_: expected CLOSXP, SPECIALSXP or BUILTINSXP after unwrapping %s. Got %s",
                  name,
                  CHAR(STRING_ELT(sexp_typeof(r_fun), 0)));
         }

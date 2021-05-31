@@ -8,6 +8,16 @@ void builtin_call_entry_callback(ContextSPtr context,
                                  SEXP r_op,
                                  SEXP r_args,
                                  SEXP r_rho) {
+    SEXP r_data = context->get_data();
+    TracerState& tracer_state = *get_tracer_state(r_data);
+
+    Event event = Event::builtin_call_entry(r_call, r_op, r_args, r_rho);
+
+    tracer_state.analyze(event);
+
+    for (Analysis* analysis: get_analyses(r_data)) {
+        analysis->analyze(tracer_state, event);
+    }                                         
     /* check if builtin is .Call and separately count that
        const char* name = dyntrace_get_c_function_name(r_op); */
 }
@@ -19,6 +29,17 @@ void builtin_call_exit_callback(ContextSPtr context,
                                  SEXP r_args,
                                  SEXP r_rho,
                                  SEXP r_result) {
+    SEXP r_data = context->get_data();
+    TracerState& tracer_state = *get_tracer_state(r_data);
+
+    Event event =
+        Event::builtin_call_exit(r_call, r_op, r_args, r_rho, r_result);
+
+    for (Analysis* analysis: get_analyses(r_data)) {
+        analysis->analyze(tracer_state, event);
+    }
+
+    tracer_state.analyze(event);                                  
     /* check if builtin is .Call and separately count that
        const char* name = dyntrace_get_c_function_name(r_op); */
 }

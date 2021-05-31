@@ -22,7 +22,7 @@ class ProvenanceTable: public Table {
     // Or one column per possible origin and then true false
     // Or the arguments if it is the origin, and NA otherwise
     // As there is one list of arguments per origin
-    std::vector<ProvenanceKind> parse_;
+    std::vector<std::string> parse_;
     std::vector<int> eval_ids_;
     std::vector<std::string> arguments_;
     std::vector<int> nb_provenances_;// How many provenances does it match
@@ -104,7 +104,7 @@ class ProvenanceTable: public Table {
     }
 
     void record(int eval_id, 
-        ProvenanceKind kind,
+        const std::string& kind,
         const std::string& arguments,
         int nb_provenances) {
             eval_ids_.push_back(eval_id);
@@ -114,14 +114,14 @@ class ProvenanceTable: public Table {
         }
 
     SEXP as_data_frame() override {
-        std::vector<std::string> provenance_strs(parse_.size());
+        /*std::vector<std::string> provenance_strs(parse_.size());
         for(int i = 0; i < parse_.size(); i ++) {
             provenance_strs[i] = provenance_to_string(parse_[i]);
-        }
+        }*/
 
         SEXP r_data_frame = create_data_frame(
             {{"eval_id", PROTECT(create_integer_vector(eval_ids_))},
-             {"provenance", PROTECT(create_character_vector(provenance_strs))}, 
+             {"provenance", PROTECT(create_character_vector(parse_))}, 
              {"provenance_args", PROTECT(create_character_vector(arguments_))},
              {"nb_provenances", PROTECT(create_integer_vector(nb_provenances_))}});
 
