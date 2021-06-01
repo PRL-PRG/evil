@@ -5,9 +5,7 @@ create_tracer <- function(evals_to_trace) {
         "base::eval",
         "base::evalq",
         "base::eval.parent",
-        "base::local",
-
-        "base::match.call"
+        "base::local"
     )
 
     context <- create_context(
@@ -39,7 +37,7 @@ create_tracer <- function(evals_to_trace) {
     data$evals_to_trace <- evals_to_trace
     .Call(C_tracer_data_initialize, data)
     data$calls <- new.env(parent = emptyenv())
-    data$match.call <- new.env(parent = emptyenv())
+    #data$match.call <- new.env(parent = emptyenv())
     data$unique_resolved_expressions <- new.env(parent = emptyenv())
     set_data(context, data)
 
@@ -220,17 +218,6 @@ call_exit_callback <- function(context, application, package, func, call) {
     call_name <- get_name(func)
     data <- get_data(context)
 
-    if (call_name == "match.call") {
-        retval <- returnValue()
-        # data$match.call is rather used as a set than a hashmap
-        for (k in seq_along(retval)) { # cannot directly iterate a call list
-          rv <- retval[[k]]
-          if (!is.null(rv)) {
-            data$match.call[[injectr::sexp_address(rv)]] <- TRUE
-          }
-        }
-        return()
-    }
 
     caller <- get_caller(call)
     caller_def_srcdir <- getSrcDirectory(caller$definition)
@@ -339,7 +326,7 @@ call_exit_callback <- function(context, application, package, func, call) {
     }
 
     # Argument results from a match.call?
-    expr_match_call <- from_match.call(expr_resolved, data$match.call)
+    expr_match_call <- NA #from_match.call(expr_resolved, data$match.call)
 
     envir_expression <- .Empty
     envir_forced <- NA
