@@ -78,4 +78,14 @@ test_that("inside eval", {
     expect_equal(provs$provenance, "parse")
     expect_equal(provs$provenance_args, "parse(text = \"1\"); ")
     expect_equal(provs$nb_provenances, 1)
+
+    f <- function() {
+        g <- function() parse(text = "1")
+        eval(g())
+    }
+
+    provs <- do_trace_provenances(f())
+    expect_equal(provs$provenance, "parse")
+    expect_equal(provs$provenance_args, "parse(text = \"1\"); ")
+    expect_equal(provs$nb_provenances, 1)
 })
