@@ -147,7 +147,10 @@ class ProvenanceAnalysis: public Analysis {
 
                     } else {
                         // Not found 
-                        // But the current approach does not detect 
+                        // Fail safe in the case
+                        // the expression was forced before
+                        // Indeed, in that case, the previous approach
+                        // does not detect 
                         // eval(parse(text = "1"))
                         // so let's look inside the argument directly
                         // NOTE: we still won't detect eval(f(x)) where f has parse in

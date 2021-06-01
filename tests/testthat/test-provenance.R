@@ -40,6 +40,26 @@ test_that("match.call and symbols", {
     expect_equal(provs$provenance, "match.call")
     expect_equal(provs$provenance_args, "match.call(); ")
     expect_equal(provs$nb_provenances, 1)
+
+    f <- function() {
+        g(1, 3)
+    }
+
+    provs <- do_trace_provenances(f())
+
+    expect_equal(provs$provenance, "match.call")
+    expect_equal(provs$provenance_args, "match.call(); ")
+    expect_equal(provs$nb_provenances, 1)
+
+    f <- function() {
+        g("hello", 3)
+    }
+
+    provs <- do_trace_provenances(f())
+
+    expect_equal(provs$provenance, "match.call")
+    expect_equal(provs$provenance_args, "match.call(); ")
+    expect_equal(provs$nb_provenances, 1)
 })
 
 test_that("expression", {
@@ -64,7 +84,7 @@ test_that("Multiple provenances", {
     }
 
     provs <- do_trace_provenances(f())
-    expect(provs$provenance %in% c("parse", "quote")) # not deterministic...
+    expect_true(provs$provenance %in% c("parse", "quote")) # not deterministic...
     expect_equal(provs$provenance_args, "quote(4); parse(text = \"1 ; 2\"); ")
     expect_equal(provs$nb_provenances, 2)
 })
@@ -88,4 +108,24 @@ test_that("inside eval", {
     expect_equal(provs$provenance, "parse")
     expect_equal(provs$provenance_args, "parse(text = \"1\"); ")
     expect_equal(provs$nb_provenances, 1)
+})
+
+test_that("match.call and multiple provenances", {
+    provs <- do_trace_provenances({
+        g <- function(a1, a2, a3) {
+            a1 + a2 * a3
+        }
+
+        f <- function(a1, a2, a3) {
+            mf <- match.call()
+            mf[[1]] <- quote(g)
+            eval(mf, parent.frame())
+        }
+
+        f(2, 4, 89)
+    })
+
+    expect_equal(provs$provenance, "match.call")
+    expect_equal(provs$provenance_args, "quote(g); match.call(); ")
+    expect_equal(provs$nb_provenances, 2)
 })
