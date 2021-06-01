@@ -139,6 +139,7 @@ class ProvenanceAnalysis: public Analysis {
                             arg_str += *it + "; ";
                         }
                         provenance_table_.record(call->get_id(),
+                            function->get_name(),
                             get_representative(),
                             arg_str.c_str(),
                             provenances.size()); 
@@ -167,6 +168,7 @@ class ProvenanceAnalysis: public Analysis {
 
                         if(provenance_functions.find(function_name) != provenance_functions.end()) {
                             provenance_table_.record(call->get_id(),
+                                function->get_name(),
                                 function_name,
                                 deparse(expr_expr, call->get_environment()) + "; ",
                                 1); 

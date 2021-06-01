@@ -195,7 +195,7 @@ call_entry_callback <- function(context, application, package, func, call) {
   ## the result. To make sure we only capture events from evaluation of the
   ## result, we force the argument here manually.
 
-  force(eval_call_env$expr)
+  #force(eval_call_env$expr)
 
   eval_env <- get("envir", envir = eval_call_env)
 
