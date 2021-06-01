@@ -87,16 +87,6 @@ application_load_callback <- function(context, application) {
         setHook(packageEvent(package, "onLoad"), .state$tracer_data_add_package, "append")
     }
 
-    # taint results from parsing functions
-    parse_funs_names <- c("parse", "str2expression", "str2lang")
-    data$parse_funs <- lapply(parse_funs_names, function(name) {
-      fun <- get(name, envir=baseenv(), mode="function")
-      fun_dup <- injectr::create_duplicate(fun)
-      code <- substitute(evil:::mark_parsed_expression(returnValue(), deparse1(match.call())))
-      injectr::inject_code(code=code, fun=fun, where="onexit")
-      fun_dup
-    })
-    names(data$parse_funs) <- parse_funs_names
 }
 
 
@@ -116,12 +106,6 @@ application_unload_callback <- function(context, application) {
     set_variable_callback_status(context, "reinstate")
 
     data <- get_data(context)
-    parse_funs <- data$parse_funs
-    for (name in names(parse_funs)) {
-      fun = get(name, envir=baseenv(), mode="function")
-      fun_orig = parse_funs[[name]]
-      injectr:::reassign_function_body(fun, body(fun_orig))
-    }
 
     calls <- do.call(rbind, as.list(data$calls))
 
@@ -318,12 +302,7 @@ call_exit_callback <- function(context, application, package, func, call) {
         .Empty
     }
 
-    # Argument used parse/str2lanf/str2expression?
-    expr_parsed_expression <- attr(expr_resolved, "._evil_parsed_expression")
-    ## browser(expr=eval_function==caller_function && !is.null(expr_parsed_expression))
-    if (is.null(expr_parsed_expression)) {
-        expr_parsed_expression <- .Empty
-    }
+    expr_parsed_expression <- .Empty
 
     # Argument results from a match.call?
     expr_match_call <- NA #from_match.call(expr_resolved, data$match.call)
