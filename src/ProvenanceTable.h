@@ -130,7 +130,7 @@ class ProvenanceTable: public Table {
              {"nb_provenances", PROTECT(create_integer_vector(nb_provenances_))}});
 
 
-        UNPROTECT(4);
+        UNPROTECT(5);
 
         return r_data_frame;
     }
