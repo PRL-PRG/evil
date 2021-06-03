@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <optional>
 #include <utility> 
+#include <cassert>
 #include "r_init.h"
 #include "Analysis.h"
 #include "ProvenanceTable.h"
@@ -61,19 +62,29 @@ class ProvenanceAnalysis: public Analysis {
                 const Call* call = frame.as_call();
                 const Function* function = call->get_function();
                 
+                // Get the return value
+                SEXP result = event.get_result();
                 
-                //if(function->has_identity(Function::Identity::ProvenanceFamily)) {
+                // Imp2:
+                // not only trace the function of interests but also any function resulting
+                // in an interesting type.
+                // In that case, we have to use an unordered_multimap for the addresses,
+                // as wrapping functions will not change the address 
+                // e.g. g <- function(t) parse(text = t)
+
+                // if(function->has_identity(Function::Identity::ProvenanceFamily) ||
+                //  (result != nullptr && 
+                //  (TYPEOF(result) == LANGSXP || TYPEOF(result) == EXPRSXP || TYPEOF(result) == SYMSXP))) {
+                
                 if(function->has_identity(Function::Identity::ProvenanceFamily)) {
-                    // Get the return value
-                    SEXP result = event.get_result();
-
-
                     // Rprintf("Result is %s, with address %p, with type %s\n", 
                     //     deparse(result, call->get_environment()).c_str(),
                     //     &result,
                     //     CHAR(STRING_ELT(sexp_typeof(result), 0)));
 
                     std::string provenance =  ProvenanceTable::provenance_to_string(ProvenanceTable::identity_to_provenance(function->get_identity()));
+                    //std::string provenance = function->get_name(); // Imp 2
+
                     std::string arguments = deparse(call->get_expression(), call->get_environment());
                     
                     // For one provenance, one provenance id
@@ -89,7 +100,7 @@ class ProvenanceAnalysis: public Analysis {
                     {
                     case VECSXP:
                     case EXPRSXP: // similar internal representation
-                        //Rprintf("Detecting vector or expression\n");
+                        // Rprintf("Detecting vector or expression\n");
                         for(int i = 0; i < XLENGTH(result); i++) {
                             SEXP el = VECTOR_ELT(result, i);
                             addresses[el] = payload;
@@ -98,7 +109,7 @@ class ProvenanceAnalysis: public Analysis {
 
                     case LISTSXP:
                     case LANGSXP: {
-                        //Rprintf("Detecting language or pairlist\n");
+                        // Rprintf("Detecting language or pairlist\n");
                         for(SEXP cons = result; cons != R_NilValue; cons = CDR(cons)) {
                             SEXP el = CAR(cons);
                             // Also add cons in the addresses?
@@ -125,7 +136,7 @@ class ProvenanceAnalysis: public Analysis {
                     SEXP expr_arg = dyntrace_get_promise_value(expr_promise);
                     // Rprintf("New address %p for %s\n", expr_arg, deparse(expr_arg, call->get_environment()).c_str());
 
-                    
+                    assert(call->get_id() != NA_INTEGER);    
 
                     // multiple provenances
                     clear_sets();
@@ -143,7 +154,7 @@ class ProvenanceAnalysis: public Analysis {
                             get_representative(),
                             arg_str.c_str(),
                             provenances.size()); 
-                         // Rprintf("Detected origin of expression: %s\n", std::get<1>(res->second).c_str());
+                        //  Rprintf("Detected origin of expression: %s\n", arg_str.c_str());
 
                     } else {
                         // Not found 
@@ -183,6 +194,10 @@ class ProvenanceAnalysis: public Analysis {
             else if(event_type == Event::Type::GcUnmark) {
                 // if the SEXP is reclaimed by the GC, we can remove it from
                 // the hash table
+                // It makes the analysis slightly more correct, by preventing
+                // from happening
+                // the rare case of an unrelated SEXP allocated at the same address 
+                // as a reclaimed address that had been recorded previously
 
                 addresses.erase(event.get_object());
             }
