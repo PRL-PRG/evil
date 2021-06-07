@@ -18,7 +18,7 @@ Imports:
 Remotes:
     PRL-PRG/instrumentr
 RoxygenNote: 7.1.1
-SystemRequirements: C++11
+SystemRequirements: C++17
 LinkingTo: instrumentr
 Suggests: 
     testthat

@@ -1,6 +1,8 @@
 #ifndef EVIL_TRACER_STATE_H
 #define EVIL_TRACER_STATE_H
 
+#include "R_ext/Print.h"
+#include "Rinternals.h"
 #include "r_utilities.h"
 #include "Event.h"
 #include <unordered_map>
@@ -317,12 +319,15 @@ class TracerState {
 
     void set_eval_call_info(int call_id, SEXP r_env, int frame_depth) {
         Stack& stack = get_stack();
-        Call* call = stack.peek_call(0, Function::Identity::Eval);
+        Call* call = stack.peek_call(0, Function::Identity::EvalFamily);
         if (call == nullptr) {
             Rf_error("set_eval_call_info: expected eval call on the stack");
         }
         call->set_id(call_id);
-        call->set_eval_environment(r_env);
+        Rprintf("C: name: %s call: %p id: %d\n", call->get_function()->get_name().c_str(), call->get_expression(), call_id);
+        if (r_env != R_NilValue) {
+          call->set_eval_environment(r_env);
+        }
     }
 
     int pop_interp_eval_count() {

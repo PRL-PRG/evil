@@ -58,8 +58,9 @@ class ProvenanceAnalysis: public Analysis {
             Stack& stack = tracer_state.get_stack();
 
             if(event_type == Event::Type::ClosureCallExit || event_type == Event::Type::SpecialCallExit) {
-                const StackFrame& frame = stack.peek();
-                const Call* call = frame.as_call();
+                /* const StackFrame& frame = stack.peek(); */
+                /* const Call* call = frame.as_call(); */
+                const Call* call = stack.peek_call(0);
                 const Function* function = call->get_function();
                 
                 // Get the return value
@@ -124,7 +125,8 @@ class ProvenanceAnalysis: public Analysis {
                 }
 
                 if(function->has_identity(Function::Identity::EvalFamily)) {
-                    // Rprintf("Now in eval! We have %d addresses recorded\n", addresses.size());
+                    int eval_count = stack.count_call(Function::Identity::EvalFamily);
+
                     
                     // for(auto it = addresses.cbegin(); it != addresses.cend(); it++) {
                     //     Rprintf("Address %p with arguments %s and provenance id %d\n", 
@@ -142,6 +144,11 @@ class ProvenanceAnalysis: public Analysis {
                     clear_sets();
 
                     bool found = inspect_sexp(expr_arg, 3, true);
+
+                    Call* eval_call =
+                      stack.peek_call(0, Function::Identity::EvalFamily);
+
+                    Rprintf("In eval %d identity: %d  id: %d \n", eval_count, function->get_identity(), eval_call->get_id());
 
                     
                     if(found) {

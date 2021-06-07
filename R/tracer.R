@@ -157,10 +157,7 @@ application_unload_callback <- function(context, application) {
 #' @importFrom instrumentr get_data get_environment get_id
 call_entry_callback <- function(context, application, package, func, call) {
   call_name <- get_name(func)
-
-  if (!(call_name %in% c("eval", "evalq"))) {
-    return()
-  }
+  cat("R: name:", call_name, "id:", get_id(call), "\n")
 
   ## ignore eval if coming from a package outside of package list
   caller <- get_caller(call)
@@ -168,6 +165,7 @@ call_entry_callback <- function(context, application, package, func, call) {
   data <- get_data(context)
 
   if (!should_trace(caller_package, data$evals_to_trace)) {
+    cat("R: skipping ", get_id(call), "\n")
     return()
   }
 
@@ -179,15 +177,22 @@ call_entry_callback <- function(context, application, package, func, call) {
 
   #force(eval_call_env$expr)
 
-  eval_env <- get("envir", envir = eval_call_env)
-
-  ## NOTE: this is done to force enclose env
-  enclose_env <- get("enclos", envir = eval_call_env)
+  eval_env <- if (call_name %in% c("eval", "evalq", "local")) {
+    get("envir", envir = eval_call_env)
+  } else {
+    # TODO: we should pickup the environment from the n variable
+    NULL
+  }
 
   eval_frame_depth <- get_frame_position(call)
 
   .Call(C_tracer_data_eval_call_entry, get_data(context), get_id(call), eval_env, eval_frame_depth)
 
+  if (call_name %in% c("eval", "evalq")) {
+    ## NOTE: this is done to force enclose env
+    enclose_env <- get("enclos", envir = eval_call_env)
+
+  }
   set_variable_callback_status(context, "activate")
 }
 
