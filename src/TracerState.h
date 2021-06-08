@@ -324,7 +324,6 @@ class TracerState {
             Rf_error("set_eval_call_info: expected eval call on the stack");
         }
         call->set_id(call_id);
-        Rprintf("C: name: %s call: %p id: %d\n", call->get_function()->get_name().c_str(), call->get_expression(), call_id);
         if (r_env != R_NilValue) {
           call->set_eval_environment(r_env);
         }

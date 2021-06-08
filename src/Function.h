@@ -33,14 +33,19 @@ class Function {
         AsCall = 1 << 22,
         Expression = 1 << 23,
         AsExpression = 1 << 24,
-        Other = 1 << 25,
+        AsName = 1 << 25,
+        AsSymbol = 1 << 26,
+        AsFormula = 1 << 27,
+        Tilde = 1 << 28,
+        Other = 1 << 29,
         EvalFamily = Eval | EvalQ | EvalParent | Local,
         PackageFamily = Library | Require | AttachNamespace | LoadNamespace |
                         RequireNamespace | UnloadNamespace | LazyLoad |
                         LazyLoadDbExec,
         EnvironmentFamily = NewEnv | List2Env,
         ProvenanceFamily = Parse | Str2lang | Str2expression | Substitute | Quote | 
-            Enquote | Match_call | Call | AsCall | Expression | AsExpression,
+            Enquote | Match_call | Call | AsCall | Expression | AsExpression | AsName |
+             AsSymbol | Tilde | AsFormula,
         Any = INT_MAX
     };
 

@@ -129,3 +129,48 @@ test_that("match.call and multiple provenances", {
     expect_equal(provs$provenance_args, "quote(g); match.call(); ")
     expect_equal(provs$nb_provenances, 2)
 })
+
+
+test_that("call", {
+    provs <- do_trace_provenances({
+        g <- call("+", 1, 1)
+        eval(g)
+    })
+
+    expect_equal(provs$provenance, "call")
+    expect_equal(provs$provenance_args, "call(\"+\", 1, 1); ")
+    expect_equal(provs$nb_provenances, 1)
+})
+
+test_that("as.name and as.symbol", {
+    provs <- do_trace_provenances({
+        x <- as.name("y")
+        y <- 1
+        eval(x)
+    })
+
+    expect_equal(provs$provenance, "as.name")
+    expect_equal(provs$provenance_args, "as.name(\"y\"); ")
+    expect_equal(provs$nb_provenances, 1)
+
+    provs <- do_trace_provenances({
+        x <- as.symbol("y")
+        y <- 1
+        eval(x)
+    })
+
+    expect_equal(provs$provenance, "as.symbol")
+    expect_equal(provs$provenance_args, "as.symbol(\"y\"); ")
+    expect_equal(provs$nb_provenances, 1)
+})
+
+test_that("tilde ~", {
+    provs <- do_trace_provenances({
+        e <- x ~ y 
+        eval(e)
+    })
+
+    expect_equal(provs$provenance, "~")
+    expect_equal(provs$provenance_args, "x ~ y; ")
+    expect_equal(provs$nb_provenances, 2) # There are apparently two calls to ~...
+})

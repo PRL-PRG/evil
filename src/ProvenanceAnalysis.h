@@ -14,6 +14,8 @@
 #include "Analysis.h"
 #include "ProvenanceTable.h"
 
+
+
 // deparse options
 #define KEEPINTEGER 1
 #define QUOTEEXPRESSIONS 2
@@ -37,17 +39,17 @@ class ProvenanceAnalysis: public Analysis {
         ProvenanceTable provenance_table_;
         // Kind of provenance function, argument list,
         // unique id of the provenance
-        std::unordered_map<SEXP, std::tuple<std::string, std::string, int> > addresses;
+        std::unordered_map<SEXP, std::tuple<ProvenanceKind, std::string, int> > addresses;
         // to store multiple provenances
         const static size_t nb_kinds = static_cast<int>(ProvenanceKind::match_call) + 1;
         size_t set_size;
-        std::unordered_map<std::string, int> kind;
+        std::unordered_map<int, int> kind;
         std::unordered_set<std::string> args;
         std::unordered_set<int> provenances;
-        std::string root_kind;
+        std::optional<ProvenanceKind> root_kind;
         inline static const std::unordered_set<std::string> provenance_functions = 
         {"parse", "str2lang", "str2expression", "substitute", "quote", "enquote", "match.call",
-        "call", "expresssion", "as.expression"};
+        "call", "expresssion", "as.expression", "as.name", "as.symbol", "as.fornula", "~"};
     public:
         ProvenanceAnalysis(): Analysis(),
          set_size(10),
@@ -58,24 +60,13 @@ class ProvenanceAnalysis: public Analysis {
             Stack& stack = tracer_state.get_stack();
 
             if(event_type == Event::Type::ClosureCallExit || event_type == Event::Type::SpecialCallExit) {
-                /* const StackFrame& frame = stack.peek(); */
-                /* const Call* call = frame.as_call(); */
                 const Call* call = stack.peek_call(0);
                 const Function* function = call->get_function();
                 
                 // Get the return value
                 SEXP result = event.get_result();
                 
-                // Imp2:
-                // not only trace the function of interests but also any function resulting
-                // in an interesting type.
-                // In that case, we have to use an unordered_multimap for the addresses,
-                // as wrapping functions will not change the address 
-                // e.g. g <- function(t) parse(text = t)
 
-                // if(function->has_identity(Function::Identity::ProvenanceFamily) ||
-                //  (result != nullptr && 
-                //  (TYPEOF(result) == LANGSXP || TYPEOF(result) == EXPRSXP || TYPEOF(result) == SYMSXP))) {
                 
                 if(function->has_identity(Function::Identity::ProvenanceFamily)) {
                     // Rprintf("Result is %s, with address %p, with type %s\n", 
@@ -83,8 +74,7 @@ class ProvenanceAnalysis: public Analysis {
                     //     &result,
                     //     CHAR(STRING_ELT(sexp_typeof(result), 0)));
 
-                    std::string provenance =  ProvenanceTable::provenance_to_string(ProvenanceTable::identity_to_provenance(function->get_identity()));
-                    //std::string provenance = function->get_name(); // Imp 2
+                    ProvenanceKind provenance =  ProvenanceTable::identity_to_provenance(function->get_identity());
 
                     std::string arguments = deparse(call->get_expression(), call->get_environment());
                     
@@ -125,8 +115,12 @@ class ProvenanceAnalysis: public Analysis {
                 }
 
                 if(function->has_identity(Function::Identity::EvalFamily)) {
-                    int eval_count = stack.count_call(Function::Identity::EvalFamily);
 
+                    if(call->get_id() == NA_INTEGER) {
+                        // It means that it is an eval that we had decided to ignore
+                        // So we do not record anything here.
+                        return;
+                    }
                     
                     // for(auto it = addresses.cbegin(); it != addresses.cend(); it++) {
                     //     Rprintf("Address %p with arguments %s and provenance id %d\n", 
@@ -138,32 +132,37 @@ class ProvenanceAnalysis: public Analysis {
                     SEXP expr_arg = dyntrace_get_promise_value(expr_promise);
                     // Rprintf("New address %p for %s\n", expr_arg, deparse(expr_arg, call->get_environment()).c_str());
 
-                    assert(call->get_id() != NA_INTEGER);    
+                    Call* eval_call =
+                      stack.peek_call(0, Function::Identity::EvalFamily);
+
+                    if(eval_call->get_id() != call->get_id()) {
+                        Rf_error("Ids are different\n");
+                    }
+                    
 
                     // multiple provenances
                     clear_sets();
 
                     bool found = inspect_sexp(expr_arg, 3, true);
 
-                    Call* eval_call =
-                      stack.peek_call(0, Function::Identity::EvalFamily);
-
-                    Rprintf("In eval %d identity: %d  id: %d \n", eval_count, function->get_identity(), eval_call->get_id());
 
                     
                     if(found) {
-                         std::string arg_str;
+                        std::string arg_str;
                         for(auto it = args.cbegin(); it != args.cend(); it++) {
                             arg_str += *it + "; ";
                         }
+                        // Now we replace all \n by a unicode character
+                        //std::replace(arg_str.begin(), arg_str.end(), '\n', '\u23CE');
+                        std::replace(arg_str.begin(), arg_str.end(), '\n', '\t');
+
                         provenance_table_.record(call->get_id(),
-                            function->get_name(),
                             get_representative(),
-                            arg_str.c_str(),
+                            arg_str,
                             provenances.size()); 
                         //  Rprintf("Detected origin of expression: %s\n", arg_str.c_str());
 
-                    } else {
+                    } /* else {
                         // Not found 
                         // Fail safe in the case
                         // the expression was forced before
@@ -189,12 +188,11 @@ class ProvenanceAnalysis: public Analysis {
 
                         if(provenance_functions.find(function_name) != provenance_functions.end()) {
                             provenance_table_.record(call->get_id(),
-                                function->get_name(),
-                                function_name,
+                                function_name, // we need to convert that to ProvenanceKind
                                 deparse(expr_expr, call->get_environment()) + "; ",
                                 1); 
                         }
-                    }
+                    }*/
 
                 }
             }
@@ -287,7 +285,7 @@ class ProvenanceAnalysis: public Analysis {
         kind.clear();
         provenances.clear();
         args.clear();
-        root_kind.clear();
+        root_kind.reset();
         
         kind.reserve(nb_kinds);
         provenances.reserve(set_size);
@@ -295,29 +293,26 @@ class ProvenanceAnalysis: public Analysis {
     }
 
 
-    // TODO: pick first the provenance of the root of the expression
-    // If there is no identified provenance for the root, then the most common provenance
-    // ProvenanceKind get_representative() const {
-    //     return static_cast<ProvenanceKind>(std::distance(kind.cbegin(), max_element(kind.cbegin(), kind.cend())));
-    // }
 
-    std::string get_representative() const {
-        if(!root_kind.empty()) {
-            return root_kind;
+    ProvenanceKind get_representative() const {
+        if(!root_kind.has_value()) {
+            return root_kind.value();
         } else {
-            return std::get<0>(*std::max_element(kind.begin(), kind.end(),
-                             [](const std::tuple<std::string, int> &p1,
-                                const std::tuple<std::string, int> &p2)
+            int kind_n = std::get<0>(*std::max_element(kind.begin(), kind.end(),
+                             [](const std::tuple<int, int> &p1,
+                                const std::tuple<int, int> &p2)
                              {
                                  return std::get<1>(p1) < std::get<1>(p2);
                              }));
+            return static_cast<ProvenanceKind>(kind_n);
         } 
     }
 
-    void update_provenances(const std::tuple<std::string, std::string, int>& res) {
-        kind[std::get<0>(res)] = 1 +  kind[std::get<0>(res)];
+    void update_provenances(const std::tuple<ProvenanceKind, std::string, int>& res) {
+        int kind_n = static_cast<int>(std::get<0>(res));
+        kind[kind_n] = 1 +  kind[kind_n];
         args.insert(std::get<1>(res));
-        provenances.insert(std::get<2>(res));
+        provenances.insert(static_cast<int>(std::get<2>(res)));
     }
 
 };

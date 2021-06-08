@@ -295,6 +295,14 @@ class FunctionTable {
             R_BaseNamespace, "expression", Function::Identity::Expression);
         set_function_identity_(
             R_BaseNamespace, "as.expression", Function::Identity::AsExpression);
+        set_function_identity_(
+            R_BaseNamespace, "as.name", Function::Identity::AsName);
+        set_function_identity_(
+            R_BaseNamespace, "as.symbol", Function::Identity::AsSymbol);
+        set_function_identity_(
+            R_BaseNamespace, "~", Function::Identity::Tilde);
+        // set_function_identity_(
+        //     infer_namespace_(Rf_install("stats")), "as.formula", Function::Identity::AsFormula);
     }
 };
 

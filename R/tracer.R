@@ -157,7 +157,6 @@ application_unload_callback <- function(context, application) {
 #' @importFrom instrumentr get_data get_environment get_id
 call_entry_callback <- function(context, application, package, func, call) {
   call_name <- get_name(func)
-  cat("R: name:", call_name, "id:", get_id(call), "\n")
 
   ## ignore eval if coming from a package outside of package list
   caller <- get_caller(call)
@@ -165,7 +164,6 @@ call_entry_callback <- function(context, application, package, func, call) {
   data <- get_data(context)
 
   if (!should_trace(caller_package, data$evals_to_trace)) {
-    cat("R: skipping ", get_id(call), "\n")
     return()
   }
 
