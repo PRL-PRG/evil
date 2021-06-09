@@ -129,3 +129,4 @@ test_that("match.call and multiple provenances", {
     expect_equal(provs$provenance_args, "quote(g); match.call(); ")
     expect_equal(provs$nb_provenances, 2)
 })
+

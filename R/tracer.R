@@ -376,6 +376,8 @@ call_exit_callback <- function(context, application, package, func, call) {
     expr_expression_repr <- expr_repr(expr_expression)
     expr_resolved_repr <- expr_repr(expr_resolved)
 
+    expr_resolved_class <- class(expr_resolved)
+
     expr_expression_function <- NA_character_
     expr_expression_args_num <- NA_integer_
 
@@ -426,6 +428,7 @@ call_exit_callback <- function(context, application, package, func, call) {
         expr_resolved_nodes = get_ast_size(substitute(expr_resolved)),
         expr_resolved_function,
         expr_resolved_args_num = as.integer(expr_resolved_args_num),
+        expr_resolved_class,
 
         expr_return = expr_return_repr$text,
         expr_return_hash = expr_return_repr$hash,

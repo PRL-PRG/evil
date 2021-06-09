@@ -5,6 +5,7 @@
 #include <memory>
 #include <algorithm>
 #include <numeric>
+#define R_NO_REMAP
 #include "r_init.h"
 
 /**
@@ -27,7 +28,10 @@ class Provenance {
     // For instance, a SEXP could be reclaimed
     // but we still want to keep track of it
     // Or only one parent, because we won't bother looking into a VECSXP?
-    std::vector<Provenance*> parents_;
+    // one node can be thr provenance of several nodes
+    // but we do not need a destructor here as they will be reclaimed
+    // in ProvenanceGraph
+    std::vector<Provenance* > parents_;
     SEXP address_;
     std::string function_name_;
     std::string full_call_;
@@ -48,7 +52,7 @@ class Provenance {
         parents_.push_back(parent);
     }
 
-    std::vector<Provenance*>& parents() const {
+    const std::vector<Provenance*>& parents() const {
         return parents_;
     }
 
@@ -56,11 +60,19 @@ class Provenance {
         return parents_.size();
     }
 
-    char const* get_name() const {
+    const std::string& get_name() const {
         return function_name_;
     }
 
-    Provenance const* get_representative() const {
+    const std::string& get_full_call() const {
+        return full_call_;
+    }
+
+    long get_id() const {
+        return prov_id_;
+    }
+
+    const Provenance* get_representative() const {
         // Currently, we just take the first parent
         // Other possible strategies:
         // -  get root of longest path
@@ -73,6 +85,8 @@ class Provenance {
         }
     }
 
+
+    // They are actually leaves...
     size_t nb_roots() const {
         if (nb_parents() == 0) {
             return 1;
@@ -86,27 +100,23 @@ class Provenance {
         }
     }
 
-    size_t longest_path() const {
-        if(nb_parents() == 0) {
-            return 1;
+    int longest_path() const {
+        int max = 0;
+        for(auto parent : parents_) {
+            max = std::max(max, parent->longest_path());
         }
-        else {
-            int max = -1;
-            for(auto parent : parents_) {
-                max = std::max(max, parent->longest_path());
-            }
-            return 1 + max;
-        }
+        return 1 + max;
     }
 
-
-    ~Provenance() {
-        // A node also removes its parents
-        for (auto parent: parents_) {
-            delete parent;
+    size_t nb_nodes() const {
+        int n = 1;
+        for(auto parent : parents_) {
+            n += parent->nb_nodes();
         }
+        return n;
     }
-}
+
+};
 
 class ProvenanceGraph {
     private:
@@ -127,10 +137,21 @@ class ProvenanceGraph {
         std::vector<Provenance*> roots() {
             std::vector<Provenance*> roots_v;
             roots_v.reserve(provenance_nodes.size());
-            remove_copy_if(provenance_nodes.begin(), provenance_nodes.end(), 
-                roots_v,
-                [](Provenance* n) {return nb_parents() != 0; } )
+            for(auto node: provenance_nodes) {
+                if(node.nb_parents() == 0) {
+                    roots_v.push_back(&node);
+                }
+            }
+            return roots_v;
         }
+
+        size_t nb_nodes() const {
+            return provenance_nodes.size();
+        }
+
+        static void toDot(const std::string& filename, int call_id, Provenance* node);
+
+        void toDot(const std::string& filename);
 
 };
 

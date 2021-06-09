@@ -24,9 +24,10 @@ class ProvenanceTable: public Table {
     // As there is one list of arguments per origin
     std::vector<std::string> parse_;
     std::vector<int> eval_ids_;
-    std::vector<std::string> eval_function_;
     std::vector<std::string> arguments_;
     std::vector<int> nb_provenances_;// How many provenances does it match
+    std::vector<int> nb_operations_;// How many operations to build this expression
+    std::vector<int> longest_path_size_;
 
     // TODO: add the srcref of the provenances?
     // vector of set of arguments, provenances, provenance id
@@ -105,15 +106,17 @@ class ProvenanceTable: public Table {
     }
 
     void record(int eval_id, 
-        const std::string& eval_function,
         const std::string& kind,
         const std::string& arguments,
-        int nb_provenances) {
+        int nb_provenances,
+        int nb_operations,
+        int longest_path_size) {
             eval_ids_.push_back(eval_id);
             parse_.push_back(kind);
-            eval_function_.push_back(eval_function);
             arguments_.push_back(arguments);
             nb_provenances_.push_back(nb_provenances);
+            nb_operations_.push_back(nb_operations);
+            longest_path_size_.push_back(longest_path_size);
         }
 
     SEXP as_data_frame() override {
@@ -123,14 +126,16 @@ class ProvenanceTable: public Table {
         }*/
 
         SEXP r_data_frame = create_data_frame(
-            {{"eval_id", PROTECT(create_integer_vector(eval_ids_))},
-             {"eval_function", PROTECT(create_character_vector(eval_function_))}, 
+            {{"eval_call_id", PROTECT(create_integer_vector(eval_ids_))},
              {"provenance", PROTECT(create_character_vector(parse_))}, 
              {"provenance_args", PROTECT(create_character_vector(arguments_))},
-             {"nb_provenances", PROTECT(create_integer_vector(nb_provenances_))}});
+             {"nb_provenances", PROTECT(create_integer_vector(nb_provenances_))},
+             {"nb_operations", PROTECT(create_integer_vector(nb_operations_))},
+             {"longest_path_size", PROTECT(create_integer_vector(longest_path_size_))}
+             });
 
 
-        UNPROTECT(5);
+        UNPROTECT(6);
 
         return r_data_frame;
     }
