@@ -2,6 +2,7 @@
 #define EVIL_PROVENANCE_H
 
 #include <vector>
+#include <deque>
 #include <memory>
 #include <algorithm>
 #include <numeric>
@@ -46,6 +47,7 @@ class Provenance {
         , function_name_(function_name)
         , full_call_(full_call)
         , prov_id_(prov_id) {
+            parents_.clear();
     }
 
     void add_parent(Provenance* parent) {
@@ -81,7 +83,7 @@ class Provenance {
             return this;
         }
         else {
-            return parents_[0];
+            return parents_[0]->get_representative();
         }
     }
 
@@ -103,7 +105,7 @@ class Provenance {
     int longest_path() const {
         int max = 0;
         for(auto parent : parents_) {
-            max = std::max(max, parent->longest_path());
+            max = std::max({max, parent->longest_path()});
         }
         return 1 + max;
     }
@@ -120,16 +122,16 @@ class Provenance {
 
 class ProvenanceGraph {
     private:
-        std::vector<Provenance> provenance_nodes;
-
+        // We need a data structure where iterators are not 
+        // invalidated after insertion at the back 
+        // If we can bound up the number of nodes, we
+        // can also use std::vector and reserve...
+        std::deque<Provenance> provenance_nodes; 
     public:
-        ProvenanceGraph(int nb_nodes) {
-            provenance_nodes.reserve(nb_nodes);
-        }
 
         ProvenanceGraph() {}
 
-        Provenance* add_node(SEXP address, std::string function_name, std::string full_call, long prov_id) {
+        Provenance* add_node(SEXP address, std::string const& function_name, std::string const& full_call, long prov_id) {
             provenance_nodes.emplace_back(address, function_name, full_call, prov_id);
             return &provenance_nodes.back();
         }
@@ -154,5 +156,8 @@ class ProvenanceGraph {
         void toDot(const std::string& filename);
 
 };
+
+
+
 
 #endif

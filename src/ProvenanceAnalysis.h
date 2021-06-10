@@ -38,7 +38,7 @@ class ProvenanceAnalysis: public Analysis {
     ProvenanceTable provenance_table_;
     std::unordered_map<SEXP, Provenance*> addresses; // or unordered_multimap?
   public:
-    ProvenanceAnalysis(): Analysis() {
+    ProvenanceAnalysis(): Analysis(){
     }
 
     void analyze(TracerState& tracer_state, Event& event) override {
@@ -63,6 +63,10 @@ class ProvenanceAnalysis: public Analysis {
                 //     CHAR(STRING_ELT(sexp_typeof(result), 0)));
 
                 std::string function_name = function->get_name();
+
+                // if(function_name == ".Internal") {
+                //     return;
+                // }
 
                 std::string full_call =
                     deparse(call->get_expression(), call->get_environment());
@@ -94,8 +98,8 @@ class ProvenanceAnalysis: public Analysis {
                     if (res != addresses.end()) {
                         payload->add_parent(res->second);
                     }
-                    else if(expr_arg != nullptr && TYPEOF(expr_arg) == VECSXP) {
-                        // if it is a list, look inside
+                    // Seems it fails for SPECIAL
+                    else if(event_type == Event::Type::ClosureCallExit && expr_arg != nullptr && TYPEOF(expr_arg) == VECSXP) { 
                         for (int i = 0; i < XLENGTH(expr_arg); i++) {
                             SEXP el = VECTOR_ELT(expr_arg, i);
                             res = addresses.find(el);
@@ -107,6 +111,7 @@ class ProvenanceAnalysis: public Analysis {
                 }
 
                 // And also check if the result has already been stored in the table!
+                // That would be a return value for instance
                 // e.g. g <- function() { parse(text = "1")}
                 auto res = addresses.find(result);
                 if(res != addresses.end()) {
