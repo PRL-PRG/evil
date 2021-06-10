@@ -2,9 +2,9 @@
 #define EVIL_PROVENANCE_H
 
 #include <vector>
-#include <deque>
 #include <memory>
 #include <algorithm>
+#include <unordered_set>
 #include <numeric>
 #define R_NO_REMAP
 #include "r_init.h"
@@ -38,6 +38,11 @@ class Provenance {
     std::string full_call_;
     long prov_id_; // unique id of the call creating this provenance
 
+    inline static std::unordered_set<std::string> prov_functions = {
+        "parse", "str2lang", "str2expression", "substitute", "quote", "enquote", "match.call",
+        "call", "as.call", "expression", "as.expression"
+    };
+
   public:
     Provenance(SEXP address,
                std::string function_name,
@@ -51,6 +56,8 @@ class Provenance {
     }
 
     void add_parent(Provenance* parent) {
+        // Do not insert a parent 
+        // to a function in prov_functions?
         parents_.push_back(parent);
     }
 
@@ -79,7 +86,11 @@ class Provenance {
         // Other possible strategies:
         // -  get root of longest path
         // - get smallest prov_id
-        if(nb_parents() == 0) {
+
+        // We don't want to show the implementation of 
+        // functions such as parse ( with .Internal...)
+        // TODO: do that internally by refusing to insert a parent like that?
+        if(nb_parents() == 0 || prov_functions.find(function_name_) != prov_functions.end()) {
             return this;
         }
         else {
@@ -122,26 +133,25 @@ class Provenance {
 
 class ProvenanceGraph {
     private:
-        // We need a data structure where iterators are not 
-        // invalidated after insertion at the back 
-        // If we can bound up the number of nodes, we
-        // can also use std::vector and reserve...
-        std::deque<Provenance> provenance_nodes; 
+        std::vector<Provenance*> provenance_nodes; 
     public:
 
-        ProvenanceGraph() {}
+        ProvenanceGraph() {
+            // There are at least a few nodes and it seems gcc only reserve for one node on Linux
+            provenance_nodes.reserve(4);
+        }
 
         Provenance* add_node(SEXP address, std::string const& function_name, std::string const& full_call, long prov_id) {
-            provenance_nodes.emplace_back(address, function_name, full_call, prov_id);
-            return &provenance_nodes.back();
+            provenance_nodes.push_back(new Provenance(address, function_name, full_call, prov_id));
+            return provenance_nodes.back();
         }
 
         std::vector<Provenance*> roots() {
             std::vector<Provenance*> roots_v;
             roots_v.reserve(provenance_nodes.size());
             for(auto node: provenance_nodes) {
-                if(node.nb_parents() == 0) {
-                    roots_v.push_back(&node);
+                if(node->nb_parents() == 0) {
+                    roots_v.push_back(node);
                 }
             }
             return roots_v;
@@ -154,6 +164,12 @@ class ProvenanceGraph {
         static void toDot(const std::string& filename, int call_id, Provenance* node);
 
         void toDot(const std::string& filename);
+
+        ~ProvenanceGraph() {
+            for(auto node : provenance_nodes) {
+                delete node;
+            }
+        }
 
 };
 
