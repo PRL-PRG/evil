@@ -33,6 +33,7 @@ class Provenance {
     // but we do not need a destructor here as they will be reclaimed
     // in ProvenanceGraph
     std::vector<Provenance* > parents_;
+    int rep_parent = 0;
     SEXP address_;
     std::string function_name_;
     std::string full_call_;
@@ -55,10 +56,20 @@ class Provenance {
             parents_.clear();
     }
 
-    void add_parent(Provenance* parent) {
-        // Do not insert a parent 
-        // to a function in prov_functions?
+    void add_parent(Provenance* parent, bool result = false) {
+        // We don't insert parents of functions of interests
+        // Otherwise, for instance, we would get { and >internal(parse(...)) for parse
+        if(prov_functions.find(function_name_) != prov_functions.end()) {
+            return;
+        }
         parents_.push_back(parent);
+
+        // if we picked this parent out because it was a return address
+        // It happens to be the LHS for assignment functions
+        // so this is the one we want when climbing up for a representative
+        if(result) {
+            rep_parent = parents_.size() - 1;
+        }
     }
 
     const std::vector<Provenance*>& parents() const {
@@ -87,14 +98,11 @@ class Provenance {
         // -  get root of longest path
         // - get smallest prov_id
 
-        // We don't want to show the implementation of 
-        // functions such as parse ( with .Internal...)
-        // TODO: do that internally by refusing to insert a parent like that?
-        if(nb_parents() == 0 || prov_functions.find(function_name_) != prov_functions.end()) {
+        if(nb_parents() == 0) {
             return this;
         }
         else {
-            return parents_[0]->get_representative();
+            return parents_[rep_parent]->get_representative();
         }
     }
 
