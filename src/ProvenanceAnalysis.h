@@ -56,7 +56,9 @@ class ProvenanceAnalysis: public Analysis {
             if (function->has_identity(Function::Identity::ProvenanceFamily) ||
                 (result != nullptr &&
                  (TYPEOF(result) == LANGSXP || TYPEOF(result) == EXPRSXP ||
-                  TYPEOF(result) == SYMSXP))) {
+                  TYPEOF(result) == SYMSXP)) ) {
+                      // Also check if it comes from an address already recorded?
+
                 // Rprintf("Result is %s, with address %p, with type %s\n",
                 //     deparse(result, call->get_environment()).c_str(),
                 //     &result,
@@ -64,12 +66,8 @@ class ProvenanceAnalysis: public Analysis {
 
                 std::string function_name = function->get_name();
 
-                // if(function_name == ".Internal") {
-                //     return;
-                // }
-
                 std::string full_call =
-                    deparse(call->get_expression(), call->get_environment());
+                    deparse(call->get_expression());
 
                 Provenance* payload = provenance_graph_.add_node(
                     result, function_name, full_call, get_provenance_id());
@@ -79,13 +77,21 @@ class ProvenanceAnalysis: public Analysis {
                 // Rprintf("Detected provenance function %s\n",
                 // arguments.c_str());
 
+                // TODO: see what happens when the function is [[<-
+
                 // Now, also check if the argument of the expression had also
                 // been recorded in the table
                 SEXP args = CDR(call->get_expression());
                 for (SEXP cons = args; cons != R_NilValue; cons = CDR(cons)) {
-                    SEXP el = CAR(cons);
-                    SEXP expr_promise = event.r_get_argument(el, 0);
-                    SEXP expr_arg = dyntrace_get_promise_value(expr_promise);
+                    SEXP expr_arg = CAR(cons);
+                    if(TYPEOF(expr_arg) == PROMSXP) {
+                        expr_arg = dyntrace_get_promise_value(expr_arg);
+                        if(expr_arg == R_UnboundValue) {
+                            continue;
+                        }
+                    }
+                   
+                     
                     // Here, we need to traverse each of the argument and check
                     // if they are in the hash table if yes, we can add the
                     // provenance(s) of this argument as parents of the current
@@ -98,8 +104,7 @@ class ProvenanceAnalysis: public Analysis {
                     if (res != addresses.end()) {
                         payload->add_parent(res->second);
                     }
-                    // Seems it fails for SPECIAL
-                    else if(event_type == Event::Type::ClosureCallExit && expr_arg != nullptr && TYPEOF(expr_arg) == VECSXP) { 
+                    else if(expr_arg != nullptr && TYPEOF(expr_arg) == VECSXP) { 
                         for (int i = 0; i < XLENGTH(expr_arg); i++) {
                             SEXP el = VECTOR_ELT(expr_arg, i);
                             res = addresses.find(el);
@@ -115,7 +120,7 @@ class ProvenanceAnalysis: public Analysis {
                 // e.g. g <- function() { parse(text = "1")}
                 auto res = addresses.find(result);
                 if(res != addresses.end()) {
-                    payload->add_parent(res->second);
+                    payload->add_parent(res->second, true);
                 }
 
                 // We add the new payload after (otherwise, it could shadow the address of one of the arguments)
@@ -177,7 +182,7 @@ class ProvenanceAnalysis: public Analysis {
             const Function* function = call->get_function();
             Rprintf("Now in builtin %s with expression %s\n",
                     function->get_name().c_str(),
-                    deparse(call->get_expression(), call->get_environment())
+                    deparse(call->get_expression())
                         .c_str());
         }
     }
@@ -186,7 +191,7 @@ class ProvenanceAnalysis: public Analysis {
         return {&provenance_table_};
     }
 
-    std::string deparse(const SEXP expr, const SEXP env) {
+    std::string deparse(const SEXP expr) {
         std::string deparsed = "ERROR";
         SEXP res;
 
