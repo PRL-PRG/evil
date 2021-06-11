@@ -56,8 +56,9 @@ class ProvenanceAnalysis: public Analysis {
             if (function->has_identity(Function::Identity::ProvenanceFamily) ||
                 (result != nullptr &&
                  (TYPEOF(result) == LANGSXP || TYPEOF(result) == EXPRSXP ||
-                  TYPEOF(result) == SYMSXP)) ) {
-                      // Also check if it comes from an address already recorded?
+                  TYPEOF(result) == SYMSXP))) {
+                // That does not detect if somewhere in the provenance chain, something is not an expression
+                // anymore.  For instance, a match.call and non-symbolic arguments
 
                 // Rprintf("Result is %s, with address %p, with type %s\n",
                 //     deparse(result, call->get_environment()).c_str(),
@@ -121,6 +122,14 @@ class ProvenanceAnalysis: public Analysis {
                 auto res = addresses.find(result);
                 if(res != addresses.end()) {
                     payload->add_parent(res->second, true);
+                }
+
+                if(function_name == "[[") { // and $ and [ ?
+                    SEXP r_value = Rf_findVarInFrame(call->get_environment(), CAR(args));
+                    res = addresses.find(r_value);
+                    if(res != addresses.end()) {
+                        payload->add_parent(res->second);
+                    }
                 }
 
                 // We add the new payload after (otherwise, it could shadow the address of one of the arguments)
