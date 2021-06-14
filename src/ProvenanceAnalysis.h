@@ -138,6 +138,12 @@ class ProvenanceAnalysis: public Analysis {
             }
 
             if (function->has_identity(Function::Identity::EvalFamily)) {
+
+                if(call->get_id() == NA_INTEGER) {
+                    // It means that it is an eval that we had decided to ignore
+                    // So we do not record anything here.
+                    return;
+                }
                 //  Rprintf("Now in eval! We have %d addresses recorded\n",
                 //  addresses.size());
 
@@ -154,7 +160,6 @@ class ProvenanceAnalysis: public Analysis {
                 // Rprintf("New address %p for %s\n", expr_arg,
                 // deparse(expr_arg, call->get_environment()).c_str());
 
-                assert(call->get_id() != NA_INTEGER);
 
                 auto res = addresses.find(expr_arg);
 
