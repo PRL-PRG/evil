@@ -124,7 +124,7 @@ class ProvenanceAnalysis: public Analysis {
                     payload->add_parent(res->second, true);
                 }
 
-                if(function_name == "[[" || function_name == "$") { //and [ ?
+                if(function_name == "[[" || function_name == "$" || function_name == "[") { 
                     SEXP r_value = Rf_findVarInFrame(call->get_environment(), CAR(args));
                     res = addresses.find(r_value);
                     if(res != addresses.end()) {
