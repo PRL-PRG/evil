@@ -121,6 +121,17 @@ class Provenance {
         }
     }
 
+    void roots(std::unordered_set<std::string>& unique_provs) const {
+        if(nb_parents() == 0) {
+            unique_provs.insert(this->function_name_);
+        }
+        else {
+            for(auto parent : parents_) {
+                parent->roots(unique_provs);
+            }
+        }
+    }
+
     int longest_path() const {
         int max = 0;
         for(auto parent : parents_) {
@@ -136,6 +147,8 @@ class Provenance {
         }
         return n;
     }
+
+    inline static size_t nb_special_functions() {return Provenance::prov_functions.size();}
 
 };
 
@@ -178,7 +191,7 @@ class ProvenanceGraph {
                 delete node;
             }
         }
-
+    
 };
 
 

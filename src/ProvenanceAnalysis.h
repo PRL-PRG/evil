@@ -36,9 +36,10 @@ class ProvenanceAnalysis: public Analysis {
     inline static int provenance_id = 0;
     ProvenanceGraph provenance_graph_;
     ProvenanceTable provenance_table_;
-    std::unordered_map<SEXP, Provenance*> addresses; // or unordered_multimap?
+    std::unordered_map<SEXP, Provenance*> addresses; 
+    std::unordered_set<std::string> unique_provenances;
   public:
-    ProvenanceAnalysis(): Analysis(){
+    ProvenanceAnalysis(): Analysis(), unique_provenances(Provenance::nb_special_functions()) {
     }
 
     void analyze(TracerState& tracer_state, Event& event) override {
@@ -159,13 +160,15 @@ class ProvenanceAnalysis: public Analysis {
 
                 if (res != addresses.end()) {
                     Provenance* prov = res->second;
+
                     provenance_table_.record(call->get_id(),
                                              prov->get_representative()->get_name(),
                                              // TODO: handle \n in the full call
                                              prov->get_representative()->get_full_call(),
                                              prov->nb_roots(),
                                              prov->nb_nodes(),
-                                             prov->longest_path());
+                                             prov->longest_path(),
+                                             provenances_from_roots(prov));
                     //  Rprintf("Detected origin of expression: %s\n",
                     //  arg_str.c_str());
                     std::string filename = function->get_name() + "-" + std::to_string(call->get_id()) + ".dot";
@@ -214,6 +217,23 @@ class ProvenanceAnalysis: public Analysis {
   private:
     static int get_provenance_id() {
         return ++provenance_id;
+    }
+
+    std::string provenances_from_roots(Provenance* prov) {
+        size_t old_size = unique_provenances.size();
+        unique_provenances.clear();
+        size_t size = std::max(old_size, Provenance::nb_special_functions());
+        unique_provenances.reserve(size);
+        prov->roots(unique_provenances);
+
+        std::string provenances;
+        for(auto prov : unique_provenances) {
+            provenances += prov;
+            provenances += "; ";
+        }
+        // Removes the trailing "; "
+        provenances.resize(provenances.size() - 2);
+        return provenances;
     }
 };
 

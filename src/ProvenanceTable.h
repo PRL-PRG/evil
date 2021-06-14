@@ -28,6 +28,7 @@ class ProvenanceTable: public Table {
     std::vector<int> nb_provenances_;// How many provenances does it match
     std::vector<int> nb_operations_;// How many operations to build this expression
     std::vector<int> longest_path_size_;
+    std::vector<std::string> provenances_; // all the roots
 
     // TODO: add the srcref of the provenances?
     // vector of set of arguments, provenances, provenance id
@@ -110,32 +111,30 @@ class ProvenanceTable: public Table {
         const std::string& arguments,
         int nb_provenances,
         int nb_operations,
-        int longest_path_size) {
+        int longest_path_size,
+        const std::string& provenances) {
             eval_ids_.push_back(eval_id);
             parse_.push_back(kind);
             arguments_.push_back(arguments);
             nb_provenances_.push_back(nb_provenances);
             nb_operations_.push_back(nb_operations);
             longest_path_size_.push_back(longest_path_size);
+            provenances_.push_back(provenances);
         }
 
     SEXP as_data_frame() override {
-        /*std::vector<std::string> provenance_strs(parse_.size());
-        for(int i = 0; i < parse_.size(); i ++) {
-            provenance_strs[i] = provenance_to_string(parse_[i]);
-        }*/
-
         SEXP r_data_frame = create_data_frame(
             {{"eval_call_id", PROTECT(create_integer_vector(eval_ids_))},
              {"provenance", PROTECT(create_character_vector(parse_))}, 
              {"provenance_args", PROTECT(create_character_vector(arguments_))},
              {"nb_provenances", PROTECT(create_integer_vector(nb_provenances_))},
              {"nb_operations", PROTECT(create_integer_vector(nb_operations_))},
-             {"longest_path_size", PROTECT(create_integer_vector(longest_path_size_))}
+             {"longest_path_size", PROTECT(create_integer_vector(longest_path_size_))},
+             {"all_provenances", PROTECT(create_character_vector(provenances_))}
              });
 
 
-        UNPROTECT(6);
+        UNPROTECT(7);
 
         return r_data_frame;
     }
