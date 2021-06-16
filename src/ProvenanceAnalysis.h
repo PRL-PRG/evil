@@ -41,6 +41,10 @@ class ProvenanceAnalysis: public Analysis {
     std::unordered_set<std::string> unique_provenances;
 
 
+    // To remember the provenance
+    SEXP eval_sexp;
+
+
     // also add "{" ?
     // it helps capturing everything created by an interesting function, even if it is a realsxp
     // e.g. from quote(1)
@@ -186,8 +190,8 @@ class ProvenanceAnalysis: public Analysis {
                     Provenance* prov = res->second;
 
                     const std::string& full_call = prov->get_representative()->get_full_call();
-                    std::string escaped_full_call;
-                    std::replace_copy(full_call.begin(), full_call.end(), escaped_full_call.begin(), '\n', ';'); 
+                    std::string escaped_full_call = full_call;
+                    std::replace(escaped_full_call.begin(), escaped_full_call.end(), '\n', ';'); 
 
                     provenance_table_.record(call->get_id(),
                                              prov->get_representative()->get_name(),
@@ -233,9 +237,9 @@ class ProvenanceAnalysis: public Analysis {
         } else if(event_type == Event::Type::EvalEntry) {
             // We could also use the evalexit
 
-             Rprintf("Now in eval entry callback with expression %s\n",
-                    deparse(event.get_expression())
-                        .c_str());
+            //  Rprintf("Now in eval entry callback with expression %s\n",
+            //         deparse(event.get_expression())
+            //             .c_str());
         }
     }
 
