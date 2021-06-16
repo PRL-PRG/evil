@@ -39,10 +39,7 @@ class Provenance {
     std::string full_call_;
     long prov_id_; // unique id of the call creating this provenance
 
-    inline static std::unordered_set<std::string> prov_functions = {
-        "parse", "str2lang", "str2expression", "substitute", "quote", "enquote", "match.call",
-        "call", "as.call", "expression", "as.expression", "as.name", "as.symbol"
-    };
+    
 
   public:
     Provenance(SEXP address,
@@ -78,6 +75,10 @@ class Provenance {
 
     size_t nb_parents() const {
         return parents_.size();
+    }
+
+    const SEXP get_address() const {
+        return address_;
     }
 
     const std::string& get_name() const {
@@ -159,6 +160,11 @@ class Provenance {
         return n;
     }
 
+    inline static std::unordered_set<std::string> prov_functions = {
+        "parse", "str2lang", "str2expression", "substitute", "quote", "enquote", "match.call",
+        "call", "as.call", "expression", "as.expression", "as.name", "as.symbol"
+    };
+
     inline static size_t nb_special_functions() {return Provenance::prov_functions.size();}
 
     private:
@@ -186,6 +192,17 @@ class ProvenanceGraph {
         Provenance* add_node(SEXP address, std::string const& function_name, std::string const& full_call, long prov_id) {
             provenance_nodes.push_back(new Provenance(address, function_name, full_call, prov_id));
             return provenance_nodes.back();
+        }
+
+        Provenance* add_node(const Provenance& p) {
+            Provenance* prov = new Provenance(p.get_address(), p.get_name(),
+             p.get_full_call(), p.get_id());
+            
+            for(auto parent : p.parents()) {
+                prov->add_parent(parent);
+            }
+            provenance_nodes.push_back(prov);
+            return prov;
         }
 
         std::vector<Provenance*> roots() {

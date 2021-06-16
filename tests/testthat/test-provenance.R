@@ -173,3 +173,14 @@ test_that("tilde ~", {
     expect_equal(provs$provenance_args, "x ~ y")
     expect_equal(provs$nb_provenances, 1) 
 })
+
+test_that("no intermediate variable", {
+    provs <- do_trace_provenances({
+        a <- 1
+        eval(parse(text = "a")[[1]])
+    })
+
+    expect_equal(provs$provenance, "parse")
+    expect_equal(provs$provenance_args, "parse(text = \"a\")")
+    expect_equal(provs$nb_provenances, 1) 
+})

@@ -37,21 +37,24 @@ class ProvenanceAnalysis: public Analysis {
     inline static int provenance_id = 0;
     ProvenanceGraph provenance_graph_;
     ProvenanceTable provenance_table_;
-    std::unordered_map<SEXP, Provenance*> addresses; 
+    std::unordered_map<SEXP, Provenance*> addresses;
     std::unordered_set<std::string> unique_provenances;
 
-
     // To remember the provenance
-    SEXP eval_sexp;
-
+    // in the case f()[[1]]
+    std::optional<SEXP> eval_sexp;
+    Provenance* eval_provenance;
 
     // also add "{" ?
-    // it helps capturing everything created by an interesting function, even if it is a realsxp
-    // e.g. from quote(1)
-    // We can remove if we are only interested in EXPRSXP, LANGSXP and so on
-    inline static std::unordered_set<std::string> rw_functions = {"[[", "[", "$", "<-", "[[<-", "[<-", "$<-"};
+    // it helps capturing everything created by an interesting function, even if
+    // it is a realsxp e.g. from quote(1) We can remove if we are only
+    // interested in EXPRSXP, LANGSXP and so on
+    inline static std::unordered_set<std::string> rw_functions =
+        {"[[", "[", "$", "<-", "[[<-", "[<-", "$<-"};
+
   public:
-    ProvenanceAnalysis(): Analysis(), unique_provenances(Provenance::nb_special_functions()) {
+    ProvenanceAnalysis()
+        : Analysis(), unique_provenances(Provenance::nb_special_functions()) {
     }
 
     void analyze(TracerState& tracer_state, Event& event) override {
@@ -68,26 +71,23 @@ class ProvenanceAnalysis: public Analysis {
             std::string function_name = function->get_name();
 
             if (function->has_identity(Function::Identity::ProvenanceFamily) ||
-               // (rw_functions.find(function_name) != rw_functions.end()) ||
+                // (rw_functions.find(function_name) != rw_functions.end()) ||
                 (result != nullptr &&
                  (TYPEOF(result) == LANGSXP || TYPEOF(result) == EXPRSXP ||
                   TYPEOF(result) == SYMSXP))) {
-                // That does not detect if somewhere in the provenance chain, something is not an expression
-                // anymore.  For instance, a match.call and non-symbolic arguments
+                // That does not detect if somewhere in the provenance chain,
+                // something is not an expression anymore.  For instance, a
+                // match.call and non-symbolic arguments
 
                 // Rprintf("Result is %s, with address %p, with type %s\n",
                 //     deparse(result, call->get_environment()).c_str(),
                 //     &result,
                 //     CHAR(STRING_ELT(sexp_typeof(result), 0)));
 
-                
-                std::string full_call =
-                    deparse(call->get_expression());
+                std::string full_call = deparse(call->get_expression());
 
                 Provenance* payload = provenance_graph_.add_node(
                     result, function_name, full_call, get_provenance_id());
-
-
 
                 // Rprintf("Detected provenance function %s\n",
                 // arguments.c_str());
@@ -99,27 +99,26 @@ class ProvenanceAnalysis: public Analysis {
                 SEXP args = CDR(call->get_expression());
                 for (SEXP cons = args; cons != R_NilValue; cons = CDR(cons)) {
                     SEXP expr_arg = CAR(cons);
-                    if(TYPEOF(expr_arg) == PROMSXP) {
+                    if (TYPEOF(expr_arg) == PROMSXP) {
                         expr_arg = dyntrace_get_promise_value(expr_arg);
-                        if(expr_arg == R_UnboundValue) {
+                        if (expr_arg == R_UnboundValue) {
                             continue;
                         }
                     }
-                   
-                     
+
                     // Here, we need to traverse each of the argument and check
                     // if they are in the hash table if yes, we can add the
                     // provenance(s) of this argument as parents of the current
                     // provenance
                     auto res = addresses.find(expr_arg);
 
-                    // We could also recursively traverse the argument if it is a vec
-                    // to find possible addresses
-                    // But I think one layer deep is enough
+                    // We could also recursively traverse the argument if it is
+                    // a vec to find possible addresses But I think one layer
+                    // deep is enough
                     if (res != addresses.end()) {
                         payload->add_parent(res->second);
-                    }
-                    else if(expr_arg != nullptr && TYPEOF(expr_arg) == VECSXP) { 
+                    } else if (expr_arg != nullptr &&
+                               TYPEOF(expr_arg) == VECSXP) {
                         for (int i = 0; i < XLENGTH(expr_arg); i++) {
                             SEXP el = VECTOR_ELT(expr_arg, i);
                             res = addresses.find(el);
@@ -130,39 +129,54 @@ class ProvenanceAnalysis: public Analysis {
                     }
                 }
 
-                // And also check if the result has already been stored in the table!
-                // That would be a return value for instance
-                // e.g. g <- function() { parse(text = "1")}
+                // And also check if the result has already been stored in the
+                // table! That would be a return value for instance e.g. g <-
+                // function() { parse(text = "1")}
                 auto res = addresses.find(result);
-                if(res != addresses.end()) {
+                if (res != addresses.end()) {
                     payload->add_parent(res->second, true);
                 }
 
-                if(function_name == "[[" || function_name == "$" || function_name == "[") { 
+                if (function_name == "[[" || function_name == "$" ||
+                    function_name == "[") {
                     SEXP lhs = CAR(args);
-                    if(TYPEOF(lhs) == SYMSXP) {
-                        SEXP r_value = Rf_findVarInFrame(call->get_environment(), lhs);
+                    if (TYPEOF(lhs) == SYMSXP) {
+                        SEXP r_value =
+                            Rf_findVarInFrame(call->get_environment(), lhs);
                         res = addresses.find(r_value);
-                        if(res != addresses.end()) {
+                        if (res != addresses.end()) {
                             payload->add_parent(res->second);
                         }
+                    } else if (TYPEOF(lhs) == LANGSXP) {
+                        // This is tricky: f()[[1]]
+                        // There is no new symbol visible to R
+                        // R uses do_subset that calls R_DispatchOrEval
+                        // This will use the C eval to evaluate f()
+                        //
+                        // So we also use the eval exit callback and record if
+                        // it generated something interesting
+                        if (eval_sexp.has_value() && eval_sexp.value() == lhs) {
+                            // we need to add to the provenance graph the
+                            // provenance recorded in the eval callback
+                            assert(eval_provenance != nullptr);
+                            payload->add_parent(eval_provenance);
+                        }
                     }
-                    
-                    // there is also the case when the function is executed on the spot
-                    // e.g.
-                    // parse(text = "1;2")[[1]]
-                    // maybe check first if CAR(args) is teh symbol
-                    // if it is not, then it is a LANGSXP and there might be someplace in the interpreter
+
+                    // there is also the case when the function is executed on
+                    // the spot e.g. parse(text = "1;2")[[1]] maybe check first
+                    // if CAR(args) is the symbol if it is not, then it is a
+                    // LANGSXP and there might be someplace in the interpreter
                     // where the result is located
                 }
 
-                // We add the new payload after (otherwise, it could shadow the address of one of the arguments)
+                // We add the new payload after (otherwise, it could shadow the
+                // address of one of the arguments)
                 addresses[result] = payload;
             }
 
             if (function->has_identity(Function::Identity::EvalFamily)) {
-
-                if(call->get_id() == NA_INTEGER) {
+                if (call->get_id() == NA_INTEGER) {
                     // It means that it is an eval that we had decided to ignore
                     // So we do not record anything here.
                     return;
@@ -183,36 +197,41 @@ class ProvenanceAnalysis: public Analysis {
                 // Rprintf("New address %p for %s\n", expr_arg,
                 // deparse(expr_arg, call->get_environment()).c_str());
 
-
                 auto res = addresses.find(expr_arg);
 
                 if (res != addresses.end()) {
                     Provenance* prov = res->second;
 
-                    const std::string& full_call = prov->get_representative()->get_full_call();
+                    const std::string& full_call =
+                        prov->get_representative()->get_full_call();
                     std::string escaped_full_call = full_call;
-                    std::replace(escaped_full_call.begin(), escaped_full_call.end(), '\n', ';'); 
+                    std::replace(escaped_full_call.begin(),
+                                 escaped_full_call.end(),
+                                 '\n',
+                                 ';');
 
-                    provenance_table_.record(call->get_id(),
-                                             prov->get_representative()->get_name(),
-                                             escaped_full_call,
-                                             prov->nb_roots(),
-                                             prov->nb_nodes(),
-                                             prov->longest_path(),
-                                             provenances_from_roots(prov),
-                                             prov->rep_path());
+                    provenance_table_.record(
+                        call->get_id(),
+                        prov->get_representative()->get_name(),
+                        escaped_full_call,
+                        prov->nb_roots(),
+                        prov->nb_nodes(),
+                        prov->longest_path(),
+                        provenances_from_roots(prov),
+                        prov->rep_path());
                     //  Rprintf("Detected origin of expression: %s\n",
                     //  arg_str.c_str());
 
                     std::string path_root = "";
-                    if(const char* runr_cwd = std::getenv("RUNR_CWD")) {
+                    if (const char* runr_cwd = std::getenv("RUNR_CWD")) {
                         path_root = runr_cwd;
                         path_root += "/";
                     }
-                    std::string filepath = path_root + function->get_name() + "-" + std::to_string(call->get_id()) + ".dot";
+                    std::string filepath =
+                        path_root + function->get_name() + "-" +
+                        std::to_string(call->get_id()) + ".dot";
                     ProvenanceGraph::toDot(filepath, call->get_id(), prov);
-
-                } 
+                }
             }
         } else if (event_type == Event::Type::GcUnmark) {
             // if the SEXP is reclaimed by the GC, we can remove it from
@@ -232,14 +251,37 @@ class ProvenanceAnalysis: public Analysis {
 
             Rprintf("Now in builtin %s with expression %s\n",
                     function->get_name().c_str(),
-                    deparse(call->get_expression())
-                        .c_str());
-        } else if(event_type == Event::Type::EvalEntry) {
-            // We could also use the evalexit
-
-            //  Rprintf("Now in eval entry callback with expression %s\n",
+                    deparse(call->get_expression()).c_str());
+        } else if (event_type == Event::Type::EvalEntry) {
+            // NO! eval entry is always called before the ClosureExit 
+            // so we will reset the sexp we have just registered in the previous 
+            // eval exit
+            //eval_sexp.reset();
+            //eval_provenance = nullptr;
+        } else if (event_type == Event::Type::EvalExit) {
+            Rprintf("");
+            //  Rprintf("Now in eval entry callback with expression %s and
+            //  result %s\n",
             //         deparse(event.get_expression())
-            //             .c_str());
+            //             .c_str(), deparse(event.get_result()).c_str());
+
+            // the result is the parent of the provenance
+            // case of f <- function() parse(text = "1")
+            // f()[[1]]
+
+            SEXP el = event.get_expression();
+
+            // it could also be a symbol?
+            if (TYPEOF(el) == LANGSXP) {
+                SEXP result = event.get_result();
+
+                auto res = addresses.find(result);
+
+                if (res != addresses.end()) {
+                    eval_sexp = el;
+                    eval_provenance = res->second;
+                }
+            }
         }
     }
 
@@ -271,7 +313,7 @@ class ProvenanceAnalysis: public Analysis {
         prov->roots(unique_provenances);
 
         std::string provenances;
-        for(auto prov : unique_provenances) {
+        for (auto prov: unique_provenances) {
             provenances += prov;
             provenances += "; ";
         }
