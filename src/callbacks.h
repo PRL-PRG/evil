@@ -59,6 +59,12 @@ void eval_entry_callback(ContextSPtr context,
                          SEXP r_expression,
                          SEXP r_rho);
 
+void eval_exit_callback(ContextSPtr context,
+                        ApplicationSPtr application,
+                        SEXP r_expression,
+                        SEXP r_rho,
+                        SEXP r_result);
+
 void gc_allocation_callback(ContextSPtr context,
                             ApplicationSPtr application,
                             SEXP r_object);

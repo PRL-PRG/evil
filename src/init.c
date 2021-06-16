@@ -32,6 +32,7 @@ static const R_CallMethodDef callMethods[] = {
     {"get_closure_call_entry_callback", (DL_FUNC) &r_get_closure_call_entry_callback, 0},
     {"get_closure_call_exit_callback", (DL_FUNC) &r_get_closure_call_exit_callback, 0},
     {"get_eval_entry_callback", (DL_FUNC) &r_get_eval_entry_callback, 0},
+    {"get_eval_exit_callback", (DL_FUNC) &r_get_eval_exit_callback, 0},
     {"get_variable_definition_callback", (DL_FUNC) &r_get_variable_definition_callback, 0},
     {"get_variable_assignment_callback", (DL_FUNC) &r_get_variable_assignment_callback, 0},
     {"get_variable_removal_callback", (DL_FUNC) &r_get_variable_removal_callback, 0},

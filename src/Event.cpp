@@ -160,3 +160,11 @@ Event Event::eval_entry(SEXP r_expression, SEXP r_rho) {
         .set_expression(r_expression)
         .set_rho(r_rho);
 }
+
+
+Event Event::eval_exit(SEXP r_expression, SEXP r_rho, SEXP r_result) {
+    return Event(Event::Type::EvalEntry)
+        .set_expression(r_expression)
+        .set_rho(r_rho)
+        .set_result(r_result);
+}

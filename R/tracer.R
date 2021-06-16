@@ -24,6 +24,7 @@ create_tracer <- function(evals_to_trace) {
         context_exit_callback = .Call(C_get_context_exit_callback),
         context_jump_callback = .Call(C_get_context_jump_callback),
         eval_entry_callback = .Call(C_get_eval_entry_callback),
+        eval_exit_callback = .Call(C_get_eval_exit_callback),
         variable_definition_callback = .Call(C_get_variable_definition_callback),
         variable_assignment_callback = .Call(C_get_variable_assignment_callback),
         variable_removal_callback = .Call(C_get_variable_removal_callback),
