@@ -10,6 +10,7 @@
 #include <optional>
 #include <utility>
 #include <cassert>
+#include <cstdlib>
 #include "r_init.h"
 #include "Analysis.h"
 #include "ProvenanceTable.h"
@@ -38,6 +39,13 @@ class ProvenanceAnalysis: public Analysis {
     ProvenanceTable provenance_table_;
     std::unordered_map<SEXP, Provenance*> addresses; 
     std::unordered_set<std::string> unique_provenances;
+
+
+    // also add "{" ?
+    // it helps capturing everything created by an interesting function, even if it is a realsxp
+    // e.g. from quote(1)
+    // We can remove if we are only interested in EXPRSXP, LANGSXP and so on
+    inline static std::unordered_set<std::string> rw_functions = {"[[", "[", "$", "<-", "[[<-", "[<-", "$<-"};
   public:
     ProvenanceAnalysis(): Analysis(), unique_provenances(Provenance::nb_special_functions()) {
     }
@@ -53,8 +61,10 @@ class ProvenanceAnalysis: public Analysis {
 
             // Get the return value
             SEXP result = event.get_result();
+            std::string function_name = function->get_name();
 
             if (function->has_identity(Function::Identity::ProvenanceFamily) ||
+               // (rw_functions.find(function_name) != rw_functions.end()) ||
                 (result != nullptr &&
                  (TYPEOF(result) == LANGSXP || TYPEOF(result) == EXPRSXP ||
                   TYPEOF(result) == SYMSXP))) {
@@ -66,8 +76,7 @@ class ProvenanceAnalysis: public Analysis {
                 //     &result,
                 //     CHAR(STRING_ELT(sexp_typeof(result), 0)));
 
-                std::string function_name = function->get_name();
-
+                
                 std::string full_call =
                     deparse(call->get_expression());
 
@@ -126,11 +135,21 @@ class ProvenanceAnalysis: public Analysis {
                 }
 
                 if(function_name == "[[" || function_name == "$" || function_name == "[") { 
-                    SEXP r_value = Rf_findVarInFrame(call->get_environment(), CAR(args));
-                    res = addresses.find(r_value);
-                    if(res != addresses.end()) {
-                        payload->add_parent(res->second);
+                    SEXP lhs = CAR(args);
+                    if(TYPEOF(lhs) == SYMSXP) {
+                        SEXP r_value = Rf_findVarInFrame(call->get_environment(), lhs);
+                        res = addresses.find(r_value);
+                        if(res != addresses.end()) {
+                            payload->add_parent(res->second);
+                        }
                     }
+                    
+                    // there is also the case when the function is executed on the spot
+                    // e.g.
+                    // parse(text = "1;2")[[1]]
+                    // maybe check first if CAR(args) is teh symbol
+                    // if it is not, then it is a LANGSXP and there might be someplace in the interpreter
+                    // where the result is located
                 }
 
                 // We add the new payload after (otherwise, it could shadow the address of one of the arguments)
@@ -166,18 +185,28 @@ class ProvenanceAnalysis: public Analysis {
                 if (res != addresses.end()) {
                     Provenance* prov = res->second;
 
+                    const std::string& full_call = prov->get_representative()->get_full_call();
+                    std::string escaped_full_call;
+                    std::replace_copy(full_call.begin(), full_call.end(), escaped_full_call.begin(), '\n', ';'); 
+
                     provenance_table_.record(call->get_id(),
                                              prov->get_representative()->get_name(),
-                                             // TODO: handle \n in the full call
-                                             prov->get_representative()->get_full_call(),
+                                             escaped_full_call,
                                              prov->nb_roots(),
                                              prov->nb_nodes(),
                                              prov->longest_path(),
-                                             provenances_from_roots(prov));
+                                             provenances_from_roots(prov),
+                                             prov->rep_path());
                     //  Rprintf("Detected origin of expression: %s\n",
                     //  arg_str.c_str());
-                    std::string filename = function->get_name() + "-" + std::to_string(call->get_id()) + ".dot";
-                    ProvenanceGraph::toDot(filename, call->get_id(), prov);
+
+                    std::string path_root = "";
+                    if(const char* runr_cwd = std::getenv("RUNR_CWD")) {
+                        path_root = runr_cwd;
+                        path_root += "/";
+                    }
+                    std::string filepath = path_root + function->get_name() + "-" + std::to_string(call->get_id()) + ".dot";
+                    ProvenanceGraph::toDot(filepath, call->get_id(), prov);
 
                 } 
             }
@@ -194,12 +223,18 @@ class ProvenanceAnalysis: public Analysis {
             // Desactivated currently.
             // It seems that when activated, we no longer detect ClosureExit and
             // SpecialExit...
-            const StackFrame& frame = stack.peek();
-            const Call* call = frame.as_call();
+            const Call* call = stack.peek_call(0);
             const Function* function = call->get_function();
+
             Rprintf("Now in builtin %s with expression %s\n",
                     function->get_name().c_str(),
                     deparse(call->get_expression())
+                        .c_str());
+        } else if(event_type == Event::Type::EvalEntry) {
+            // We could also use the evalexit
+
+             Rprintf("Now in eval entry callback with expression %s\n",
+                    deparse(event.get_expression())
                         .c_str());
         }
     }

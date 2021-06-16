@@ -65,6 +65,10 @@ class Event {
         return r_object_;
     }
 
+    SEXP get_expression() const {
+        return r_expression_;
+    }
+
     SEXP r_get_argument(SEXP r_argument_name, int evaluate) {
         SEXP r_value = Rf_findVarInFrame(get_rho(), r_argument_name);
 

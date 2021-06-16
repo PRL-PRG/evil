@@ -106,6 +106,17 @@ class Provenance {
         }
     }
 
+    // Shows the full calls of the provenances on the path
+    // up to the representative
+    // TODO? Compress the path by showing only once consecutive
+    // similar calls and the number of times
+    std::string rep_path() const {
+        std::string path;
+        get_rep_aux(path);
+
+        return path;
+    }
+
 
     // They are actually leaves...
     size_t nb_roots() const {
@@ -149,6 +160,16 @@ class Provenance {
     }
 
     inline static size_t nb_special_functions() {return Provenance::prov_functions.size();}
+
+    private:
+
+    void get_rep_aux(std::string& path) const {
+        path += "|" + this->get_full_call() + "|";
+        if(nb_parents() > 0) {
+            path += " -> ";
+            parents_[rep_parent]->get_rep_aux(path);
+        }
+    }
 
 };
 
