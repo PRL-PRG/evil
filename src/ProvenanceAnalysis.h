@@ -92,7 +92,6 @@ class ProvenanceAnalysis: public Analysis {
                 // Rprintf("Detected provenance function %s\n",
                 // arguments.c_str());
 
-                // TODO: see what happens when the function is [[<-
 
                 // Now, also check if the argument of the expression had also
                 // been recorded in the table
@@ -202,18 +201,11 @@ class ProvenanceAnalysis: public Analysis {
                 if (res != addresses.end()) {
                     Provenance* prov = res->second;
 
-                    const std::string& full_call =
-                        prov->get_representative()->get_full_call();
-                    std::string escaped_full_call = full_call;
-                    std::replace(escaped_full_call.begin(),
-                                 escaped_full_call.end(),
-                                 '\n',
-                                 ';');
 
                     provenance_table_.record(
                         call->get_id(),
                         prov->get_representative()->get_name(),
-                        escaped_full_call,
+                        prov->get_representative()->get_full_call(),
                         prov->nb_roots(),
                         prov->nb_nodes(),
                         prov->longest_path(),
@@ -290,12 +282,16 @@ class ProvenanceAnalysis: public Analysis {
     }
 
     std::string deparse(const SEXP expr) {
-        std::string deparsed = "ERROR";
+        std::string deparsed = "";
         SEXP res;
 
         PROTECT(res =
                     Rf_deparse1(expr, FALSE, KEEPINTEGER | KEEPNA | DIGITS17));
-        deparsed = CHAR(STRING_ELT(res, 0));
+
+        for(int i = 0; i < XLENGTH(res) ; i++) {
+            deparsed += CHAR(STRING_ELT(res, i));
+            deparsed += ";";
+        }
         UNPROTECT(1);
         return deparsed;
     }
