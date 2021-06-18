@@ -155,18 +155,19 @@ class ProvenanceAnalysis: public Analysis {
                 // And also check if the result has already been stored in the
                 // table! That would be a return value for instance e.g. g <-
                 // function() { parse(text = "1")}
-                auto res = addresses.find(result);
-                if (res != addresses.end()) {
-                    payload->add_parent(res->second, true);
-                }
-
+                // but don't do it for the subset operators
+                // otherwise we would get two parents if an element has been inserted
+                // before: the builder of the full expression and the builder of 
+                // the inserted element but the inserted element should be parent 
+                // of the full expression already
+                
                 if (function_name == "[[" || function_name == "$" ||
                     function_name == "[") {
                     SEXP lhs = CAR(args);
                     if (TYPEOF(lhs) == SYMSXP) {
                         SEXP r_value =
                             Rf_findVarInFrame(call->get_environment(), lhs);
-                        res = addresses.find(r_value);
+                        auto res = addresses.find(r_value);
                         if (res != addresses.end()) {
                             payload->add_parent(res->second);
                         }
@@ -185,12 +186,24 @@ class ProvenanceAnalysis: public Analysis {
                             payload->add_parent(eval_provenance);
                         }
                     }
-
-                    // there is also the case when the function is executed on
-                    // the spot e.g. parse(text = "1;2")[[1]] maybe check first
-                    // if CAR(args) is the symbol if it is not, then it is a
-                    // LANGSXP and there might be someplace in the interpreter
-                    // where the result is located
+                } else {
+                    auto res = addresses.find(result);
+                    if (res != addresses.end()) {
+                        payload->add_parent(res->second, true);
+                    }
+                }
+                
+                if(function_name == "list") {
+                    // This would not be detected by looking at the arguments
+                    // because the arguments of the list are not promises but 
+                    // LANGSXP
+                    for(int i = 0; i < XLENGTH(result) ; i++) {
+                        SEXP el = VECTOR_ELT(result, i);
+                        auto res = addresses.find(el);
+                        if (res != addresses.end()) {
+                            payload->add_parent(res->second);
+                        }   
+                    }
                 }
 
                 // We add the new payload after (otherwise, it could shadow the

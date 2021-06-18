@@ -195,3 +195,15 @@ test_that("as.call", {
     expect_equal(provs$provenance_args, "as.call(list(quote(`+`), 1, 1))")
     expect_equal(provs$nb_provenances, 1) 
 })
+
+test_that("language in a list", {
+     provs <- do_trace_provenances({
+        l <- list(quote(a), 3)
+        a <- -7
+        eval(l[[1]])
+    })
+
+    expect_equal(provs$provenance, "quote")
+    expect_equal(provs$provenance_args, "quote(a)")
+    expect_equal(provs$nb_provenances, 1) 
+})
