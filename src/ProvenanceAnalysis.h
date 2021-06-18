@@ -12,6 +12,7 @@
 #include <cassert>
 #include <cstdlib>
 #include "r_init.h"
+#include "r_utilities.h"
 #include "Analysis.h"
 #include "ProvenanceTable.h"
 #include "Provenance.h"
@@ -61,6 +62,10 @@ class ProvenanceAnalysis: public Analysis {
         Event::Type event_type = event.get_type();
         Stack& stack = tracer_state.get_stack();
 
+        if(!r_tracing){
+            return;
+        }
+
         if (event_type == Event::Type::ClosureCallExit ||
             event_type == Event::Type::SpecialCallExit) {
             const Call* call = stack.peek_call(0);
@@ -70,14 +75,32 @@ class ProvenanceAnalysis: public Analysis {
             SEXP result = event.get_result();
             std::string function_name = function->get_name();
 
+            // Also track list with at least one langsxp inside
+            // Maybe we should track better assignment rather than taversing the full list
+            // it could be huge...
+            bool lang_list = false;
+            if(result != nullptr && TYPEOF(result) == VECSXP) {
+                if(XLENGTH(result) == 0) {
+                    lang_list = true;// we track the empty list
+                }
+                for(int i = 0; i < XLENGTH(result) ; i++) {
+                    int el_type = TYPEOF(VECTOR_ELT(result, i));
+                    if(el_type == LANGSXP || el_type == EXPRSXP || el_type == SYMSXP) {
+                        lang_list = true;
+                        break;
+                    }
+                }
+            }
+
             if (function->has_identity(Function::Identity::ProvenanceFamily) ||
                 // (rw_functions.find(function_name) != rw_functions.end()) ||
                 (result != nullptr &&
                  (TYPEOF(result) == LANGSXP || TYPEOF(result) == EXPRSXP ||
-                  TYPEOF(result) == SYMSXP))) {
+                  TYPEOF(result) == SYMSXP || TYPEOF(result) == LISTSXP)) || lang_list) {
                 // That does not detect if somewhere in the provenance chain,
                 // something is not an expression anymore.  For instance, a
                 // match.call and non-symbolic arguments
+                // I also added LISTSXP, as it is the return type of functions such as formals
 
                 // Rprintf("Result is %s, with address %p, with type %s\n",
                 //     deparse(result, call->get_environment()).c_str(),
@@ -251,7 +274,6 @@ class ProvenanceAnalysis: public Analysis {
             //eval_sexp.reset();
             //eval_provenance = nullptr;
         } else if (event_type == Event::Type::EvalExit) {
-            Rprintf("");
             //  Rprintf("Now in eval entry callback with expression %s and
             //  result %s\n",
             //         deparse(event.get_expression())
@@ -290,8 +312,9 @@ class ProvenanceAnalysis: public Analysis {
 
         for(int i = 0; i < XLENGTH(res) ; i++) {
             deparsed += CHAR(STRING_ELT(res, i));
-            deparsed += ";";
+            deparsed += "\\n ";
         }
+        deparsed.resize(deparsed.size() - 3);
         UNPROTECT(1);
         return deparsed;
     }

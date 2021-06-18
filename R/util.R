@@ -15,6 +15,10 @@ get_ast_size <- function(expr) {
   .Call(C_get_ast_size, expr)
 }
 
+in_r_tracing <- function(tracing) {
+  invisible(.Call(C_in_r_tracing, tracing))
+}
+
 
 resolve_expr <- function(x, env) {
   if (!is.environment(env)) {

@@ -162,7 +162,7 @@ class Provenance {
 
     inline static std::unordered_set<std::string> prov_functions = {
         "parse", "str2lang", "str2expression", "substitute", "quote", "enquote", "match.call",
-        "call", "as.call", "expression", "as.expression", "as.name", "as.symbol"
+        "call", "as.call", "expression", "as.expression", "as.name", "as.symbol", "formals"
     };
 
     inline static size_t nb_special_functions() {return Provenance::prov_functions.size();}

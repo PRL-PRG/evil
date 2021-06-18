@@ -3,6 +3,15 @@
 
 const char* MissingStringValue = "_evil_missing_string_value_";
 
+
+//whether we have started tracing in the R side or not
+int r_tracing = FALSE;
+
+SEXP in_r_tracing(SEXP tracing) {
+    r_tracing = LOGICAL(tracing)[0];
+    return R_NilValue;
+}
+
 SEXP sexp_typeof(SEXP x) {
     return ScalarString(Rf_type2str(TYPEOF(x)));
 }
