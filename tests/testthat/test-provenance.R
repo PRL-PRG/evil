@@ -184,3 +184,14 @@ test_that("no intermediate variable", {
     expect_equal(provs$provenance_args, "parse(text = \"a\")")
     expect_equal(provs$nb_provenances, 1) 
 })
+
+test_that("as.call", {
+    provs <- do_trace_provenances({
+        cl <- as.call(list(quote(`+`), 1, 1))
+        eval(cl)
+    })
+
+    expect_equal(provs$provenance, "as.call")
+    expect_equal(provs$provenance_args, "as.call(list(quote(`+`), 1, 1))")
+    expect_equal(provs$nb_provenances, 1) 
+})

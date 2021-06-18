@@ -82,6 +82,21 @@ class TracerState {
                                              : "<object>";
     }
 
+    inline static bool is_instrumentr_act(SEXP r_call) {
+        SEXP el = CAR(r_call);
+        if(TYPEOF(el) == SYMSXP && strcmp(CHAR(PRINTNAME(el)), ".Call") == 0) {
+            el = CADR(r_call);
+            if(TYPEOF(el) == VECSXP && XLENGTH(el) > 0 && TYPEOF(VECTOR_ELT(el, 0)) == STRSXP) {
+                std::string fun_name = CHAR(STRING_ELT(VECTOR_ELT(el, 0), 0));
+                if(fun_name == "instrumentr_reinstate_tracing" || fun_name == "instrumentr_disable_tracing") {
+                    return true;
+                }
+            } 
+        }
+
+        return false;
+    }
+
     void analyze(Event& event) {
         Event::Type event_type = event.get_type();
 
@@ -268,6 +283,10 @@ class TracerState {
             SEXP r_args = event.get_args();
             SEXP r_rho = event.get_rho();
 
+            if(is_instrumentr_act(r_call)) {
+                return;
+            }
+
             Stack& stack = get_stack();
             Function* function = get_function_table().lookup(r_op);
             if (!function->has_name() && TYPEOF(CAR(r_call)) == SYMSXP) {
@@ -290,6 +309,10 @@ class TracerState {
             SEXP r_args = event.get_args();
             SEXP r_rho = event.get_rho();
             SEXP r_result = event.get_result();
+
+            if(is_instrumentr_act(r_call)) {
+                return;
+            }
 
             Stack& stack = get_stack();
             StackFrame frame = stack.pop();

@@ -67,7 +67,8 @@ class ProvenanceAnalysis: public Analysis {
         }
 
         if (event_type == Event::Type::ClosureCallExit ||
-            event_type == Event::Type::SpecialCallExit) {
+            event_type == Event::Type::SpecialCallExit ||
+            event_type == Event::Type::BuiltinCallExit) {
             const Call* call = stack.peek_call(0);
             const Function* function = call->get_function();
 
@@ -257,16 +258,6 @@ class ProvenanceAnalysis: public Analysis {
             // as a reclaimed address that had been recorded previously
 
             addresses.erase(event.get_object());
-        } else if (event_type == Event::Type::BuiltinCallExit) {
-            // Desactivated currently.
-            // It seems that when activated, we no longer detect ClosureExit and
-            // SpecialExit...
-            const Call* call = stack.peek_call(0);
-            const Function* function = call->get_function();
-
-            Rprintf("Now in builtin %s with expression %s\n",
-                    function->get_name().c_str(),
-                    deparse(call->get_expression()).c_str());
         } else if (event_type == Event::Type::EvalEntry) {
             // NO! eval entry is always called before the ClosureExit 
             // so we will reset the sexp we have just registered in the previous 
