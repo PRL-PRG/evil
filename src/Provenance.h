@@ -111,11 +111,11 @@ class Provenance {
     // up to the representative
     // TODO? Compress the path by showing only once consecutive
     // similar calls and the number of times
-    std::string rep_path() const {
+    std::pair<std::string, int> rep_path() const {
         std::string path;
-        get_rep_aux(path);
+        int path_length = get_rep_aux(path);
 
-        return path;
+        return std::make_pair(path, path_length);
     }
 
 
@@ -169,12 +169,13 @@ class Provenance {
 
     private:
 
-    void get_rep_aux(std::string& path) const {
+    int get_rep_aux(std::string& path) const {
         path += "|" + this->get_full_call() + "|";
         if(nb_parents() > 0) {
             path += " -> ";
-            parents_[rep_parent]->get_rep_aux(path);
+            return 1 + parents_[rep_parent]->get_rep_aux(path);
         }
+        return 1;
     }
 
 };

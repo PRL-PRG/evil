@@ -30,6 +30,7 @@ class ProvenanceTable: public Table {
     std::vector<int> longest_path_size_;
     std::vector<std::string> provenances_; // all the roots
     std::vector<std::string> repr_path_; // path leading to the representative (i.e. provenance)
+    std::vector<int> repr_path_length_;
 
     // TODO: add the srcref of the provenances?
     // vector of set of arguments, provenances, provenance id
@@ -114,7 +115,8 @@ class ProvenanceTable: public Table {
         int nb_operations,
         int longest_path_size,
         const std::string& provenances,
-        const std::string& repr_path) {
+        const std::string& repr_path,
+        int repr_path_length) {
             eval_ids_.push_back(eval_id);
             parse_.push_back(kind);
             arguments_.push_back(arguments);
@@ -123,6 +125,7 @@ class ProvenanceTable: public Table {
             longest_path_size_.push_back(longest_path_size);
             provenances_.push_back(provenances);
             repr_path_.push_back(repr_path);
+            repr_path_length_.push_back(repr_path_length);
         }
 
     SEXP as_data_frame() override {
@@ -135,10 +138,11 @@ class ProvenanceTable: public Table {
              {"longest_path_size", PROTECT(create_integer_vector(longest_path_size_))},
              {"all_provenances", PROTECT(create_character_vector(provenances_))},
              {"repr_path", PROTECT(create_character_vector(repr_path_))},
+             {"repr_path_length", PROTECT(create_integer_vector(repr_path_length_))},
              });
 
 
-        UNPROTECT(8);
+        UNPROTECT(9);
 
         return r_data_frame;
     }

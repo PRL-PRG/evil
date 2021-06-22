@@ -238,6 +238,7 @@ class ProvenanceAnalysis: public Analysis {
                 if (res != addresses.end()) {
                     Provenance* prov = res->second;
 
+                    auto repr_path = prov->rep_path();
 
                     provenance_table_.record(
                         call->get_id(),
@@ -247,7 +248,9 @@ class ProvenanceAnalysis: public Analysis {
                         prov->nb_nodes(),
                         prov->longest_path(),
                         provenances_from_roots(prov),
-                        prov->rep_path());
+                        repr_path.first,
+                        repr_path.second
+                        );
                     //  Rprintf("Detected origin of expression: %s\n",
                     //  arg_str.c_str());
 
