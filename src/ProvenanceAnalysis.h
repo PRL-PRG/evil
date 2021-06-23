@@ -53,6 +53,9 @@ class ProvenanceAnalysis: public Analysis {
     inline static std::unordered_set<std::string> rw_functions =
         {"[[", "[", "$", "<-", "[[<-", "[<-", "$<-"};
 
+    inline static std::unordered_set<std::string> attrib_functions =
+        {"attr<-", "attributes<-", "mostattributes<-",  "slot<-"};
+
   public:
     ProvenanceAnalysis()
         : Analysis(), unique_provenances(Provenance::nb_special_functions()) {
@@ -93,11 +96,14 @@ class ProvenanceAnalysis: public Analysis {
                 }
             }
 
+
             if (function->has_identity(Function::Identity::ProvenanceFamily) ||
                 // (rw_functions.find(function_name) != rw_functions.end()) ||
                 (result != nullptr &&
                  (TYPEOF(result) == LANGSXP || TYPEOF(result) == EXPRSXP ||
-                  TYPEOF(result) == SYMSXP || TYPEOF(result) == LISTSXP)) || lang_list) {
+                  TYPEOF(result) == SYMSXP || TYPEOF(result) == LISTSXP)) || 
+                  lang_list || 
+                  attrib_functions.find(function_name) != attrib_functions.end()) {
                 // That does not detect if somewhere in the provenance chain,
                 // something is not an expression anymore.  For instance, a
                 // match.call and non-symbolic arguments

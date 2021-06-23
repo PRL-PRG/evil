@@ -197,7 +197,7 @@ test_that("as.call", {
 })
 
 test_that("language in a list", {
-     provs <- do_trace_provenances({
+    provs <- do_trace_provenances({
         l <- list(quote(a), 3)
         a <- -7
         eval(l[[1]])
@@ -205,5 +205,19 @@ test_that("language in a list", {
 
     expect_equal(provs$provenance, "quote")
     expect_equal(provs$provenance_args, "quote(a)")
+    expect_equal(provs$nb_provenances, 1) 
+})
+
+test_that("attributes", {
+    provs <- do_trace_provenances({
+        a <- -8
+        x <- "test"
+        attr(x, "p") <- parse(text = "1 ; a")
+        attr(x, "p") <- attr(x, "p")[[2]]
+        eval(attr(x, "p"))
+    })
+
+    expect_equal(provs$provenance, "parse")
+    expect_equal(provs$provenance_args, "parse(text = \"1 ; a\")")
     expect_equal(provs$nb_provenances, 1) 
 })
