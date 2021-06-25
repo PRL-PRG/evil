@@ -307,6 +307,11 @@ void context_jump_callback(ContextSPtr context,
                 special_call_exit_callback(
                     context, application, r_call, r_op, r_args, r_rho, NULL);
             }
+            else if (call->get_function()->get_type() == BUILTINSXP) {
+                call->set_status(Call::Status::Interrupted);
+                builtin_call_exit_callback(
+                    context, application, r_call, r_op, r_args, r_rho, NULL);
+            }
         }
     }
 
