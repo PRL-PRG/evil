@@ -14,8 +14,8 @@ create_tracer <- function(evals_to_trace) {
         application_unload_callback = application_unload_callback,
         call_entry_callback = call_entry_callback,
         call_exit_callback = call_exit_callback,
-        #builtin_call_entry_callback = .Call(C_get_builtin_call_entry_callback),
-        #builtin_call_exit_callback = .Call(C_get_builtin_call_exit_callback),
+        builtin_call_entry_callback = .Call(C_get_builtin_call_entry_callback),
+        builtin_call_exit_callback = .Call(C_get_builtin_call_exit_callback),
         special_call_entry_callback = .Call(C_get_special_call_entry_callback),
         special_call_exit_callback = .Call(C_get_special_call_exit_callback),
         closure_call_entry_callback = .Call(C_get_closure_call_entry_callback),
@@ -24,6 +24,7 @@ create_tracer <- function(evals_to_trace) {
         context_exit_callback = .Call(C_get_context_exit_callback),
         context_jump_callback = .Call(C_get_context_jump_callback),
         eval_entry_callback = .Call(C_get_eval_entry_callback),
+        eval_exit_callback = .Call(C_get_eval_exit_callback),
         variable_definition_callback = .Call(C_get_variable_definition_callback),
         variable_assignment_callback = .Call(C_get_variable_assignment_callback),
         variable_removal_callback = .Call(C_get_variable_removal_callback),
@@ -380,6 +381,8 @@ call_exit_callback <- function(context, application, package, func, call) {
     expr_resolved_repr <- expr_repr(expr_resolved)
     expr_resolved_class <- class(expr_resolved)
     #expr_resolved_class <- NA_character_
+
+    expr_resolved_class <- class(expr_resolved)
 
     expr_expression_function <- NA_character_
     expr_expression_args_num <- NA_integer_

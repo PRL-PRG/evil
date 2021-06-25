@@ -36,6 +36,11 @@ SEXP r_get_eval_entry_callback() {
         (void*) (eval_entry_callback), R_NilValue, R_NilValue);
 }
 
+SEXP r_get_eval_exit_callback() {
+    return R_MakeExternalPtr(
+        (void*) (eval_exit_callback), R_NilValue, R_NilValue);
+}
+
 SEXP r_get_variable_definition_callback() {
     return R_MakeExternalPtr(
         (void*) (variable_definition_callback), R_NilValue, R_NilValue);

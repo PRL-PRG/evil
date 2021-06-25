@@ -67,7 +67,9 @@ trace_code <- function(code,
 
     code <- wrap_evals(code, create_csid_prefix("global", "main"))
 
+    in_r_tracing(TRUE);
     result <- instrumentr::trace_code(context, code, envir, quote = FALSE)
+    in_r_tracing(FALSE);
     data <- instrumentr::get_data(context)
 
     require(dplyr)

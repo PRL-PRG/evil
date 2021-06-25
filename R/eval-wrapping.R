@@ -28,6 +28,9 @@ setup_eval_wrapping_hook <- function(evals_to_trace) {
     traced_packages <- unique(evals_to_trace$package)
 
     handle_package <- function(package_name, ...) {
+        #make sure we disable provenance tracing for that
+        in_r_tracing(FALSE)
+        on.exit(in_r_tracing(TRUE))
         package_env <- getNamespace(package_name)
 
         entry <- subset(evals_to_trace, package == package_name)
@@ -36,7 +39,7 @@ setup_eval_wrapping_hook <- function(evals_to_trace) {
                       } else {
                           entry$fun
                       }
-
+        
         wrapped <- 0
         for (fun_name in funs_names) {
             fun <- get0(fun_name, envir=package_env, mode="function")
@@ -62,6 +65,7 @@ setup_eval_wrapping_hook <- function(evals_to_trace) {
     for (package in setdiff(traced_packages, loaded_packages)) {
         setHook(packageEvent(package, "onLoad"), handle_package)
     }
+    in_r_tracing(FALSE)
 }
 
 can_be_wrapped <- function(f) {

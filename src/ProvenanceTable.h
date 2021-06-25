@@ -12,10 +12,6 @@ enum class ProvenanceKind {
     as_call,
     expression,
     as_expression,
-    as_name,
-    as_symbol,
-    tilde,
-    as_formula,
     match_call // keep it the last
 };// also add as.name and as.symbol?
 
@@ -26,10 +22,15 @@ class ProvenanceTable: public Table {
     // Or one column per possible origin and then true false
     // Or the arguments if it is the origin, and NA otherwise
     // As there is one list of arguments per origin
-    std::vector<ProvenanceKind> parse_;
+    std::vector<std::string> parse_;
     std::vector<int> eval_ids_;
     std::vector<std::string> arguments_;
     std::vector<int> nb_provenances_;// How many provenances does it match
+    std::vector<int> nb_operations_;// How many operations to build this expression
+    std::vector<int> longest_path_size_;
+    std::vector<std::string> provenances_; // all the roots
+    std::vector<std::string> repr_path_; // path leading to the representative (i.e. provenance)
+    std::vector<int> repr_path_length_;
 
     // TODO: add the srcref of the provenances?
     // vector of set of arguments, provenances, provenance id
@@ -65,14 +66,6 @@ class ProvenanceTable: public Table {
             return "expression";
         case ProvenanceKind::as_expression:
             return "as.expression";
-        case ProvenanceKind::as_name:
-            return "as.name";
-        case ProvenanceKind::as_symbol:
-            return "as.symbol";
-        case ProvenanceKind::tilde:
-            return "~";
-        case ProvenanceKind::as_formula:
-            return "as.formula";
         case ProvenanceKind::match_call:
             return "match.call";
 
@@ -106,14 +99,6 @@ class ProvenanceTable: public Table {
             return ProvenanceKind::call;
         case Function::Identity::AsCall:
             return ProvenanceKind::as_call;
-        case Function::Identity::AsName:
-            return ProvenanceKind::as_name;
-        case Function::Identity::AsSymbol:
-            return ProvenanceKind::as_symbol;
-        case Function::Identity::Tilde:
-            return ProvenanceKind::tilde;
-        case Function::Identity::AsFormula:
-            return ProvenanceKind::as_formula;
         
         default:
             // should never happen
@@ -124,29 +109,40 @@ class ProvenanceTable: public Table {
     }
 
     void record(int eval_id, 
-        ProvenanceKind kind,
+        const std::string& kind,
         const std::string& arguments,
-        int nb_provenances) {
+        int nb_provenances,
+        int nb_operations,
+        int longest_path_size,
+        const std::string& provenances,
+        const std::string& repr_path,
+        int repr_path_length) {
             eval_ids_.push_back(eval_id);
             parse_.push_back(kind);
             arguments_.push_back(arguments);
             nb_provenances_.push_back(nb_provenances);
+            nb_operations_.push_back(nb_operations);
+            longest_path_size_.push_back(longest_path_size);
+            provenances_.push_back(provenances);
+            repr_path_.push_back(repr_path);
+            repr_path_length_.push_back(repr_path_length);
         }
 
     SEXP as_data_frame() override {
-        std::vector<std::string> provenance_strs(parse_.size());
-        for(int i = 0; i < parse_.size(); i ++) {
-            provenance_strs[i] = provenance_to_string(parse_[i]);
-        }
-
         SEXP r_data_frame = create_data_frame(
             {{"eval_call_id", PROTECT(create_integer_vector(eval_ids_))},
-             {"provenance", PROTECT(create_character_vector(provenance_strs))}, 
+             {"provenance", PROTECT(create_character_vector(parse_))}, 
              {"provenance_args", PROTECT(create_character_vector(arguments_))},
-             {"nb_provenances", PROTECT(create_integer_vector(nb_provenances_))}});
+             {"nb_provenances", PROTECT(create_integer_vector(nb_provenances_))},
+             {"nb_operations", PROTECT(create_integer_vector(nb_operations_))},
+             {"longest_path_size", PROTECT(create_integer_vector(longest_path_size_))},
+             {"all_provenances", PROTECT(create_character_vector(provenances_))},
+             {"repr_path", PROTECT(create_character_vector(repr_path_))},
+             {"repr_path_length", PROTECT(create_integer_vector(repr_path_length_))},
+             });
 
 
-        UNPROTECT(4);
+        UNPROTECT(9);
 
         return r_data_frame;
     }

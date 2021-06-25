@@ -137,6 +137,22 @@ void eval_entry_callback(ContextSPtr context,
     }
 }
 
+void eval_exit_callback(ContextSPtr context,
+                         ApplicationSPtr application,
+                         SEXP r_expression,
+                         SEXP r_rho,
+                         SEXP r_result) {
+    SEXP r_data = context->get_data();
+    TracerState& tracer_state = *get_tracer_state(r_data);
+    Event event = Event::eval_exit(r_expression, r_rho, r_result);
+
+    for (Analysis* analysis: get_analyses(r_data)) {
+        analysis->analyze(tracer_state, event);
+    }
+
+    tracer_state.analyze(event);
+}
+
 void variable_definition_callback(ContextSPtr context,
                                   ApplicationSPtr application,
                                   SEXP r_symbol,
@@ -289,6 +305,11 @@ void context_jump_callback(ContextSPtr context,
             else if (call->get_function()->get_type() == SPECIALSXP) {
                 call->set_status(Call::Status::Interrupted);
                 special_call_exit_callback(
+                    context, application, r_call, r_op, r_args, r_rho, NULL);
+            }
+            else if (call->get_function()->get_type() == BUILTINSXP) {
+                call->set_status(Call::Status::Interrupted);
+                builtin_call_exit_callback(
                     context, application, r_call, r_op, r_args, r_rho, NULL);
             }
         }

@@ -7,7 +7,7 @@ test_that("parse is detected", {
     provs <- do_trace_provenances(f())
 
     expect_equal(provs$provenance, "parse")
-    expect_equal(provs$provenance_args, "parse(text = \"1 + 1\"); ")
+    expect_equal(provs$provenance_args, "parse(text = \"1 + 1\")")
     expect_equal(provs$nb_provenances, 1)
 })
 
@@ -20,7 +20,7 @@ test_that("substitute is detected", {
     provs <- do_trace_provenances(f())
 
     expect_equal(provs$provenance, "substitute")
-    expect_equal(provs$provenance_args, "substitute(1); ")
+    expect_equal(provs$provenance_args, "substitute(1)")
     expect_equal(provs$nb_provenances, 1)
 })
 
@@ -38,7 +38,7 @@ test_that("match.call and symbols", {
     provs <- do_trace_provenances(f())
 
     expect_equal(provs$provenance, "match.call")
-    expect_equal(provs$provenance_args, "match.call(); ")
+    expect_equal(provs$provenance_args, "match.call()")
     expect_equal(provs$nb_provenances, 1)
 
     f <- function() {
@@ -48,7 +48,7 @@ test_that("match.call and symbols", {
     provs <- do_trace_provenances(f())
 
     expect_equal(provs$provenance, "match.call")
-    expect_equal(provs$provenance_args, "match.call(); ")
+    expect_equal(provs$provenance_args, "match.call()")
     expect_equal(provs$nb_provenances, 1)
 
     f <- function() {
@@ -58,7 +58,7 @@ test_that("match.call and symbols", {
     provs <- do_trace_provenances(f())
 
     expect_equal(provs$provenance, "match.call")
-    expect_equal(provs$provenance_args, "match.call(); ")
+    expect_equal(provs$provenance_args, "match.call()")
     expect_equal(provs$nb_provenances, 1)
 })
 
@@ -71,7 +71,7 @@ test_that("expression", {
     provs <- do_trace_provenances(f())
 
     expect_equal(provs$provenance, "expression")
-    expect_equal(provs$provenance_args, "expression(1); ")
+    expect_equal(provs$provenance_args, "expression(1)")
     expect_equal(provs$nb_provenances, 1)
 })
 
@@ -84,8 +84,8 @@ test_that("Multiple provenances", {
     }
 
     provs <- do_trace_provenances(f())
-    expect_true(provs$provenance %in% c("parse", "quote")) # not deterministic...
-    expect_equal(provs$provenance_args, "quote(4); parse(text = \"1 ; 2\"); ")
+    expect_equal(provs$provenance, "parse")
+    expect_equal(provs$provenance_args, "parse(text = \"1 ; 2\")")
     expect_equal(provs$nb_provenances, 2)
 })
 
@@ -96,7 +96,7 @@ test_that("inside eval", {
 
     provs <- do_trace_provenances(f())
     expect_equal(provs$provenance, "parse")
-    expect_equal(provs$provenance_args, "parse(text = \"1\"); ")
+    expect_equal(provs$provenance_args, "parse(text = \"1\")")
     expect_equal(provs$nb_provenances, 1)
 
     f <- function() {
@@ -106,7 +106,7 @@ test_that("inside eval", {
 
     provs <- do_trace_provenances(f())
     expect_equal(provs$provenance, "parse")
-    expect_equal(provs$provenance_args, "parse(text = \"1\"); ")
+    expect_equal(provs$provenance_args, "parse(text = \"1\")")
     expect_equal(provs$nb_provenances, 1)
 })
 
@@ -126,10 +126,9 @@ test_that("match.call and multiple provenances", {
     })
 
     expect_equal(provs$provenance, "match.call")
-    expect_equal(provs$provenance_args, "quote(g); match.call(); ")
+    expect_equal(provs$provenance_args, "match.call()")
     expect_equal(provs$nb_provenances, 2)
 })
-
 
 test_that("call", {
     provs <- do_trace_provenances({
@@ -138,7 +137,7 @@ test_that("call", {
     })
 
     expect_equal(provs$provenance, "call")
-    expect_equal(provs$provenance_args, "call(\"+\", 1, 1); ")
+    expect_equal(provs$provenance_args, "call(\"+\", 1, 1)")
     expect_equal(provs$nb_provenances, 1)
 })
 
@@ -150,7 +149,7 @@ test_that("as.name and as.symbol", {
     })
 
     expect_equal(provs$provenance, "as.name")
-    expect_equal(provs$provenance_args, "as.name(\"y\"); ")
+    expect_equal(provs$provenance_args, "as.name(\"y\")")
     expect_equal(provs$nb_provenances, 1)
 
     provs <- do_trace_provenances({
@@ -160,7 +159,7 @@ test_that("as.name and as.symbol", {
     })
 
     expect_equal(provs$provenance, "as.symbol")
-    expect_equal(provs$provenance_args, "as.symbol(\"y\"); ")
+    expect_equal(provs$provenance_args, "as.symbol(\"y\")")
     expect_equal(provs$nb_provenances, 1)
 })
 
@@ -171,6 +170,54 @@ test_that("tilde ~", {
     })
 
     expect_equal(provs$provenance, "~")
-    expect_equal(provs$provenance_args, "x ~ y; ")
-    expect_equal(provs$nb_provenances, 2) # There are apparently two calls to ~...
+    expect_equal(provs$provenance_args, "x ~ y")
+    expect_equal(provs$nb_provenances, 1) 
+})
+
+test_that("no intermediate variable", {
+    provs <- do_trace_provenances({
+        a <- 1
+        eval(parse(text = "a")[[1]])
+    })
+
+    expect_equal(provs$provenance, "parse")
+    expect_equal(provs$provenance_args, "parse(text = \"a\")")
+    expect_equal(provs$nb_provenances, 1) 
+})
+
+test_that("as.call", {
+    provs <- do_trace_provenances({
+        cl <- as.call(list(quote(`+`), 1, 1))
+        eval(cl)
+    })
+
+    expect_equal(provs$provenance, "as.call")
+    expect_equal(provs$provenance_args, "as.call(list(quote(`+`), 1, 1))")
+    expect_equal(provs$nb_provenances, 1) 
+})
+
+test_that("language in a list", {
+    provs <- do_trace_provenances({
+        l <- list(quote(a), 3)
+        a <- -7
+        eval(l[[1]])
+    })
+
+    expect_equal(provs$provenance, "quote")
+    expect_equal(provs$provenance_args, "quote(a)")
+    expect_equal(provs$nb_provenances, 1) 
+})
+
+test_that("attributes", {
+    provs <- do_trace_provenances({
+        a <- -8
+        x <- "test"
+        attr(x, "p") <- parse(text = "1 ; a")
+        attr(x, "p") <- attr(x, "p")[[2]]
+        eval(attr(x, "p"))
+    })
+
+    expect_equal(provs$provenance, "parse")
+    expect_equal(provs$provenance_args, "parse(text = \"1 ; a\")")
+    expect_equal(provs$nb_provenances, 1) 
 })

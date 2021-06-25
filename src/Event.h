@@ -9,6 +9,7 @@ class Event {
   public:
     enum class Type {
         EvalEntry,
+        EvalExit,
         ClosureCallEntry,
         ClosureCallExit,
         SpecialCallEntry,
@@ -63,6 +64,10 @@ class Event {
 
     SEXP get_object() {
         return r_object_;
+    }
+
+    SEXP get_expression() const {
+        return r_expression_;
     }
 
     SEXP r_get_argument(SEXP r_argument_name, int evaluate) {
@@ -129,6 +134,8 @@ class Event {
     std::string get_short_name() const;
 
     static Event eval_entry(SEXP r_expression, SEXP r_rho);
+
+    static Event eval_exit(SEXP r_expression, SEXP r_rho, SEXP r_result);
 
     static Event
     closure_call_entry(SEXP r_call, SEXP r_op, SEXP r_args, SEXP r_rho);
