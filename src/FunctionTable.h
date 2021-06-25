@@ -260,6 +260,9 @@ class FunctionTable {
                                "lazyLoadDBexec",
                                Function::Identity::LazyLoadDbExec);
         set_function_identity_(R_BaseNamespace,
+                                "lazyLoadDBfetch",
+                                Function::Identity::LazyLoadDbFetch);
+        set_function_identity_(R_BaseNamespace,
                                "attachNamespace",
                                Function::Identity::AttachNamespace);
         set_function_identity_(R_BaseNamespace,
