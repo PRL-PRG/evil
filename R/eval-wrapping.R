@@ -1,4 +1,5 @@
 .EvalFunctions <- c("eval", "evalq", "eval.parent", "local")
+.NsGetFunctions <- c("::", ":::")
 
 create_csid_prefix <- function(package_name, fun_name) {
     paste0("::", package_name, "::", fun_name, "::")
@@ -79,24 +80,30 @@ wrap_function_evals <- function(fun, csid_prefix) {
 
 wrap_evals <- function(expr, csid_prefix) {
   id <- 1L
+
   wrap <- function(expr) {
     if (typeof(expr) == "language") {
-        fun_name <- as.character(expr[[1L]])
-        if (fun_name %in% .EvalFunctions ||
-            (fun_name == "::" &&
-             length(expr) == 3L &&
-             as.character(expr[[2L]]) == "base" &&
-             as.character(expr[[3L]]) %in% .EvalFunctions)) {
+      if (is.call(expr)) {
+        fun <- expr[[1L]]
+        if (length(fun) == 3L && length(fun[[1L]]) == 1L && as.character(fun[[1L]]) %in% .NsGetFunctions) {
+          fun_str <- as.character(fun[-1L])
+          if (fun_str[1L] == "base" && fun_str[2L] %in% .EvalFunctions) {
             csid <- paste0(csid_prefix, id)
             attr(expr, "csid") <- csid
             id <<- id + 1L
+          }
+        } else if (length(fun) == 1L && as.character(fun) %in% .EvalFunctions) {
+          csid <- paste0(csid_prefix, id)
+          attr(expr, "csid") <- csid
+          id <<- id + 1L
         } else {
-            for (i in seq_along(expr)) {
-                if (typeof(expr[[i]]) == "language") {
-                    expr[[i]] <- wrap(expr[[i]])
-                }
+          for (i in seq_along(expr)) {
+            if (typeof(expr[[i]]) == "language") {
+              expr[[i]] <- wrap(expr[[i]])
             }
+          }
         }
+      }
     }
     expr
   }

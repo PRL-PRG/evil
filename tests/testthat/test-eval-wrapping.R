@@ -1,3 +1,16 @@
+test_that("wrap_eval works with base::", {
+  expr <- quote(f(base::eval(1), g(base::eval(2)), base::eval(3)))
+
+  r <- wrap_evals(expr, "id")
+
+  # it is DFS visit of the AST
+  expect_equal(attr(r[[2]], "csid"), "id1")
+  expect_equal(attr(r[[3]][[2]], "csid"), "id2")
+  expect_equal(attr(r[[4]], "csid"), "id3")
+  # should not alter the expression itself
+  expect_equal(r, expr)
+})
+
 test_that("wrap_eval works", {
   expr <- quote(f(eval(1), g(eval(2)), eval(3)))
 
