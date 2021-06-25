@@ -120,7 +120,7 @@ class Provenance {
 
     int repr_path_size() const {
         if(nb_parents() > 0) {
-            1 + parents_[rep_parent]->repr_path_size();
+            return 1 + parents_[rep_parent]->repr_path_size();
         }
         return 1;
     }

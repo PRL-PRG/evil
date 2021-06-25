@@ -232,7 +232,7 @@ class ProvenanceAnalysis: public Analysis {
                 if (res != addresses.end()) {
                     Provenance* prov = res->second;
 
-                    std::string repr_path = "";
+                    std::string repr_path = MissingStringValue;
                     int repr_path_size = 0;
                     if(string_repr_path_) {
                         auto res = prov->rep_path();
@@ -332,7 +332,7 @@ class ProvenanceAnalysis: public Analysis {
     }
 
     ~ProvenanceAnalysis() {
-        int max_bucket_size = 0;
+        /*int max_bucket_size = 0;
         for(int i = 0; i < addresses.bucket_count(); i++) {
             if(addresses.bucket_size(i) > max_bucket_size) {
                 max_bucket_size = addresses.bucket_size(i);
@@ -342,6 +342,7 @@ class ProvenanceAnalysis: public Analysis {
         addresses.size(), addresses.bucket_count(), max_bucket_size);
 
         Rprintf("\n# Graph stats: \n number of nodes = %d\n", provenance_graph_.nb_nodes());
+        */
     }
 
   private:
