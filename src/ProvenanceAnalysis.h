@@ -83,13 +83,30 @@ class ProvenanceAnalysis: public Analysis {
             SEXP result = event.get_result();
             std::string function_name = function->get_name();
 
+            bool lang_list = false;
+            if(result != nullptr && TYPEOF(result) == VECSXP) {
+                if(XLENGTH(result) == 0 || function_name == "list") {
+                    lang_list = true;// we track the empty list
+                }
+                else {
+                    int length = std::min(LENGTH(result), 10);
+                    for(int i = 0; i < length ; i++) {
+                        int el_type = TYPEOF(VECTOR_ELT(result, i));
+                        if(el_type == LANGSXP || el_type == EXPRSXP || el_type == SYMSXP) {
+                            lang_list = true;
+                            break;
+                        }
+                    }
+                }
+            }
+
 
             if (function->has_identity(Function::Identity::ProvenanceFamily) ||
                 // (rw_functions.find(function_name) != rw_functions.end()) ||
                 (result != nullptr &&
                  (TYPEOF(result) == LANGSXP || TYPEOF(result) == EXPRSXP ||
                   TYPEOF(result) == SYMSXP || TYPEOF(result) == LISTSXP)) || 
-                  function_name == "list" || 
+                  lang_list || function_name == "list"  ||
                   attrib_functions.find(function_name) != attrib_functions.end()) {
                 // That does not detect if somewhere in the provenance chain,
                 // something is not an expression anymore.  For instance, a
