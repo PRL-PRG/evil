@@ -118,6 +118,13 @@ class Provenance {
         return std::make_pair(path, path_length);
     }
 
+    int repr_path_size() const {
+        if(nb_parents() > 0) {
+            1 + parents_[rep_parent]->repr_path_size();
+        }
+        return 1;
+    }
+
 
     // They are actually leaves...
     size_t nb_roots() const {
@@ -187,7 +194,10 @@ class ProvenanceGraph {
 
         ProvenanceGraph() {
             // There are at least a few nodes and it seems gcc only reserve for one node on Linux
-            provenance_nodes.reserve(4);
+            // 1643 nodes after testing on one file for instance
+            // But reserving 2000 nodes seems to slow things down
+            // Even 4 slows down
+            //provenance_nodes.reserve(4);
         }
 
         Provenance* add_node(SEXP address, std::string const& function_name, std::string const& full_call, long prov_id) {

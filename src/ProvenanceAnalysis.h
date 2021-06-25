@@ -46,6 +46,9 @@ class ProvenanceAnalysis: public Analysis {
     std::optional<SEXP> eval_sexp;
     Provenance* eval_provenance;
 
+    bool write_dot_;
+    bool string_repr_path_;
+
     // also add "{" ?
     // it helps capturing everything created by an interesting function, even if
     // it is a realsxp e.g. from quote(1) We can remove if we are only
@@ -57,8 +60,9 @@ class ProvenanceAnalysis: public Analysis {
         {"attr<-", "attributes<-", "mostattributes<-",  "slot<-"};
 
   public:
-    ProvenanceAnalysis()
-        : Analysis(), unique_provenances(Provenance::nb_special_functions()) {
+    ProvenanceAnalysis(bool write_dot=false, bool string_repr_path=false)
+        : Analysis(), unique_provenances(Provenance::nb_special_functions()), write_dot_(write_dot), string_repr_path_(string_repr_path) {
+            addresses.reserve(400);
     }
 
     void analyze(TracerState& tracer_state, Event& event) override {
@@ -79,30 +83,13 @@ class ProvenanceAnalysis: public Analysis {
             SEXP result = event.get_result();
             std::string function_name = function->get_name();
 
-            // Also track list with at least one langsxp inside
-            // Maybe we should track better assignment rather than taversing the full list
-            // it could be huge...
-            bool lang_list = false;
-            if(result != nullptr && TYPEOF(result) == VECSXP) {
-                if(XLENGTH(result) == 0) {
-                    lang_list = true;// we track the empty list
-                }
-                for(int i = 0; i < XLENGTH(result) ; i++) {
-                    int el_type = TYPEOF(VECTOR_ELT(result, i));
-                    if(el_type == LANGSXP || el_type == EXPRSXP || el_type == SYMSXP) {
-                        lang_list = true;
-                        break;
-                    }
-                }
-            }
-
 
             if (function->has_identity(Function::Identity::ProvenanceFamily) ||
                 // (rw_functions.find(function_name) != rw_functions.end()) ||
                 (result != nullptr &&
                  (TYPEOF(result) == LANGSXP || TYPEOF(result) == EXPRSXP ||
                   TYPEOF(result) == SYMSXP || TYPEOF(result) == LISTSXP)) || 
-                  lang_list || 
+                  function_name == "list" || 
                   attrib_functions.find(function_name) != attrib_functions.end()) {
                 // That does not detect if somewhere in the provenance chain,
                 // something is not an expression anymore.  For instance, a
@@ -203,6 +190,7 @@ class ProvenanceAnalysis: public Analysis {
                     // This would not be detected by looking at the arguments
                     // because the arguments of the list are not promises but 
                     // LANGSXP
+                    // Also put an upper bound here?
                     for(int i = 0; i < XLENGTH(result) ; i++) {
                         SEXP el = VECTOR_ELT(result, i);
                         auto res = addresses.find(el);
@@ -244,7 +232,16 @@ class ProvenanceAnalysis: public Analysis {
                 if (res != addresses.end()) {
                     Provenance* prov = res->second;
 
-                    auto repr_path = prov->rep_path();
+                    std::string repr_path = "";
+                    int repr_path_size = 0;
+                    if(string_repr_path_) {
+                        auto res = prov->rep_path();
+                        repr_path = res.first;
+                        repr_path_size = res.second;
+                    }
+                    else {
+                        repr_path_size = prov->repr_path_size();
+                    }
 
                     provenance_table_.record(
                         call->get_id(),
@@ -254,21 +251,23 @@ class ProvenanceAnalysis: public Analysis {
                         prov->nb_nodes(),
                         prov->longest_path(),
                         provenances_from_roots(prov),
-                        repr_path.first,
-                        repr_path.second
+                        repr_path,
+                        repr_path_size
                         );
                     //  Rprintf("Detected origin of expression: %s\n",
                     //  arg_str.c_str());
 
-                    std::string path_root = "";
-                    if (const char* runr_cwd = std::getenv("RUNR_CWD")) {
-                        path_root = runr_cwd;
-                        path_root += "/";
-                    }
-                    std::string filepath =
-                        path_root + function->get_name() + "-" +
-                        std::to_string(call->get_id()) + ".dot";
-                    ProvenanceGraph::toDot(filepath, call->get_id(), prov);
+                    if(write_dot_) {
+                        std::string path_root = "";
+                        if (const char* runr_cwd = std::getenv("RUNR_CWD")) {
+                            path_root = runr_cwd;
+                            path_root += "/";
+                        }
+                        std::string filepath =
+                            path_root + function->get_name() + "-" +
+                            std::to_string(call->get_id()) + ".dot";
+                        ProvenanceGraph::toDot(filepath, call->get_id(), prov);
+                    } 
                 }
             }
         } else if (event_type == Event::Type::GcUnmark) {
@@ -330,6 +329,19 @@ class ProvenanceAnalysis: public Analysis {
         deparsed.resize(deparsed.size() - 3);
         UNPROTECT(1);
         return deparsed;
+    }
+
+    ~ProvenanceAnalysis() {
+        int max_bucket_size = 0;
+        for(int i = 0; i < addresses.bucket_count(); i++) {
+            if(addresses.bucket_size(i) > max_bucket_size) {
+                max_bucket_size = addresses.bucket_size(i);
+            }
+        }
+        Rprintf("# Addresses stats: \n number of addresses = %d\n number of buckets = %d\n max bucket size = %d\n",
+        addresses.size(), addresses.bucket_count(), max_bucket_size);
+
+        Rprintf("\n# Graph stats: \n number of nodes = %d\n", provenance_graph_.nb_nodes());
     }
 
   private:
