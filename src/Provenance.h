@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <unordered_set>
 #include <numeric>
+#include <string>
 #define R_NO_REMAP
 #include "r_init.h"
 
