@@ -33,9 +33,8 @@ void initialize_tracer_state(SEXP r_data) {
 }
 
 void initialize_tracer_analyses(SEXP r_data) {
-    std::vector<SEXP> analyses = {wrap(new ReflectionAnalysis()),
-                                  wrap(new CodeAnalysis()),
-                                  wrap(new ExecutionTraceAnalysis()),
+    // We do not use ReflectionAnalysis and CodeAnalysis anymore
+    std::vector<SEXP> analyses = {wrap(new ExecutionTraceAnalysis()),
                                   wrap(new ProvenanceAnalysis())};
 
     int count = analyses.size();

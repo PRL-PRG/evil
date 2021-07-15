@@ -47,13 +47,21 @@ void write_tree(std::ostream& stream, Provenance* node) {
     }
 }
 
-void ProvenanceGraph::toDot(const std::string& filename, int call_id, Provenance* node) {
+void ProvenanceGraph::toDot(const std::string& filename, int call_id, Provenance* node, const std::string& eval_call) {
     std::ofstream file;
     file.open(filename);
 
     file << "digraph eval_call_" << call_id << " {" << std::endl;
 
     write_tree(file, node);
+
+    // add a last node for the eval expression
+    // the parent of the eval node is the expression in eval
+    //Node 
+    file << "  " << call_id << " [label=\"" << write_escaped(eval_call) << "\"];" << std::endl; 
+    //Edge
+    file << "  " << call_id << " -> " << node->get_id() << ";" << std::endl;
+    
 
     file << "}";
     file.close();

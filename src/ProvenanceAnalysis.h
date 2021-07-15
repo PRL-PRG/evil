@@ -11,6 +11,9 @@
 #include <utility>
 #include <cassert>
 #include <cstdlib>
+
+#include "robin_hood.h"
+
 #include "r_init.h"
 #include "r_utilities.h"
 #include "Analysis.h"
@@ -38,8 +41,8 @@ class ProvenanceAnalysis: public Analysis {
     inline static int provenance_id = 0;
     ProvenanceGraph provenance_graph_;
     ProvenanceTable provenance_table_;
-    std::unordered_map<SEXP, Provenance*> addresses;
-    std::unordered_set<std::string> unique_provenances;
+    robin_hood::unordered_map<SEXP, Provenance*> addresses;// or explicitly unordered_flat_map?
+    robin_hood::unordered_set<std::string> unique_provenances;
 
     // To remember the provenance
     // in the case f()[[1]]
@@ -60,9 +63,9 @@ class ProvenanceAnalysis: public Analysis {
         {"attr<-", "attributes<-", "mostattributes<-",  "slot<-"};
 
   public:
-    ProvenanceAnalysis(bool write_dot=false, bool string_repr_path=false)
+    ProvenanceAnalysis(bool write_dot=true, bool string_repr_path=false)
         : Analysis(), unique_provenances(Provenance::nb_special_functions()), write_dot_(write_dot), string_repr_path_(string_repr_path) {
-            addresses.reserve(400);
+            //addresses.reserve(400); // is it that useful?
     }
 
     void analyze(TracerState& tracer_state, Event& event) override {
@@ -283,7 +286,12 @@ class ProvenanceAnalysis: public Analysis {
                         std::string filepath =
                             path_root + function->get_name() + "-" +
                             std::to_string(call->get_id()) + ".dot";
-                        ProvenanceGraph::toDot(filepath, call->get_id(), prov);
+
+
+                        //add the eval expression also
+                        std::string eval_call = deparse(call->get_expression());
+
+                        ProvenanceGraph::toDot(filepath, call->get_id(), prov, eval_call);
                     } 
                 }
             }

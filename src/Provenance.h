@@ -6,6 +6,8 @@
 #include <algorithm>
 #include <unordered_set>
 #include <numeric>
+#include "robin_hood.h"
+
 #define R_NO_REMAP
 #include "r_init.h"
 
@@ -140,7 +142,7 @@ class Provenance {
         }
     }
 
-    void roots(std::unordered_set<std::string>& unique_provs) const {
+    void roots(robin_hood::unordered_set<std::string>& unique_provs) const {
         if(nb_parents() == 0) {
             unique_provs.insert(this->function_name_);
         }
@@ -231,7 +233,7 @@ class ProvenanceGraph {
             return provenance_nodes.size();
         }
 
-        static void toDot(const std::string& filename, int call_id, Provenance* node);
+        static void toDot(const std::string& filename, int call_id, Provenance* node, const std::string& eval_call);
 
         void toDot(const std::string& filename);
 

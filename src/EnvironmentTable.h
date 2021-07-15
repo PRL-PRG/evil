@@ -4,6 +4,7 @@
 #include <R.h>
 #include <Rinternals.h>
 #include "Environment.h"
+#include "robin_hood.h"
 
 class EnvironmentTable {
   public:
@@ -47,7 +48,7 @@ class EnvironmentTable {
     }
 
   private:
-    std::unordered_map<SEXP, Environment*> table_;
+    robin_hood::unordered_map<SEXP, Environment*> table_;
 
     Environment* get_or_create_(SEXP r_environment) {
         auto result = table_.find(r_environment);

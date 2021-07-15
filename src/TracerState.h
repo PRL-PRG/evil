@@ -10,6 +10,7 @@
 #include "Stack.h"
 #include "FunctionTable.h"
 #include "EnvironmentTable.h"
+#include "robin_hood.h"
 
 class TracerState {
   private:
@@ -366,14 +367,14 @@ class TracerState {
 
     std::vector<int> interp_eval_counts_;
 
-    std::unordered_map<SEXP, env_info_t> environments_;
+    robin_hood::unordered_map<SEXP, env_info_t> environments_;
 
     /* NOTE: this function serves the dual purpose of looking up
      * or inserting and looking up. For this, it leverages the
      * fact that insert only inserts if the key is not already
      * in map. Otherwise, it returns an iterator to
      * the existing binding.   */
-    std::unordered_map<SEXP, env_info_t>::iterator
+    robin_hood::unordered_map<SEXP, env_info_t>::iterator
     add_environment_(SEXP r_env,
                      const std::string& envkind,
                      int eval_call_id = -1) {

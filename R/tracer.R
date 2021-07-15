@@ -147,9 +147,6 @@ application_unload_callback <- function(context, application) {
 
     tables <- .Call(C_tracer_data_finalize, data)
 
-    tables$code <- merge(tables$code, calls, by = "eval_call_id")
-
-    tables$reflection <- merge(tables$reflection, calls, by = "eval_call_id")
 
     data$tables <- c(list(dependencies = dependencies, calls = calls, resolved_expressions = expr_df), tables)
 }
