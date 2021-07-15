@@ -7,6 +7,7 @@
 #include <unordered_set>
 #include <numeric>
 #include "robin_hood.h"
+#include <string>
 
 #define R_NO_REMAP
 #include "r_init.h"
