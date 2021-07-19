@@ -5,12 +5,6 @@
 #include "normalization.h"
 #include "r_init.h"
 
-const char* copy(const char* str) {
-  int len = strlen(str) + 1;
-  char* cpstr = (char*) malloc(len * sizeof(char));
-  strcpy(cpstr, str);
-  return cpstr;
-}
 
 bool eq(const char* str, const char* str2) {
   if (str == str2) return true;
@@ -94,7 +88,7 @@ public:
 
   Exp() {}
   /* Copy the string to make sure we own it. */
-  Exp(const char* n) : string_rep(copy(n)) {}
+  Exp(const char* n) : string_rep(strdup(n)) {}
 
   ~Exp() { if(string_rep) free((char*)string_rep); }
 
@@ -307,7 +301,7 @@ public:
       if (pos!=-1) buf.rollback(pos);
       buf.write(")");
     }
-    return string_rep = copy(buf.get()); // buf deletes its string, so must copy
+    return string_rep = strdup(buf.get()); // buf deletes its string, so must copy
   }
 
   void add_arg(Exp* a) { args.push_back(a); }
@@ -374,7 +368,7 @@ public:
     }
     if (pos!=-1) buf.rollback(pos);
     buf.write(" }");
-    return string_rep = copy(buf.get());
+    return string_rep = strdup(buf.get());
   }
 };
 
