@@ -63,7 +63,7 @@ class ProvenanceAnalysis: public Analysis {
         {"attr<-", "attributes<-", "mostattributes<-",  "slot<-"};
 
   public:
-    ProvenanceAnalysis(bool write_dot=true, bool string_repr_path=false)
+    ProvenanceAnalysis(bool write_dot=false, bool string_repr_path=true)
         : Analysis(), unique_provenances(Provenance::nb_special_functions()), write_dot_(write_dot), string_repr_path_(string_repr_path) {
             //addresses.reserve(400); // is it that useful?
     }
@@ -73,6 +73,11 @@ class ProvenanceAnalysis: public Analysis {
         Stack& stack = tracer_state.get_stack();
 
         if(!r_tracing){
+            return;
+        }
+
+        /* Ignore provenances happening in package functions */
+        if (stack.peek_call(0, Function::Identity::PackageFamily)) {
             return;
         }
 
@@ -173,6 +178,8 @@ class ProvenanceAnalysis: public Analysis {
                 // before: the builder of the full expression and the builder of 
                 // the inserted element but the inserted element should be parent 
                 // of the full expression already
+
+                // TODO add attr and slot here??
                 
                 if (function_name == "[[" || function_name == "$" ||
                     function_name == "[") {
